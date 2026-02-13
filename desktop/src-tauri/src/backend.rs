@@ -2,6 +2,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandChild;
 use std::sync::Mutex;
+#[cfg(debug_assertions)]
 use std::process::Command as StdCommand;
 use std::time::Duration;
 use reqwest::Client;
@@ -94,13 +95,11 @@ pub async fn stop_backend(app: &AppHandle) {
     // Ensure process is killed
     if let Some(state) = app.try_state::<BackendState>() {
          let mut child_guard = state.child.lock().unwrap();
-         if let Some(ChildProcess::Std(ref mut child)) = *child_guard {
-             let _ = child.kill();
-         }
-         // Sidecar is managed by Tauri shell plugin usually, but we can explicit kill/write if needed.
-         // For now, assume graceful shutdown works or OS cleans up.
-         if let Some(ChildProcess::Sidecar(ref child)) = *child_guard {
-             let _ = child.kill();
+         if let Some(child) = child_guard.take() {
+             match child {
+                 ChildProcess::Std(mut c) => { let _ = c.kill(); }
+                 ChildProcess::Sidecar(c) => { let _ = c.kill(); }
+             }
          }
     }
 }
@@ -112,7 +111,8 @@ pub async fn request(
 ) -> Result<serde_json::Value, String> {
     let port = {
         let state = app.state::<BackendState>();
-        *state.port.lock().unwrap()
+        let port_value = *state.port.lock().unwrap();
+        port_value
     };
 
     if let Some(p) = port {

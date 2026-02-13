@@ -1,6 +1,6 @@
-use tauri::{AppHandle, State};
+use tauri::AppHandle;
 use serde::{Deserialize, Serialize};
-use crate::backend::{request, BackendState};
+use crate::backend::request;
 use reqwest::Method;
 
 #[derive(Debug, Serialize, Deserialize)]
