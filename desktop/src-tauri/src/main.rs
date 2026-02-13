@@ -54,6 +54,17 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::health_check,
+            commands::validate_folder,
+            commands::scan_folder,
+            commands::analyze_wizard_profile,
+            commands::complete_wizard,
+            commands::detect_environment,
+            commands::get_ingestion_config,
+            commands::update_ingestion_config,
+            commands::reset_ingestion_config,
+            commands::get_documents,
+            commands::update_document_metadata,
+            commands::analyze_documents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running RAGKIT Desktop");

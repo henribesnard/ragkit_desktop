@@ -107,6 +107,7 @@ pub async fn stop_backend(app: &AppHandle) {
 pub async fn request(
     method: reqwest::Method,
     endpoint: &str,
+    body: Option<serde_json::Value>,
     app: &AppHandle
 ) -> Result<serde_json::Value, String> {
     let port = {
@@ -118,7 +119,13 @@ pub async fn request(
     if let Some(p) = port {
         let url = format!("http://127.0.0.1:{}{}", p, endpoint);
         let client = Client::new();
-        let resp = client.request(method, &url)
+        let mut builder = client.request(method, &url);
+        
+        if let Some(b) = body {
+            builder = builder.json(&b);
+        }
+
+        let resp = builder
             .send()
             .await
             .map_err(|e| e.to_string())?;

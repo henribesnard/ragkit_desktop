@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix\\(ci\\): install Tauri v2 system dependencies for Linux\n\nUse libwebkit2gtk-4.1-dev, libjavascriptcoregtk-4.1-dev, and\nlibsoup-3.0-dev instead of libwebkit2gtk-4.0-dev \\(Tauri v1\\).\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(npx tauri icon --help:*)",
+      "Bash(python:*)",
+      "Bash(npx tauri icon:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

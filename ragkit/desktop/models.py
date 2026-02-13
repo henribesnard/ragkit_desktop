@@ -1,0 +1,277 @@
+"""Shared data models for the desktop backend."""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator
+
+PROFILE_IDS = {
+    "technical_documentation",
+    "faq_support",
+    "legal_compliance",
+    "reports_analysis",
+    "general",
+}
+
+SUPPORTED_FILE_TYPES = [
+    "pdf",
+    "docx",
+    "doc",
+    "md",
+    "txt",
+    "html",
+    "csv",
+    "rst",
+    "xml",
+    "json",
+    "yaml",
+]
+
+
+class ParsingEngine(str, Enum):
+    AUTO = "auto"
+    UNSTRUCTURED = "unstructured"
+    PYPDF = "pypdf"
+    DOCLING = "docling"
+
+
+class TableExtractionStrategy(str, Enum):
+    PRESERVE = "preserve"
+    MARKDOWN = "markdown"
+    SEPARATE = "separate"
+    IGNORE = "ignore"
+
+
+class OcrEngine(str, Enum):
+    TESSERACT = "tesseract"
+    EASYOCR = "easyocr"
+
+
+class DeduplicationStrategy(str, Enum):
+    EXACT = "exact"
+    FUZZY = "fuzzy"
+    SEMANTIC = "semantic"
+    NONE = "none"
+
+
+class FolderEntry(BaseModel):
+    path: str
+    files: int
+
+
+class SourceConfig(BaseModel):
+    path: str = Field(min_length=1, description="Absolute path to documents folder")
+    recursive: bool = True
+    excluded_dirs: list[str] = Field(default_factory=list)
+    file_types: list[str] = Field(default_factory=lambda: ["pdf", "docx", "md", "txt"])
+    exclusion_patterns: list[str] = Field(default_factory=list)
+    max_file_size_mb: int = Field(default=50, ge=1, le=500)
+
+    @field_validator("file_types")
+    @classmethod
+    def normalize_file_types(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().lower().lstrip(".") for value in values if value.strip()]
+        deduplicated = list(dict.fromkeys(normalized))
+        if not deduplicated:
+            raise ValueError("At least one file type must be selected.")
+        return deduplicated
+
+    @field_validator("excluded_dirs", "exclusion_patterns")
+    @classmethod
+    def strip_values(cls, values: list[str]) -> list[str]:
+        return [value.strip() for value in values if value.strip()]
+
+
+class ParsingConfig(BaseModel):
+    engine: ParsingEngine = ParsingEngine.AUTO
+    ocr_enabled: bool = False
+    ocr_language: list[str] = Field(default_factory=lambda: ["fra", "eng"])
+    ocr_engine: OcrEngine = OcrEngine.TESSERACT
+    table_extraction_strategy: TableExtractionStrategy = TableExtractionStrategy.PRESERVE
+    image_captioning_enabled: bool = False
+    header_detection: bool = True
+
+
+class PreprocessingConfig(BaseModel):
+    lowercase: bool = False
+    remove_punctuation: bool = False
+    normalize_unicode: bool = True
+    remove_urls: bool = False
+    language_detection: bool = True
+    deduplication_strategy: DeduplicationStrategy = DeduplicationStrategy.EXACT
+    deduplication_threshold: float = Field(default=0.95, ge=0.0, le=1.0)
+
+
+class IngestionConfig(BaseModel):
+    source: SourceConfig
+    parsing: ParsingConfig = Field(default_factory=ParsingConfig)
+    preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
+
+
+class SourceConfigPatch(BaseModel):
+    path: str | None = None
+    recursive: bool | None = None
+    excluded_dirs: list[str] | None = None
+    file_types: list[str] | None = None
+    exclusion_patterns: list[str] | None = None
+    max_file_size_mb: int | None = Field(default=None, ge=1, le=500)
+
+
+class ParsingConfigPatch(BaseModel):
+    engine: ParsingEngine | None = None
+    ocr_enabled: bool | None = None
+    ocr_language: list[str] | None = None
+    ocr_engine: OcrEngine | None = None
+    table_extraction_strategy: TableExtractionStrategy | None = None
+    image_captioning_enabled: bool | None = None
+    header_detection: bool | None = None
+
+
+class PreprocessingConfigPatch(BaseModel):
+    lowercase: bool | None = None
+    remove_punctuation: bool | None = None
+    normalize_unicode: bool | None = None
+    remove_urls: bool | None = None
+    language_detection: bool | None = None
+    deduplication_strategy: DeduplicationStrategy | None = None
+    deduplication_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class IngestionConfigPatch(BaseModel):
+    source: SourceConfigPatch | None = None
+    parsing: ParsingConfigPatch | None = None
+    preprocessing: PreprocessingConfigPatch | None = None
+
+
+class FolderValidationRequest(BaseModel):
+    folder_path: str
+
+
+class ScanFolderRequest(BaseModel):
+    folder_path: str
+    recursive: bool = True
+    excluded_dirs: list[str] = Field(default_factory=list)
+    exclusion_patterns: list[str] = Field(default_factory=list)
+    max_file_size_mb: int = Field(default=50, ge=1, le=500)
+
+
+class FolderStats(BaseModel):
+    files: int
+    size_mb: float
+    extensions: list[str]
+    extension_counts: dict[str, int]
+
+
+class FolderValidationResult(BaseModel):
+    valid: bool
+    error: str | None = None
+    error_code: str | None = None
+    stats: FolderStats
+    subdirectories: list[FolderEntry] = Field(default_factory=list)
+
+
+class FileTypeInfo(BaseModel):
+    extension: str
+    display_name: str
+    count: int
+    size_mb: float
+    supported: bool
+
+
+class FolderScanResult(BaseModel):
+    supported_types: list[FileTypeInfo]
+    unsupported_types: list[FileTypeInfo]
+    total_files: int
+    total_size_mb: float
+
+
+class WizardAnswers(BaseModel):
+    profile: str
+    calibration: dict[str, bool] = Field(default_factory=dict)
+
+    @field_validator("profile")
+    @classmethod
+    def validate_profile(cls, value: str) -> str:
+        if value not in PROFILE_IDS:
+            raise ValueError(f"Unknown profile: {value}")
+        return value
+
+
+class WizardProfileResponse(BaseModel):
+    profile_name: str
+    profile_display_name: str
+    icon: str
+    description: str
+    config_summary: dict[str, str]
+    full_config: dict[str, Any]
+
+
+class WizardCompletionRequest(BaseModel):
+    profile: str
+    calibration: dict[str, bool] = Field(default_factory=dict)
+    source: SourceConfig
+
+    @field_validator("profile")
+    @classmethod
+    def validate_profile(cls, value: str) -> str:
+        if value not in PROFILE_IDS:
+            raise ValueError(f"Unknown profile: {value}")
+        return value
+
+
+class SetupStatusResponse(BaseModel):
+    has_completed_setup: bool
+
+
+class EnvironmentInfo(BaseModel):
+    gpu_available: bool
+    ollama_available: bool
+    local_models: list[str] = Field(default_factory=list)
+
+
+class DocumentInfo(BaseModel):
+    id: str
+    filename: str
+    file_path: str
+    file_type: str
+    file_size_bytes: int
+    page_count: int | None = None
+    language: str | None = None
+    last_modified: str
+    encoding: str | None = None
+    word_count: int | None = None
+    title: str | None = None
+    author: str | None = None
+    description: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+    creation_date: str | None = None
+
+
+class DocumentMetadataUpdate(BaseModel):
+    title: str | None = None
+    author: str | None = None
+    description: str | None = None
+    keywords: list[str] | None = None
+    creation_date: str | None = None
+
+
+class AnalysisResult(BaseModel):
+    success: bool
+    analyzed_count: int
+    errors: list[str] = Field(default_factory=list)
+
+
+class SettingsPayload(BaseModel):
+    version: str = "1.0.0"
+    setup_completed: bool = False
+    profile: str | None = None
+    calibration_answers: dict[str, bool] = Field(default_factory=dict)
+    ingestion: IngestionConfig | None = None
+    chunking: dict[str, Any] = Field(default_factory=dict)
+    embedding: dict[str, Any] = Field(default_factory=dict)
+    retrieval: dict[str, Any] = Field(default_factory=dict)
+    rerank: dict[str, Any] = Field(default_factory=dict)
+    llm: dict[str, Any] = Field(default_factory=dict)
+    agents: dict[str, Any] = Field(default_factory=dict)

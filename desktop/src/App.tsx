@@ -4,11 +4,34 @@ import { Header } from "./components/layout/Header";
 import { Chat } from "./pages/Chat";
 import { Settings } from "./pages/Settings";
 import { Dashboard } from "./pages/Dashboard";
+import { Onboarding } from "./pages/Onboarding";
 import { useTheme } from "./hooks/useTheme";
+import { useSetupStatus } from "./hooks/useSetupStatus";
 import "./i18n";
 
+function SplashScreen() {
+    return (
+        <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-900">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+    );
+}
+
 export default function App() {
-    useTheme(); // Applique le thème clair/sombre
+    useTheme();
+    const { hasCompletedSetup, isLoading } = useSetupStatus();
+
+    if (isLoading) return <SplashScreen />;
+
+    if (!hasCompletedSetup) {
+        // Wrap in Router because Wizard/Onboarding might use Link or useNavigate internally
+        // In our current implementation, WizardContainer uses useNavigate
+        return (
+            <BrowserRouter>
+                <Onboarding />
+            </BrowserRouter>
+        );
+    }
 
     return (
         <BrowserRouter>
