@@ -1,0 +1,34 @@
+{
+    "app": {
+        "name": "RAGKIT",
+        "version": "v0.1.0"
+    },
+    "navigation": {
+        "chat": "Chat",
+        "settings": "Settings",
+        "dashboard": "Dashboard"
+    },
+    "layout": {
+        "darkMode": "Dark Mode",
+        "lightMode": "Light Mode"
+    },
+    "chat": {
+        "title": "Chat",
+        "placeholder": "Chat will be available after configuration",
+        "description": "Configure your knowledge base to start asking questions."
+    },
+    "settings": {
+        "title": "Settings",
+        "placeholder": "Configuration settings will appear here",
+        "description": "Configuration settings will appear here after setting up your knowledge base."
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "placeholder": "Monitoring will appear here",
+        "description": "Monitoring and statistics will appear here once ingestion is launched."
+    },
+    "backend": {
+        "connected": "Backend connected",
+        "disconnected": "Backend disconnected"
+    }
+}
