@@ -2,7 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MessageSquare, Settings, LayoutDashboard } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
-import { cn } from "@/lib/cn";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 export function Sidebar() {
     const { t } = useTranslation();

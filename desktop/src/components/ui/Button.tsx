@@ -1,5 +1,10 @@
 import * as React from "react"
-import { cn } from "@/lib/cn"
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs))
+}
 
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
