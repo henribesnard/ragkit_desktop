@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MessageSquare, Settings, LayoutDashboard } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
-import { cn } from "../../lib/cn";
+import { cn } from "@/lib/cn";
 
 export function Sidebar() {
     const { t } = useTranslation();
