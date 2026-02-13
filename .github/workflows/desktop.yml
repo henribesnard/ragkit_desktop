@@ -95,10 +95,10 @@ jobs:
           
           # Determines source path based on OS
           if [ "$RUNNER_OS" == "Windows" ]; then
-            SRC="dist/ragkit-backend/ragkit-backend.exe"
+            SRC="dist/ragkit-backend.exe"
             DEST="desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}.exe"
           else
-            SRC="dist/ragkit-backend/ragkit-backend"
+            SRC="dist/ragkit-backend"
             DEST="desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
           fi
 
