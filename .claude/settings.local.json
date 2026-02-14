@@ -8,7 +8,9 @@
       "Bash(npx tauri icon --help:*)",
       "Bash(python:*)",
       "Bash(npx tauri icon:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -7,8 +7,10 @@ export interface WizardState {
     calibration: Record<string, boolean>;
     folderPath: string | null;
     folderStats: any | null;
+    folderTree: any | null;
     includedFileTypes: string[];
     excludedFileTypes: string[];
+    excludedFolders: string[];
 }
 
 export function useWizard() {
@@ -25,8 +27,10 @@ export function useWizard() {
         },
         folderPath: null,
         folderStats: null,
+        folderTree: null,
         includedFileTypes: ["pdf", "docx", "doc", "md", "txt"],
         excludedFileTypes: [],
+        excludedFolders: [],
     });
 
     const nextStep = () => setState((s) => ({ ...s, step: Math.min(s.step + 1, 4) }));
@@ -41,7 +45,18 @@ export function useWizard() {
 
     const setFolderPath = (path: string) => setState((s) => ({ ...s, folderPath: path }));
 
-    const setFolderStats = (stats: any) => setState((s) => ({ ...s, folderStats: stats }));
+    const setFolderStats = (stats: any, tree: any) => setState((s) => ({ ...s, folderStats: stats, folderTree: tree }));
+
+    const toggleFolderExclusion = (path: string) =>
+        setState((s) => {
+            const isExcluded = s.excludedFolders.includes(path);
+            return {
+                ...s,
+                excludedFolders: isExcluded
+                    ? s.excludedFolders.filter(p => p !== path)
+                    : [...s.excludedFolders, path]
+            };
+        });
 
     const completeWizard = async () => {
         // Logic to call backend
@@ -56,6 +71,7 @@ export function useWizard() {
 
             const config = profileResponse.full_config;
             config.source.path = state.folderPath;
+            config.source.excluded_dirs = state.excludedFolders;
             // Apply file types filter if needed (implied)
 
             await invoke("complete_wizard", { params: { config } });
@@ -74,6 +90,7 @@ export function useWizard() {
         toggleCalibration,
         setFolderPath,
         setFolderStats,
+        toggleFolderExclusion,
         completeWizard,
     };
 }

@@ -45,6 +45,14 @@ class SourceConfig(BaseModel):
     max_file_size_mb: int = Field(default=50, ge=1, le=500)
 
 
+class FolderNode(BaseModel):
+    name: str
+    path: str
+    is_dir: bool = True
+    children: list[FolderNode] = Field(default_factory=list)
+    file_count: int = 0
+
+
 class ParsingConfig(BaseModel):
     engine: ParsingEngine = ParsingEngine.AUTO
     ocr_enabled: bool = False

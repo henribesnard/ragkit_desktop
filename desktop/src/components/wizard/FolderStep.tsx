@@ -11,10 +11,12 @@ interface FolderStepProps {
     onNext: () => void;
     onPrev: () => void;
     setFolderPath: (path: string) => void;
-    setFolderStats: (stats: any) => void;
+    setFolderStats: (stats: any, tree: any) => void; // Update signature
+    toggleExclusion: (path: string) => void;
+    excludedFolders: string[];
 }
 
-export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStats }: FolderStepProps) {
+export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStats, toggleExclusion, excludedFolders }: FolderStepProps) {
     const [error, setError] = useState<string | null>(null);
     const [isValidating, setIsValidating] = useState(false);
 
@@ -42,10 +44,10 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
         try {
             const res: any = await invoke("validate_folder", { path });
             if (res.valid) {
-                setFolderStats(res.stats);
+                setFolderStats(res.stats, res.tree);
             } else {
                 setError(res.error || "Dossier invalide");
-                setFolderStats(null);
+                setFolderStats(null, null);
             }
         } catch (err) {
             setError("Erreur de validation: " + err);
@@ -92,7 +94,9 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
 
                         <FolderTree
                             path={state.folderPath}
-                            stats={state.folderStats}
+                            tree={state.folderTree}
+                            excludedFolders={excludedFolders}
+                            onToggleExclusion={toggleExclusion}
                         />
                     </div>
                 </div>
