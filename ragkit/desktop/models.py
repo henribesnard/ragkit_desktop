@@ -219,10 +219,6 @@ class WizardProfileResponse(BaseModel):
     full_config: dict[str, Any]
 
 
-class WizardCompletionRequest(BaseModel):
-    config: SettingsPayload
-
-
 class SetupStatusResponse(BaseModel):
     has_completed_setup: bool
 
@@ -277,3 +273,7 @@ class SettingsPayload(BaseModel):
     rerank: dict[str, Any] = Field(default_factory=dict)
     llm: dict[str, Any] = Field(default_factory=dict)
     agents: dict[str, Any] = Field(default_factory=dict)
+
+
+class WizardCompletionRequest(BaseModel):
+    config: SettingsPayload
