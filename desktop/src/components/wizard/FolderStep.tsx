@@ -40,41 +40,39 @@ const calculateStats = (node: any, excludedFolders: string[]): { files: number, 
         return { files: 0, size_mb: 0 };
     }
 
-    // If not excluded, we need its contributions.
-    // Since node.file_count and size_bytes are aggregated totals,
-    // we can't just return node.stats because that includes excluded children.
-    // We must manually sum the "files in this specific folder" + stats of included children.
+    // Since node.file_count and size_bytes are aggregated totals (including children),
+    // and we want to exclude specific children, we must recalculate by summing only included children
+    // + the files directly in this folder.
 
-    // BUT we don't have "files in this specific folder" in the Node model I defined!
-    // I only defined aggregated `file_count`.
-    // This is a blocker for precise calculation unless I assume:
-    // Files in this folder = Total Aggregated - Sum(Children Aggregated).
-    // Let's assume this holds true (it should).
-
+    // Determine direct metrics (files/size solely in this folder, excluding subfolders)
     let directFiles = node.file_count;
-    let directSize = node.size_bytes; // This allows us to deduce direct content
-
-    let includedFiles = 0;
-    let includedSize = 0;
+    let directSize = node.size_bytes;
 
     if (node.children && node.children.length > 0) {
         for (const child of node.children) {
-            // Subtract child totals from parent totals to isolate "direct" (files in current dir)
+            // Subtract child totals from parent totals to isolate "direct" content
             directFiles -= child.file_count;
             directSize -= child.size_bytes;
-
-            // Recurse
-            const childStats = calculateStats(child, excludedFolders);
-            includedFiles += childStats.files;
-            includedSize += childStats.size_mb;
         }
     }
 
-    // Add direct files (those in the folder itself, not subfolders)
-    includedFiles += directFiles;
-    includedSize += directSize;
+    // Recursive calculation for included children
+    let includedChildrenFiles = 0;
+    let includedChildrenSize = 0;
 
-    return { files: includedFiles, size_mb: includedSize };
+    if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+            const childStats = calculateStats(child, excludedFolders);
+            includedChildrenFiles += childStats.files;
+            includedChildrenSize += childStats.size_mb; // size_mb here is actually bytes for now in recursion
+        }
+    }
+
+    // Total = Direct + Included Children
+    const totalFiles = directFiles + includedChildrenFiles;
+    const totalSizeBytes = directSize + (includedChildrenSize); // Summing bytes
+
+    return { files: totalFiles, size_mb: totalSizeBytes };
 };
 
 
@@ -141,7 +139,7 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
         }
 
         const calculated = calculateStats(state.folderTree, excludedFolders);
-        // Convert bytes to MB
+        // Correct conversion: calculated.size_mb is actually in bytes from helper, convert here
         return {
             files: calculated.files,
             size_mb: calculated.size_mb / (1024 * 1024)

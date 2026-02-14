@@ -174,9 +174,17 @@ async def complete_wizard(request: WizardCompletionRequest):
         config_manager.save_config(request.config)
         
         # Invalidate the in-memory cache
-        # Note: Ideally trigger background ingestion/analysis here
         from ragkit.desktop.api import ingestion
         ingestion._CURRENT_CONFIG = request.config.ingestion
+        
+        # Trigger initial analysis in background
+        try:
+            documents.analyze_documents(request.config.ingestion)
+            # Update cache with results
+            docs, _ = documents.analyze_documents(request.config.ingestion)
+            ingestion._DOCUMENTS = docs
+        except Exception as e:
+            logger.error(f"Initial analysis failed: {e}")
         
         return {"success": True}
     except Exception as e:
