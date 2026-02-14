@@ -177,10 +177,8 @@ async def complete_wizard(request: WizardCompletionRequest):
         from ragkit.desktop.api import ingestion
         ingestion._CURRENT_CONFIG = request.config.ingestion
         
-        # Trigger initial analysis in background
+        # Trigger initial analysis and cache results
         try:
-            documents.analyze_documents(request.config.ingestion)
-            # Update cache with results
             docs, _ = documents.analyze_documents(request.config.ingestion)
             ingestion._DOCUMENTS = docs
         except Exception as e:

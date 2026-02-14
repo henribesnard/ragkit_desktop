@@ -76,10 +76,10 @@ export function useWizard() {
             });
 
             const config = profileResponse.full_config;
-            config.source.path = state.folderPath;
-            config.source.recursive = state.recursive;
-            config.source.excluded_dirs = state.excludedFolders;
-            config.source.file_types = state.includedFileTypes;
+            config.ingestion.source.path = state.folderPath;
+            config.ingestion.source.recursive = state.recursive;
+            config.ingestion.source.excluded_dirs = state.excludedFolders;
+            config.ingestion.source.file_types = state.includedFileTypes;
 
             await invoke("complete_wizard", { params: { config } });
             return true;

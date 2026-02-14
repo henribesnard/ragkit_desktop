@@ -11,9 +11,8 @@ export function WizardContainer() {
     const handleComplete = async () => {
         const success = await completeWizard();
         if (success) {
-            // Force reload or redirect to allow App to pick up new config
-            // For now, simple reload to trigger check
-            window.location.reload();
+            // Redirect to Settings so user sees metadata after analysis
+            window.location.href = "/settings";
         }
     };
 

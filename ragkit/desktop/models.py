@@ -221,8 +221,6 @@ class WizardProfileResponse(BaseModel):
 
 class WizardCompletionRequest(BaseModel):
     config: SettingsPayload
-class WizardCompletionRequest(BaseModel):
-    config: SettingsPayload
 
 
 class SetupStatusResponse(BaseModel):

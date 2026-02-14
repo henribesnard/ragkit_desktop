@@ -59,7 +59,7 @@ class ParsedContent:
 SUPPORTED_DISPLAY_NAMES = {
     "pdf": "PDF",
     "docx": "Word",
-    "doc": "Word (Legacy)",
+    "doc": "Word",
     "md": "Markdown",
     "txt": "Texte",
     "html": "HTML",
@@ -304,7 +304,18 @@ def _iter_files(
     exclusion_patterns: list[str],
     max_file_size_mb: int | None,
 ):
-    excluded = {_normalize_relative_path(value) for value in excluded_dirs if value.strip()}
+    excluded: set[str] = set()
+    for value in excluded_dirs:
+        if not value.strip():
+            continue
+        p = Path(value)
+        if p.is_absolute():
+            try:
+                excluded.add(p.relative_to(root).as_posix().lower())
+            except ValueError:
+                excluded.add(_normalize_relative_path(value))
+        else:
+            excluded.add(_normalize_relative_path(value))
     max_size_bytes = max_file_size_mb * 1024 * 1024 if max_file_size_mb else None
     iterator = root.rglob("*") if recursive else root.glob("*")
 
