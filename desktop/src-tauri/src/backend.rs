@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use std::process::Command as StdCommand;
 use std::time::Duration;
 use reqwest::Client;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 pub struct BackendState {
     pub port: Mutex<Option<u16>>,
@@ -79,28 +81,51 @@ async fn wait_for_backend(port: u16) -> Result<(), String> {
 pub async fn stop_backend(app: &AppHandle) {
     tracing::info!("Stopping backend...");
     let mut port_opt = None;
-    
+
     if let Some(state) = app.try_state::<BackendState>() {
         port_opt = *state.port.lock().unwrap();
     }
 
     if let Some(port) = port_opt {
         // Try graceful shutdown via API
-        let _ = Client::new()
+        let client = Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .unwrap();
+        let _ = client
             .post(format!("http://127.0.0.1:{}/shutdown", port))
             .send()
             .await;
+
+        // Give the backend a moment to exit cleanly
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    // Ensure process is killed
+    // Force kill the child process
     if let Some(state) = app.try_state::<BackendState>() {
          let mut child_guard = state.child.lock().unwrap();
          if let Some(child) = child_guard.take() {
+             tracing::info!("Force killing backend process...");
              match child {
-                 ChildProcess::Std(mut c) => { let _ = c.kill(); }
+                 ChildProcess::Std(mut c) => { let _ = c.kill(); let _ = c.wait(); }
                  ChildProcess::Sidecar(c) => { let _ = c.kill(); }
              }
          }
+    }
+
+    // Last resort: kill any remaining ragkit-backend processes by name
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "ragkit-backend.exe"])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .output();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "ragkit-backend"])
+            .output();
     }
 }
 

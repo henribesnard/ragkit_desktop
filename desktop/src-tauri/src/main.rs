@@ -26,8 +26,8 @@ fn main() {
         .with_ansi(false)
         .init();
     
-    tracing::info!("=== RAGKIT Desktop v0.1.0 starting ===");
-    
+    tracing::info!("=== RAGKIT Desktop starting ===");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -44,14 +44,6 @@ fn main() {
             });
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                let app_handle = window.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    backend::stop_backend(&app_handle).await;
-                });
-            }
-        })
         .invoke_handler(tauri::generate_handler![
             commands::health_check,
             commands::validate_folder,
@@ -66,6 +58,15 @@ fn main() {
             commands::update_document_metadata,
             commands::analyze_documents,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running RAGKIT Desktop");
+        .build(tauri::generate_context!())
+        .expect("error while building RAGKIT Desktop")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                tracing::info!("Application exiting, stopping backend...");
+                tauri::async_runtime::block_on(async {
+                    backend::stop_backend(app_handle).await;
+                });
+                tracing::info!("Backend stopped.");
+            }
+        });
 }

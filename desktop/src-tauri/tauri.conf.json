@@ -51,7 +51,8 @@
                 "languages": [
                     "French",
                     "English"
-                ]
+                ],
+                "installerHooks": "./nsis/installer-hooks.nsh"
             }
         }
     },
