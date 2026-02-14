@@ -90,7 +90,10 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
                             Inclure les sous-dossiers
                         </label>
 
-                        <FolderTree />
+                        <FolderTree
+                            path={state.folderPath}
+                            stats={state.folderStats}
+                        />
                     </div>
                 </div>
             </div>
