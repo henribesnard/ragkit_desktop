@@ -22,83 +22,50 @@ from .models import (
     ScanFolderRequest,
     SUPPORTED_FILE_TYPES,
     FileTypeInfo,
+    FolderNode,
 )
 
-try:  # pragma: no cover - optional runtime dependency
-    from langdetect import detect as langdetect_detect
-except Exception:  # pragma: no cover - optional runtime dependency
-    langdetect_detect = None
+# ... (rest of imports)
 
-try:  # pragma: no cover - optional runtime dependency
-    from pypdf import PdfReader
-except Exception:  # pragma: no cover - optional runtime dependency
-    PdfReader = None
+def build_tree(path: Path, max_depth: int = 2, current_depth: int = 0) -> FolderNode:
+    node = FolderNode(name=path.name, path=str(path), is_dir=True)
+    
+    if current_depth >= max_depth:
+        return node
 
-try:  # pragma: no cover - optional runtime dependency
-    from docx import Document as DocxDocument
-except Exception:  # pragma: no cover - optional runtime dependency
-    DocxDocument = None
+    try:
+        # Sort directories first, then files
+        entries = sorted(list(os.scandir(path)), key=lambda e: e.name.lower())
+        file_count = 0
+        size_bytes = 0
+        
+        for entry in entries:
+            if entry.is_dir(follow_symlinks=False):
+                if entry.name.startswith("."): 
+                    continue
+                    
+                child = build_tree(Path(entry.path), max_depth, current_depth + 1)
+                node.children.append(child)
+                file_count += child.file_count 
+                size_bytes += child.size_bytes
+            elif entry.is_file(follow_symlinks=False):
+                file_count += 1
+                try:
+                    size_bytes += entry.stat().st_size
+                except OSError:
+                    pass
+        
+        node.file_count = file_count
+        node.size_bytes = size_bytes
 
-try:  # pragma: no cover - optional runtime dependency
-    import yaml
-except Exception:  # pragma: no cover - optional runtime dependency
-    yaml = None
+    except PermissionError:
+        pass
+    except OSError:
+        pass
 
-SUPPORTED_DISPLAY_NAMES = {
-    "pdf": "PDF",
-    "docx": "Word",
-    "doc": "Word",
-    "md": "Markdown",
-    "txt": "Text",
-    "html": "HTML",
-    "csv": "CSV",
-    "rst": "RST",
-    "xml": "XML",
-    "json": "JSON",
-    "yaml": "YAML",
-    "yml": "YAML",
-}
+    return node
 
-TEXT_BASED_EXTENSIONS = {"md", "txt", "html", "csv", "rst", "xml", "json", "yaml", "yml"}
-STOPWORDS = {
-    "the",
-    "this",
-    "that",
-    "with",
-    "from",
-    "pour",
-    "avec",
-    "dans",
-    "mais",
-    "donc",
-    "vous",
-    "nous",
-    "their",
-    "there",
-    "have",
-    "will",
-    "your",
-    "de",
-    "des",
-    "les",
-    "une",
-    "and",
-    "for",
-    "are",
-}
-
-
-@dataclass
-class ParsedContent:
-    text: str
-    page_count: int | None
-    title: str | None
-    author: str | None
-    creation_date: str | None
-    encoding: str | None
-
-
-def validate_folder(folder_path: str) -> FolderValidationResult:
+def validate_folder(folder_path: str, recursive: bool = True) -> FolderValidationResult:
     root = Path(folder_path).expanduser()
     if not root.exists():
         return FolderValidationResult(
@@ -117,20 +84,24 @@ def validate_folder(folder_path: str) -> FolderValidationResult:
             subdirectories=[],
         )
 
-    files = list(_iter_files(root, recursive=True, excluded_dirs=[], exclusion_patterns=[], max_file_size_mb=None))
+    # For stats, we use the existing _iter_files logic but we need to respect recursive flag passed from wizard
+    # The existing validate_folder didn't take recursive arg, but wizard needs it.
+    # We'll default to True to maintain compatibility or update signature.
+    # The spec for wizard says validation returns stats.
+    
+    files = list(_iter_files(root, recursive=recursive, excluded_dirs=[], exclusion_patterns=[], max_file_size_mb=None))
     stats = _build_folder_stats(root, files)
     subdirectories = _build_subdirectory_stats(root, files)
 
-    if stats.files == 0:
-        return FolderValidationResult(
-            valid=False,
-            error="Folder does not contain any files.",
-            error_code="FOLDER_EMPTY",
-            stats=stats,
-            subdirectories=subdirectories,
-        )
+    # Build tree for UI (limited depth to avoid huge payload)
+    tree_root = build_tree(root, max_depth=3)
 
-    return FolderValidationResult(valid=True, stats=stats, subdirectories=subdirectories)
+    return FolderValidationResult(
+        valid=True, 
+        stats=stats, 
+        subdirectories=subdirectories,
+        tree=tree_root
+    )
 
 
 def scan_folder(payload: ScanFolderRequest) -> FolderScanResult:

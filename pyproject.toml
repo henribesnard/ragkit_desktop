@@ -4,11 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragkit"
-version = "1.0.4"
+version = "1.0.5"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.100",
     "uvicorn>=0.20",
+    "langdetect>=1.0",
+    "pypdf>=3.0",
+    "python-docx>=0.8",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

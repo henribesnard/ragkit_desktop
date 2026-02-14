@@ -10,7 +10,13 @@
       "Bash(npx tauri icon:*)",
       "Bash(git commit:*)",
       "Bash(git check-ignore:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(powershell:*)",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint:*)",
+      "Bash(git status:*)"
     ]
   }
 }

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { FolderTree } from "./FolderTree";
 
 interface FolderStepProps {
@@ -16,6 +16,67 @@ interface FolderStepProps {
     toggleExclusion: (path: string) => void;
     excludedFolders: string[];
 }
+
+// Helper to check if a path is excluded or is a child of an excluded path
+// Helper to check if a path is excluded or is a child of an excluded path
+// (Unused for now as we use exact match in tree traversal, allowing subtree pruning)
+// const isPathExcluded = ... 
+
+// Recursive function to calculate stats
+// Note: We need to traverse the tree. 
+// If a node is explicitly excluded (it's in excludedFolders), we subtract it?
+// Better: We sum up only included nodes.
+// Problem: folderTree is a single root node usually.
+// If root is excluded, result is 0.
+// If root is included, we take its total count/size? No, that includes children.
+// Method: Start with Total. Subtract "Top-level excluded nodes".
+// A "top-level excluded node" is one that is in excludedFolders BUT its parent is NOT (or it has no parent).
+// Since we don't have parent links easily, we traverse from root.
+const calculateStats = (node: any, excludedFolders: string[]): { files: number, size_mb: number } => {
+    if (!node) return { files: 0, size_mb: 0 };
+
+    // Check if this node itself is in excludedFolders
+    if (excludedFolders.includes(node.path)) {
+        return { files: 0, size_mb: 0 };
+    }
+
+    // If not excluded, we need its contributions.
+    // Since node.file_count and size_bytes are aggregated totals,
+    // we can't just return node.stats because that includes excluded children.
+    // We must manually sum the "files in this specific folder" + stats of included children.
+
+    // BUT we don't have "files in this specific folder" in the Node model I defined!
+    // I only defined aggregated `file_count`.
+    // This is a blocker for precise calculation unless I assume:
+    // Files in this folder = Total Aggregated - Sum(Children Aggregated).
+    // Let's assume this holds true (it should).
+
+    let directFiles = node.file_count;
+    let directSize = node.size_bytes; // This allows us to deduce direct content
+
+    let includedFiles = 0;
+    let includedSize = 0;
+
+    if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+            // Subtract child totals from parent totals to isolate "direct" (files in current dir)
+            directFiles -= child.file_count;
+            directSize -= child.size_bytes;
+
+            // Recurse
+            const childStats = calculateStats(child, excludedFolders);
+            includedFiles += childStats.files;
+            includedSize += childStats.size_mb;
+        }
+    }
+
+    // Add direct files (those in the folder itself, not subfolders)
+    includedFiles += directFiles;
+    includedSize += directSize;
+
+    return { files: includedFiles, size_mb: includedSize };
+};
+
 
 export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStats, setRecursive, toggleExclusion, excludedFolders }: FolderStepProps) {
     const [error, setError] = useState<string | null>(null);
@@ -48,6 +109,7 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
                 recursive: recursive ?? state.recursive,
             });
             if (res.valid) {
+                // res.tree now includes size_bytes thanks to my backend update
                 setFolderStats(res.stats, res.tree);
             } else {
                 setError(res.error || "Dossier invalide");
@@ -66,6 +128,26 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
             validateFolder(state.folderPath, checked);
         }
     };
+
+    // Calculate effective stats
+    const effectiveStats = useMemo(() => {
+        if (!state.folderTree) {
+            return state.folderStats || { files: 0, size_mb: 0 };
+        }
+
+        // If recursive is off, current stats are correct (no exclusions possible in UI usually if not recursive, or logic simple)
+        if (!state.recursive) {
+            return state.folderStats;
+        }
+
+        const calculated = calculateStats(state.folderTree, excludedFolders);
+        // Convert bytes to MB
+        return {
+            files: calculated.files,
+            size_mb: calculated.size_mb / (1024 * 1024)
+        };
+
+    }, [state.folderTree, state.folderStats, excludedFolders, state.recursive]);
 
     return (
         <div className="max-w-3xl mx-auto h-full flex flex-col">
@@ -92,8 +174,8 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
                     {state.folderStats && (
                         <div className="flex items-center gap-4 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md border border-green-100 dark:border-green-900 mb-4">
                             <span className="font-semibold">✓ Dossier valide</span>
-                            <span>{state.folderStats.files} fichiers trouvés</span>
-                            <span>{(state.folderStats.size_mb).toFixed(1)} Mo</span>
+                            <span>{effectiveStats.files} fichiers sélectionnés</span>
+                            <span>{effectiveStats.size_mb.toFixed(1)} Mo</span>
                         </div>
                     )}
 

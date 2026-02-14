@@ -6,7 +6,7 @@ import { FileTypesStep } from "./FileTypesStep";
 import { WizardProgress } from "./WizardProgress";
 
 export function WizardContainer() {
-    const { state, nextStep, prevStep, setProfile, toggleCalibration, setFolderPath, setFolderStats, setRecursive, toggleFolderExclusion, completeWizard } = useWizard();
+    const { state, nextStep, prevStep, setProfile, toggleCalibration, setFolderPath, setFolderStats, setRecursive, toggleFolderExclusion, setIncludedFileTypes, completeWizard } = useWizard();
 
     const handleComplete = async () => {
         const success = await completeWizard();
@@ -56,6 +56,7 @@ export function WizardContainer() {
                             state={state}
                             onPrev={prevStep}
                             onComplete={handleComplete}
+                            setIncludedFileTypes={setIncludedFileTypes}
                         />
                     )}
                 </div>

@@ -147,6 +147,7 @@ class IngestionConfigPatch(BaseModel):
 
 class FolderValidationRequest(BaseModel):
     folder_path: str
+    recursive: bool = True
 
 
 class ScanFolderRequest(BaseModel):
@@ -164,12 +165,22 @@ class FolderStats(BaseModel):
     extension_counts: dict[str, int]
 
 
+class FolderNode(BaseModel):
+    name: str
+    path: str
+    is_dir: bool = True
+    children: list[FolderNode] = Field(default_factory=list)
+    file_count: int = 0
+    size_bytes: int = 0
+
+
 class FolderValidationResult(BaseModel):
     valid: bool
     error: str | None = None
     error_code: str | None = None
     stats: FolderStats
     subdirectories: list[FolderEntry] = Field(default_factory=list)
+    tree: FolderNode | None = None
 
 
 class FileTypeInfo(BaseModel):
@@ -209,16 +220,9 @@ class WizardProfileResponse(BaseModel):
 
 
 class WizardCompletionRequest(BaseModel):
-    profile: str
-    calibration: dict[str, bool] = Field(default_factory=dict)
-    source: SourceConfig
-
-    @field_validator("profile")
-    @classmethod
-    def validate_profile(cls, value: str) -> str:
-        if value not in PROFILE_IDS:
-            raise ValueError(f"Unknown profile: {value}")
-        return value
+    config: SettingsPayload
+class WizardCompletionRequest(BaseModel):
+    config: SettingsPayload
 
 
 class SetupStatusResponse(BaseModel):

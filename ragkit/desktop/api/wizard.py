@@ -1,268 +1,54 @@
 # ragkit/desktop/api/wizard.py
 from __future__ import annotations
 
-import os
+import logging
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
-from ragkit.config.ingestion_schema import (
+from ragkit.desktop.models import (
     IngestionConfig,
     SourceConfig,
     ParsingConfig,
     PreprocessingConfig,
     TableExtractionStrategy,
     DeduplicationStrategy,
-    FolderNode,
+    FolderValidationRequest,
+    FolderValidationResult,
+    ScanFolderRequest,
+    FolderScanResult,
+    WizardAnswers,
+    WizardProfileResponse,
+    WizardCompletionRequest,
+    SettingsPayload,
+    EnvironmentInfo,
 )
 from ragkit.config.manager import config_manager
+from ragkit.desktop import documents
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/wizard", tags=["wizard"])
-
-
-class FolderStats(BaseModel):
-    files: int
-    size_mb: float
-    extensions: list[str]
-    extension_counts: dict[str, int]
-
-
-class FolderValidationResult(BaseModel):
-    valid: bool
-    error: str | None = None
-    error_code: str | None = None
-    stats: FolderStats | None = None
-    tree: FolderNode | None = None
-
-
-class FolderValidationRequest(BaseModel):
-    folder_path: str
-    recursive: bool = True
-
-
-class FileTypeInfo(BaseModel):
-    extension: str
-    display_name: str
-    count: int
-    size_mb: float
-    supported: bool
-
-
-class ScanFolderParams(BaseModel):
-    folder_path: str
-    recursive: bool = True
-    excluded_dirs: list[str] = []
-    exclusion_patterns: list[str] = []
-
-
-class FolderScanResult(BaseModel):
-    supported_types: list[FileTypeInfo]
-    unsupported_types: list[FileTypeInfo]
-    total_files: int
-    total_size_mb: float
-
-
-class WizardAnswers(BaseModel):
-    profile: str
-    calibration: dict[str, bool]
-
-
-class WizardProfileResponse(BaseModel):
-    profile_name: str
-    profile_display_name: str
-    icon: str
-    description: str
-    config_summary: dict[str, str]
-    full_config: IngestionConfig
-
-
-class WizardCompletionRequest(BaseModel):
-    config: IngestionConfig
-
-
-# --- Helpers ---
-
-def build_tree(path: Path, max_depth: int = 2, current_depth: int = 0) -> FolderNode:
-    node = FolderNode(name=path.name, path=str(path), is_dir=True)
-    
-    if current_depth >= max_depth:
-        return node
-
-    try:
-        # Sort directories first, then files (though we only care about dirs for the tree structure mostly)
-        # For the wizard tree, we usually only want to show directories to check/uncheck
-        # but the spec says "files count".
-        
-        # We will only list DIRECTORIES for the tree structure to avoid huge payloads
-        # and count files.
-        dir_count = 0
-        file_count = 0
-        
-        entries = sorted(list(os.scandir(path)), key=lambda e: e.name.lower())
-        
-        for entry in entries:
-            if entry.is_dir(follow_symlinks=False):
-                # Don't recurse into hidden dirs
-                if entry.name.startswith("."): 
-                    continue
-                    
-                child = build_tree(Path(entry.path), max_depth, current_depth + 1)
-                node.children.append(child)
-                file_count += child.file_count # Aggregate count
-            elif entry.is_file(follow_symlinks=False):
-                file_count += 1
-        
-        node.file_count = file_count
-
-    except PermissionError:
-        pass
-    except OSError:
-        pass
-
-    return node
 
 
 # --- Endpoints ---
 
 @router.post("/validate-folder", response_model=FolderValidationResult)
 async def validate_folder(request: FolderValidationRequest) -> FolderValidationResult:
-    path = Path(request.folder_path)
-    
-    if not path.exists():
-        return FolderValidationResult(valid=False, error="Le dossier n'existe pas", error_code="NOT_FOUND")
-    if not path.is_dir():
-        return FolderValidationResult(valid=False, error="Ce n'est pas un dossier", error_code="NOT_DIRECTORY")
-    
-    # Scan for stats – respect recursive flag
-    file_count = 0
-    total_size = 0
-    extensions: dict[str, int] = {}
-
-    try:
-        if request.recursive:
-            for root, _, files in os.walk(path):
-                if Path(root).name.startswith("."):
-                    continue
-                for file in files:
-                    file_count += 1
-                    try:
-                        fp = Path(root) / file
-                        size = fp.stat().st_size
-                        total_size += size
-                        ext = fp.suffix.lower()
-                        if ext:
-                            extensions[ext] = extensions.get(ext, 0) + 1
-                    except OSError:
-                        pass
-        else:
-            # Non-recursive: only files directly in the selected folder
-            for entry in os.scandir(path):
-                if entry.is_file(follow_symlinks=False):
-                    file_count += 1
-                    try:
-                        size = entry.stat().st_size
-                        total_size += size
-                        ext = Path(entry.name).suffix.lower()
-                        if ext:
-                            extensions[ext] = extensions.get(ext, 0) + 1
-                    except OSError:
-                        pass
-    except OSError as e:
-        return FolderValidationResult(valid=False, error=str(e), error_code="ACCESS_DENIED")
-
-    sorted_exts = sorted(extensions.keys())
-
-    # Build tree for UI only when recursive (allows folder exclusion)
-    tree_root = build_tree(path, max_depth=3) if request.recursive else None
-
-    return FolderValidationResult(
-        valid=True,
-        stats=FolderStats(
-            files=file_count,
-            size_mb=round(total_size / (1024 * 1024), 2),
-            extensions=sorted_exts,
-            extension_counts=extensions
-        ),
-        tree=tree_root
-    )
+    # recursive defaults to True in model now
+    return documents.validate_folder(request.folder_path, recursive=request.recursive)
 
 
 @router.post("/scan-folder", response_model=FolderScanResult)
-async def scan_folder(params: ScanFolderParams) -> FolderScanResult:
-    # This would contain more complex logic to filter by excluded dirs/patterns
-    # For Step 1, we implement a basic version
-    path = Path(params.folder_path)
-    if not path.exists() or not path.is_dir():
-        raise HTTPException(status_code=400, detail="Invalid folder")
+async def scan_folder(params: ScanFolderRequest) -> FolderScanResult:
+    # ScanFolderRequest structure matches what documents.scan_folder expects
+    return documents.scan_folder(params)
 
-    supported_exts = {".pdf", ".docx", ".doc", ".md", ".txt", ".html", ".csv", ".rst", ".xml", ".json", ".yaml"}
-    
-    types_map: dict[str, FileTypeInfo] = {}
-    
-    total_files = 0
-    total_size_bytes = 0
-
-    for root, dirs, files in os.walk(path):
-        # Filter excluded dirs logic
-        # params.excluded_dirs contains absolute paths or relative? 
-        # Usually we match against names or relative paths.
-        # Simple check: if any excluded dir is in the current path parts
-        
-        is_excluded = False
-        for excluded in params.excluded_dirs:
-            if excluded in Path(root).parts:
-                is_excluded = True
-                break
-        
-        if is_excluded:
-            # Modify dirs in-place to stop walking this branch
-            dirs[:] = []
-            continue
-
-        for file in files:
-            ext = Path(file).suffix.lower()
-            if not ext: continue
-            
-            try:
-                size = (Path(root) / file).stat().st_size
-                total_files += 1
-                total_size_bytes += size
-                
-                is_supported = ext in supported_exts
-                
-                if ext not in types_map:
-                    types_map[ext] = FileTypeInfo(
-                        extension=ext,
-                        display_name=ext.upper().replace(".", ""),
-                        count=0,
-                        size_mb=0,
-                        supported=is_supported
-                    )
-                
-                info = types_map[ext]
-                info.count += 1
-                info.size_mb += size / (1024 * 1024)
-            except OSError:
-                pass
-
-    supported = [t for t in types_map.values() if t.supported]
-    unsupported = [t for t in types_map.values() if not t.supported]
-    
-    return FolderScanResult(
-        supported_types=sorted(supported, key=lambda x: x.count, reverse=True),
-        unsupported_types=sorted(unsupported, key=lambda x: x.count, reverse=True),
-        total_files=total_files,
-        total_size_mb=round(total_size_bytes / (1024 * 1024), 2)
-    )
 
 @router.post("/analyze-profile", response_model=WizardProfileResponse)
 async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
-    # Logic to determine profile config based on answers
-    # This roughly maps the logic from the specs
-    
     profile = answers.profile
+    
     # Defaults
-    profile_name = profile
     profile_display = "Base personnalisée"
     icon = "📚"
     desc = "Configuration adaptée."
@@ -284,9 +70,9 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
         profile_display = "Base généraliste"
         icon = "📚"
 
-    # Default config generation (simplified for now)
+    # Default config generation
     config = IngestionConfig(
-        source=SourceConfig(path=""), # To be filled
+        source=SourceConfig(path=""), 
         parsing=ParsingConfig(),
         preprocessing=PreprocessingConfig()
     )
@@ -304,12 +90,66 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
         config.parsing.ocr_language = ["fra"]
         config.preprocessing.deduplication_strategy = DeduplicationStrategy.EXACT
         config.preprocessing.deduplication_threshold = 0.98
+    elif profile == "reports_analysis":
+        config.parsing.table_extraction_strategy = TableExtractionStrategy.MARKDOWN
+        config.preprocessing.deduplication_threshold = 0.95
+    elif profile == "general":
+        config.preprocessing.deduplication_threshold = 0.90
     
-    # Apply Q1 modifier
-    if answers.calibration.get("q1"):
+    # Apply Calibration modifiers (Section 4.4)
+    calibration = answers.calibration
+    
+    # Q1: Documents contiennent tableaux/images ?
+    if calibration.get("q1"):
         config.parsing.table_extraction_strategy = TableExtractionStrategy.MARKDOWN
         config.parsing.ocr_enabled = True
         config.parsing.image_captioning_enabled = True
+
+    # Calculate future settings based on answers
+    future_settings = {
+        "chunking": {},
+        "retrieval": {},
+        "rerank": {},
+        "llm": {},
+        "ingestion": {} # Extra ingestion settings
+    }
+    
+    # Q2: Réponses précises vs Synthétiques ? (True = Précise)
+    if calibration.get("q2"):
+        future_settings["retrieval"]["semantic_top_k"] = 20 # Example boost
+        future_settings["llm"]["context_max_chunks"] = 10
+    
+    # Q3: Documents longs/complexes ?
+    if calibration.get("q3"):
+        future_settings["chunking"]["chunk_size"] = 1536 # Larger chunks
+        future_settings["chunking"]["chunk_overlap"] = 200
+    
+    # Q4: Importance multilingue/sémantique ?
+    if calibration.get("q4"):
+        future_settings["rerank"]["enabled"] = True
+        future_settings["llm"]["temperature"] = 0.0 # Strict
+    
+    # Q5: Mise à jour fréquente ?
+    if calibration.get("q5"):
+        future_settings["ingestion"]["mode"] = "auto"
+        future_settings["ingestion"]["watch_enabled"] = True
+        
+    # Q6: Besoin de citations strictes ?
+    if calibration.get("q6"):
+        future_settings["chunking"]["add_chunk_index"] = True
+        future_settings["llm"]["cite_sources"] = True
+        future_settings["llm"]["citation_format"] = "footnote"
+
+    # Construct the full SettingsPayload
+    full_payload = SettingsPayload(
+        profile=profile,
+        calibration_answers=calibration,
+        ingestion=config,
+        chunking=future_settings["chunking"],
+        retrieval=future_settings["retrieval"],
+        rerank=future_settings["rerank"],
+        llm=future_settings["llm"]
+    )
 
     return WizardProfileResponse(
         profile_name=profile,
@@ -318,27 +158,43 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
         description=desc,
         config_summary={
             "Profil": profile_display,
-            "Chunking": "Auto", # Future
-            "Recherche": "Hybride" # Future
+            "Mode": "Auto" if calibration.get("q5") else "Manuel",
+            "Citations": "Oui" if calibration.get("q6") else "Non",
+            "OCR": "Oui" if config.parsing.ocr_enabled else "Non"
         },
-        full_config=config
+        full_config=full_payload.model_dump() # Return dict
     )
+
 
 @router.post("/complete")
 async def complete_wizard(request: WizardCompletionRequest):
     try:
+        # Save full configuration
+        request.config.setup_completed = True
         config_manager.save_config(request.config)
-        # Invalidate the in-memory cache so /api/ingestion/config reloads from disk
+        
+        # Invalidate the in-memory cache
+        # Note: Ideally trigger background ingestion/analysis here
         from ragkit.desktop.api import ingestion
-        ingestion._CURRENT_CONFIG = None
+        ingestion._CURRENT_CONFIG = request.config.ingestion
+        
         return {"success": True}
     except Exception as e:
+        logger.error(f"Failed to complete wizard: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/environment-detection")
-async def detect_environment():
-    return {
-        "gpu": False, # Mock
-        "ollama": False,
-        "models": []
-    }
+async def detect_environment() -> EnvironmentInfo:
+    # Basic detect logic
+    # In real world, check for CUDA/MPS and Ollama process
+    import shutil
+    
+    ollama_path = shutil.which("ollama")
+    
+    return EnvironmentInfo(
+        gpu_available=False, # Mock
+        ollama_available=ollama_path is not None,
+        local_models=["llama3", "mistral"] if ollama_path else []
+    )
+

@@ -62,6 +62,8 @@ export function useWizard() {
             };
         });
 
+    const setIncludedFileTypes = (types: string[]) => setState((s) => ({ ...s, includedFileTypes: types }));
+
     const completeWizard = async () => {
         // Logic to call backend
         try {
@@ -97,6 +99,7 @@ export function useWizard() {
         setFolderStats,
         setRecursive,
         toggleFolderExclusion,
+        setIncludedFileTypes,
         completeWizard,
     };
 }
