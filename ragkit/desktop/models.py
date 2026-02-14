@@ -62,7 +62,7 @@ class FolderEntry(BaseModel):
 
 
 class SourceConfig(BaseModel):
-    path: str = Field(min_length=1, description="Absolute path to documents folder")
+    path: str = Field(default="", description="Absolute path to documents folder")
     recursive: bool = True
     excluded_dirs: list[str] = Field(default_factory=list)
     file_types: list[str] = Field(default_factory=lambda: ["pdf", "docx", "md", "txt"])
