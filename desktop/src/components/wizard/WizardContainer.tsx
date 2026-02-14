@@ -11,8 +11,9 @@ export function WizardContainer() {
     const handleComplete = async () => {
         const success = await completeWizard();
         if (success) {
-            // Redirect to Settings so user sees metadata after analysis
             window.location.href = "/settings";
+        } else {
+            throw new Error("Wizard completion failed");
         }
     };
 

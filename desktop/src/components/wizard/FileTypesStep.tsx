@@ -8,7 +8,7 @@ import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 interface FileTypesStepProps {
     state: WizardState;
     onPrev: () => void;
-    onComplete: () => void;
+    onComplete: () => Promise<void>;
     setIncludedFileTypes: (types: string[]) => void;
 }
 
@@ -30,7 +30,20 @@ interface ScanResult {
 export function FileTypesStep({ state, onPrev, onComplete, setIncludedFileTypes }: FileTypesStepProps) {
     const [scanResult, setScanResult] = useState<ScanResult | null>(null);
     const [loading, setLoading] = useState(false);
+    const [completing, setCompleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const handleComplete = async () => {
+        setCompleting(true);
+        setError(null);
+        try {
+            await onComplete();
+        } catch (e) {
+            console.error("Completion failed:", e);
+            setError("Erreur lors de la finalisation. Veuillez réessayer.");
+            setCompleting(false);
+        }
+    };
 
     useEffect(() => {
         const scan = async () => {
@@ -171,9 +184,13 @@ export function FileTypesStep({ state, onPrev, onComplete, setIncludedFileTypes 
             </div>
 
             <div className="flex justify-between pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                <Button variant="ghost" onClick={onPrev}>← Retour</Button>
-                <Button onClick={onComplete} variant="default" disabled={state.includedFileTypes.length === 0}>
-                    ✓ Terminer la configuration
+                <Button variant="ghost" onClick={onPrev} disabled={completing}>← Retour</Button>
+                <Button onClick={handleComplete} variant="default" disabled={state.includedFileTypes.length === 0 || completing}>
+                    {completing ? (
+                        <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Enregistrement...</>
+                    ) : (
+                        "✓ Terminer la configuration"
+                    )}
                 </Button>
             </div>
         </div>

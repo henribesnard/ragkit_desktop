@@ -172,18 +172,14 @@ async def complete_wizard(request: WizardCompletionRequest):
         # Save full configuration
         request.config.setup_completed = True
         config_manager.save_config(request.config)
-        
-        # Invalidate the in-memory cache
+
+        # Invalidate the in-memory cache so ingestion endpoints pick up new config
         from ragkit.desktop.api import ingestion
         ingestion._CURRENT_CONFIG = request.config.ingestion
-        
-        # Trigger initial analysis and cache results
-        try:
-            docs, _ = documents.analyze_documents(request.config.ingestion)
-            ingestion._DOCUMENTS = docs
-        except Exception as e:
-            logger.error(f"Initial analysis failed: {e}")
-        
+
+        # Analysis is NOT done here - it would block for minutes on large corpora.
+        # The Settings page triggers analysis via POST /api/ingestion/analyze.
+
         return {"success": True}
     except Exception as e:
         logger.error(f"Failed to complete wizard: {e}")

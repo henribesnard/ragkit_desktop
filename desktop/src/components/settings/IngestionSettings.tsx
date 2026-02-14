@@ -6,12 +6,12 @@ import { ParsingSettings } from "./ParsingSettings";
 import { PreprocessingSettings } from "./PreprocessingSettings";
 import { MetadataTable } from "./MetadataTable";
 import { Button } from "@/components/ui/Button";
-import { RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw, Loader2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 export function IngestionSettings() {
     const { config, loading, error, updateConfig, fetchConfig } = useIngestionConfig();
-    const { documents, loading: loadingDocs, fetchDocuments } = useDocuments();
+    const { documents, loading: loadingDocs, analyzing, analyzeDocuments } = useDocuments();
     const [activeTab, setActiveTab] = useState<"config" | "metadata">("config");
 
     if (loading) return <div>Chargement de la configuration...</div>;
@@ -33,12 +33,7 @@ export function IngestionSettings() {
     };
 
     const handleReanalyze = async () => {
-        try {
-            await invoke("analyze_documents");
-            fetchDocuments();
-        } catch (e) {
-            console.error(e);
-        }
+        await analyzeDocuments();
     };
 
     const handleReset = async () => {
@@ -103,7 +98,17 @@ export function IngestionSettings() {
 
             {activeTab === "metadata" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2">
-                    {loadingDocs ? <div>Chargement des documents...</div> : <MetadataTable documents={documents} />}
+                    {analyzing ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                            <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                            <p>Analyse des documents en cours...</p>
+                            <p className="text-xs mt-1">Cette opération peut prendre quelques minutes.</p>
+                        </div>
+                    ) : loadingDocs ? (
+                        <div>Chargement des documents...</div>
+                    ) : (
+                        <MetadataTable documents={documents} />
+                    )}
                 </div>
             )}
         </div>
