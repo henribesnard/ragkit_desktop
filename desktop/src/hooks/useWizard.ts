@@ -8,6 +8,7 @@ export interface WizardState {
     folderPath: string | null;
     folderStats: any | null;
     folderTree: any | null;
+    recursive: boolean;
     includedFileTypes: string[];
     excludedFileTypes: string[];
     excludedFolders: string[];
@@ -28,6 +29,7 @@ export function useWizard() {
         folderPath: null,
         folderStats: null,
         folderTree: null,
+        recursive: true,
         includedFileTypes: ["pdf", "docx", "doc", "md", "txt"],
         excludedFileTypes: [],
         excludedFolders: [],
@@ -44,6 +46,8 @@ export function useWizard() {
         }));
 
     const setFolderPath = (path: string) => setState((s) => ({ ...s, folderPath: path }));
+
+    const setRecursive = (recursive: boolean) => setState((s) => ({ ...s, recursive }));
 
     const setFolderStats = (stats: any, tree: any) => setState((s) => ({ ...s, folderStats: stats, folderTree: tree }));
 
@@ -71,8 +75,9 @@ export function useWizard() {
 
             const config = profileResponse.full_config;
             config.source.path = state.folderPath;
+            config.source.recursive = state.recursive;
             config.source.excluded_dirs = state.excludedFolders;
-            // Apply file types filter if needed (implied)
+            config.source.file_types = state.includedFileTypes;
 
             await invoke("complete_wizard", { params: { config } });
             return true;
@@ -90,6 +95,7 @@ export function useWizard() {
         toggleCalibration,
         setFolderPath,
         setFolderStats,
+        setRecursive,
         toggleFolderExclusion,
         completeWizard,
     };

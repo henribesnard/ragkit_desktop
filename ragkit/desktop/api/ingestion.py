@@ -6,11 +6,12 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ragkit.config.ingestion_schema import IngestionConfig, SourceConfig
+from ragkit.config.manager import config_manager
 
 router = APIRouter(prefix="/api/ingestion", tags=["ingestion"])
 
-# In-memory storage mock for Step 1
-_CURRENT_CONFIG = IngestionConfig(source=SourceConfig(path=""))
+# In-memory cache – populated lazily from disk
+_CURRENT_CONFIG: IngestionConfig | None = None
 _DOCUMENTS = []
 
 class DocumentInfo(BaseModel):
@@ -30,20 +31,30 @@ class DocumentInfo(BaseModel):
     creation_date: Optional[str] = None
 
 
+def _get_current_config() -> IngestionConfig:
+    global _CURRENT_CONFIG
+    if _CURRENT_CONFIG is None:
+        saved = config_manager.load_config()
+        _CURRENT_CONFIG = saved or IngestionConfig(source=SourceConfig(path=""))
+    return _CURRENT_CONFIG
+
+
 @router.get("/config", response_model=IngestionConfig)
 async def get_config():
-    return _CURRENT_CONFIG
+    return _get_current_config()
 
 @router.put("/config", response_model=IngestionConfig)
 async def update_config(config: IngestionConfig):
     global _CURRENT_CONFIG
     _CURRENT_CONFIG = config
+    config_manager.save_config(config)
     return _CURRENT_CONFIG
 
 @router.post("/config/reset", response_model=IngestionConfig)
 async def reset_config():
-    # Logic to reset to profile defaults
-    return _CURRENT_CONFIG
+    global _CURRENT_CONFIG
+    _CURRENT_CONFIG = None  # Force reload from disk on next get
+    return _get_current_config()
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_documents():

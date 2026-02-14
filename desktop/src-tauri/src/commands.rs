@@ -22,8 +22,8 @@ pub async fn health_check(app: AppHandle) -> Result<HealthCheckResponse, String>
 // --- Wizard Commands ---
 
 #[tauri::command]
-pub async fn validate_folder(app: AppHandle, path: String) -> Result<serde_json::Value, String> {
-    let body = serde_json::json!({ "folder_path": path });
+pub async fn validate_folder(app: AppHandle, path: String, recursive: Option<bool>) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "folder_path": path, "recursive": recursive.unwrap_or(true) });
     request(Method::POST, "/api/wizard/validate-folder", Some(body), &app).await
 }
 

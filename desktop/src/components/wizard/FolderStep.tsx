@@ -11,12 +11,13 @@ interface FolderStepProps {
     onNext: () => void;
     onPrev: () => void;
     setFolderPath: (path: string) => void;
-    setFolderStats: (stats: any, tree: any) => void; // Update signature
+    setFolderStats: (stats: any, tree: any) => void;
+    setRecursive: (recursive: boolean) => void;
     toggleExclusion: (path: string) => void;
     excludedFolders: string[];
 }
 
-export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStats, toggleExclusion, excludedFolders }: FolderStepProps) {
+export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStats, setRecursive, toggleExclusion, excludedFolders }: FolderStepProps) {
     const [error, setError] = useState<string | null>(null);
     const [isValidating, setIsValidating] = useState(false);
 
@@ -38,11 +39,14 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
         }
     };
 
-    const validateFolder = async (path: string) => {
+    const validateFolder = async (path: string, recursive?: boolean) => {
         setIsValidating(true);
         setError(null);
         try {
-            const res: any = await invoke("validate_folder", { path });
+            const res: any = await invoke("validate_folder", {
+                path,
+                recursive: recursive ?? state.recursive,
+            });
             if (res.valid) {
                 setFolderStats(res.stats, res.tree);
             } else {
@@ -53,6 +57,13 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
             setError("Erreur de validation: " + err);
         } finally {
             setIsValidating(false);
+        }
+    };
+
+    const handleRecursiveToggle = (checked: boolean) => {
+        setRecursive(checked);
+        if (state.folderPath) {
+            validateFolder(state.folderPath, checked);
         }
     };
 
@@ -88,16 +99,23 @@ export function FolderStep({ state, onNext, onPrev, setFolderPath, setFolderStat
 
                     <div className="space-y-4">
                         <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" className="rounded border-gray-300" defaultChecked />
+                            <input
+                                type="checkbox"
+                                className="rounded border-gray-300"
+                                checked={state.recursive}
+                                onChange={(e) => handleRecursiveToggle(e.target.checked)}
+                            />
                             Inclure les sous-dossiers
                         </label>
 
-                        <FolderTree
-                            path={state.folderPath}
-                            tree={state.folderTree}
-                            excludedFolders={excludedFolders}
-                            onToggleExclusion={toggleExclusion}
-                        />
+                        {state.recursive && (
+                            <FolderTree
+                                path={state.folderPath}
+                                tree={state.folderTree}
+                                excludedFolders={excludedFolders}
+                                onToggleExclusion={toggleExclusion}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
