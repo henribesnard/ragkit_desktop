@@ -25,7 +25,56 @@ from .models import (
     FolderNode,
 )
 
-# ... (rest of imports)
+import os
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
+
+try:
+    from docx import Document as DocxDocument
+except ImportError:
+    DocxDocument = None
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+try:
+    from langdetect import detect as langdetect_detect
+except ImportError:
+    langdetect_detect = None
+
+@dataclass
+class ParsedContent:
+    text: str
+    page_count: int | None
+    title: str | None
+    author: str | None
+    creation_date: str | None
+    encoding: str | None
+
+SUPPORTED_DISPLAY_NAMES = {
+    "pdf": "PDF",
+    "docx": "Word",
+    "doc": "Word (Legacy)",
+    "md": "Markdown",
+    "txt": "Texte",
+    "html": "HTML",
+    "csv": "CSV",
+    "rst": "ReStructuredText",
+    "xml": "XML",
+    "json": "JSON",
+    "yaml": "YAML",
+}
+
+STOPWORDS = {
+    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
+    "le", "la", "les", "un", "une", "des", "et", "ou", "mais", "dans", "sur", "à", "pour", "de", "avec", "par",
+    "ce", "cette", "ces", "qui", "que", "quoi", "dont", "où", "is", "are", "was", "were", "be", "been",
+}
 
 def build_tree(path: Path, max_depth: int = 2, current_depth: int = 0) -> FolderNode:
     node = FolderNode(name=path.name, path=str(path), is_dir=True)
