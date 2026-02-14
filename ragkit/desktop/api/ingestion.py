@@ -96,25 +96,35 @@ async def update_document_metadata(id: str, metadata: DocumentMetadataUpdate):
     raise HTTPException(status_code=404, detail="Document not found")
 
 
+from fastapi import BackgroundTasks
+from ragkit.desktop.analysis_progress import AnalysisProgress
+
+@router.get("/analyze/progress")
+async def get_analysis_progress():
+    return AnalysisProgress.get_instance().get_snapshot()
+
+def _run_analysis_background(config: IngestionConfig):
+    try:
+        docs, errors = documents.analyze_documents(config)
+        global _DOCUMENTS
+        _DOCUMENTS = docs
+    except Exception as e:
+        logger.error(f"Background analysis failed: {e}")
+        AnalysisProgress.get_instance().fail()
+
 @router.post("/analyze", response_model=AnalysisResult)
-async def analyze_documents() -> AnalysisResult:
+async def analyze_documents(background_tasks: BackgroundTasks) -> AnalysisResult:
     config = _get_current_config()
     if not config.source.path:
         return AnalysisResult(success=False, analyzed_count=0, errors=["No source path configured"])
-        
-    try:
-        # Trigger analysis logic
-        docs, errors = documents.analyze_documents(config)
-        
-        # Update cache
-        global _DOCUMENTS
-        _DOCUMENTS = docs
-        
-        return AnalysisResult(
-            success=len(docs) > 0,
-            analyzed_count=len(docs),
-            errors=errors
-        )
-    except Exception as e:
-        logger.error(f"Analysis failed: {e}")
-        return AnalysisResult(success=False, analyzed_count=0, errors=[str(e)])
+    
+    # Reset progress
+    # AnalysisProgress.start is called inside documents.analyze_documents but we might want to reset explicitly or rely on start()
+    
+    background_tasks.add_task(_run_analysis_background, config)
+    
+    return AnalysisResult(
+        success=True,
+        analyzed_count=0, # Indicates async start
+        errors=[]
+    )

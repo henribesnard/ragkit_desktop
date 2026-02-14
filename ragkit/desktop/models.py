@@ -235,7 +235,10 @@ class DocumentInfo(BaseModel):
     file_path: str
     file_type: str
     file_size_bytes: int
+    mime_type: str | None = None
+    ingested_at: str | None = None
     page_count: int | None = None
+    char_count: int | None = None
     language: str | None = None
     last_modified: str
     encoding: str | None = None
@@ -244,7 +247,14 @@ class DocumentInfo(BaseModel):
     author: str | None = None
     description: str | None = None
     keywords: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    category: str | None = None
     creation_date: str | None = None
+    has_tables: bool = False
+    has_images: bool = False
+    has_code: bool = False
+    parser_engine: str | None = None
+    ocr_applied: bool = False
 
 
 class DocumentMetadataUpdate(BaseModel):
@@ -252,6 +262,9 @@ class DocumentMetadataUpdate(BaseModel):
     author: str | None = None
     description: str | None = None
     keywords: list[str] | None = None
+    tags: list[str] | None = None
+    category: str | None = None
+    language: str | None = None
     creation_date: str | None = None
 
 

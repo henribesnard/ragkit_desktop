@@ -57,6 +57,7 @@ fn main() {
             commands::get_documents,
             commands::update_document_metadata,
             commands::analyze_documents,
+            commands::get_analysis_progress,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

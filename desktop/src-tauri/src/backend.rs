@@ -154,10 +154,16 @@ pub async fn request(
             .send()
             .await
             .map_err(|e| e.to_string())?;
-            
-        resp.json::<serde_json::Value>()
-            .await
-            .map_err(|e| e.to_string())
+
+        let status = resp.status();
+        if status.is_success() {
+            resp.json::<serde_json::Value>()
+                .await
+                .map_err(|e| e.to_string())
+        } else {
+            let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            Err(format!("Request failed with status {}: {}", status, error_text))
+        }
     } else {
         Err("Backend not ready".to_string())
     }

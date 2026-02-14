@@ -5,6 +5,7 @@ export function useIngestionConfig() {
     const [config, setConfig] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const fetchConfig = async () => {
         setLoading(true);
@@ -20,12 +21,13 @@ export function useIngestionConfig() {
     };
 
     const updateConfig = async (newConfig: any) => {
+        setSaveError(null);
         try {
             const res = await invoke("update_ingestion_config", { config: newConfig });
             setConfig(res);
             return true;
         } catch (err: any) {
-            setError(err.toString());
+            setSaveError(err.toString());
             return false;
         }
     };
@@ -34,5 +36,5 @@ export function useIngestionConfig() {
         fetchConfig();
     }, []);
 
-    return { config, loading, error, fetchConfig, updateConfig };
+    return { config, loading, error, saveError, fetchConfig, updateConfig };
 }

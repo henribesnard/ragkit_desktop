@@ -6,18 +6,20 @@ import { ParsingSettings } from "./ParsingSettings";
 import { PreprocessingSettings } from "./PreprocessingSettings";
 import { MetadataTable } from "./MetadataTable";
 import { Button } from "@/components/ui/Button";
-import { RefreshCw, RotateCcw, Loader2 } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 export function IngestionSettings() {
-    const { config, loading, error, updateConfig, fetchConfig } = useIngestionConfig();
-    const { documents, loading: loadingDocs, analyzing, analyzeDocuments } = useDocuments();
+    const { config, loading, error, saveError, updateConfig, fetchConfig } = useIngestionConfig();
+    const { documents, loading: loadingDocs, analyzing, progress, analyzeDocuments, fetchDocuments } = useDocuments();
     const [activeTab, setActiveTab] = useState<"config" | "metadata">("config");
+    const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | null>(null);
 
     if (loading) return <div>Chargement de la configuration...</div>;
     if (error) return <div className="text-red-500">Erreur : {error}</div>;
 
     const handleConfigChange = async (key: string, value: any) => {
+        setSaveStatus("saving");
         // Clone config deeply to avoiding mutation issues
         const newConfig = JSON.parse(JSON.stringify(config));
 
@@ -29,7 +31,13 @@ export function IngestionSettings() {
         }
         current[parts[parts.length - 1]] = value;
 
-        await updateConfig(newConfig);
+        const success = await updateConfig(newConfig);
+        if (success) {
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus(null), 2000);
+        } else {
+            setSaveStatus(null);
+        }
     };
 
     const handleReanalyze = async () => {
@@ -66,6 +74,19 @@ export function IngestionSettings() {
                 </div>
             </div>
 
+            {saveError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong className="font-bold">Erreur de sauvegarde : </strong>
+                    <span className="block sm:inline">{saveError}</span>
+                </div>
+            )}
+
+            {saveStatus === "saved" && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded fixed bottom-4 right-4 shadow-lg animate-in fade-in slide-in-from-bottom-2 z-50">
+                    Configuration sauvegardée
+                </div>
+            )}
+
             {activeTab === "config" && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                     <section>
@@ -99,15 +120,31 @@ export function IngestionSettings() {
             {activeTab === "metadata" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2">
                     {analyzing ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                            <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                            <p>Analyse des documents en cours...</p>
-                            <p className="text-xs mt-1">Cette opération peut prendre quelques minutes.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-500 space-y-4">
+                            <div className="w-full max-w-md space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span>Analyse en cours...</span>
+                                    <span className="font-medium">{progress?.percent || 0}%</span>
+                                </div>
+                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                                        style={{ width: `${progress?.percent || 0}%` }}
+                                    />
+                                </div>
+                                <div className="text-xs text-center text-gray-400 truncate">
+                                    {progress?.current_file ? `Traitement de : ${progress.current_file}` : "Préparation..."}
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400">
+                                    <span>{progress?.processed || 0} / {progress?.total || "?"} fichiers</span>
+                                    {progress?.errors ? <span className="text-red-400">{progress.errors} erreurs</span> : null}
+                                </div>
+                            </div>
                         </div>
                     ) : loadingDocs ? (
                         <div>Chargement des documents...</div>
                     ) : (
-                        <MetadataTable documents={documents} />
+                        <MetadataTable documents={documents} onRefresh={fetchDocuments} />
                     )}
                 </div>
             )}

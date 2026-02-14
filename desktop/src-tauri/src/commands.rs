@@ -79,3 +79,8 @@ pub async fn update_document_metadata(app: AppHandle, id: String, metadata: serd
 pub async fn analyze_documents(app: AppHandle) -> Result<serde_json::Value, String> {
     request(Method::POST, "/api/ingestion/analyze", None, &app).await
 }
+
+#[tauri::command]
+pub async fn get_analysis_progress(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/ingestion/analyze/progress", None, &app).await
+}

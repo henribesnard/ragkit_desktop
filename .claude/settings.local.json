@@ -16,7 +16,25 @@
       "WebFetch(domain:docs.rs)",
       "Bash(npx tsc:*)",
       "Bash(npm run lint:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" diff)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" log --oneline -5)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" add desktop/src/components/wizard/WizardContainer.tsx desktop/src/hooks/useWizard.ts ragkit/desktop/api/wizard.py ragkit/desktop/documents.py ragkit/desktop/models.py desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py desktop/src/locales/fr.json desktop/src/locales/en.json)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.0.8)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" push origin main --tags)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" add ragkit/desktop/models.py)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" commit -m \"$\\(cat <<''EOF''\nfix: remove min_length=1 on SourceConfig.path causing wizard completion to silently fail\n\nSourceConfig\\(path=\"\"\\) in analyze_profile violated the min_length=1 constraint,\ncausing a Pydantic ValidationError that made the entire completeWizard flow fail\nsilently \\(error caught, button appeared non-functional\\).\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" push origin main)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" log --oneline -3)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag -d v1.0.8)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" push origin :refs/tags/v1.0.8)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" add ragkit/desktop/models.py desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py desktop/src/locales/fr.json desktop/src/locales/en.json)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" commit -m \"$\\(cat <<''EOF''\nfix: move SettingsPayload before WizardCompletionRequest to fix forward ref \\(v1.0.9\\)\n\nWizardCompletionRequest referenced SettingsPayload which was defined after it\nin models.py. Pydantic could not resolve the forward reference, causing the\nbackend to crash at import time. The /api/wizard/complete endpoint was never\nregistered, making the \"Terminer la configuration\" button silently fail.\n\nVerified with FastAPI TestClient: analyze-profile, complete, and\nget_ingestion_config all return 200.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.0.9)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" add ragkit/desktop/api/wizard.py ragkit/desktop/main.py ragkit/desktop/models.py desktop/src/components/wizard/FileTypesStep.tsx desktop/src/components/wizard/WizardContainer.tsx desktop/src/hooks/useDocuments.ts desktop/src/components/settings/IngestionSettings.tsx desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml desktop/src/locales/fr.json desktop/src/locales/en.json)",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" commit -m \"$\\(cat <<''EOF''\nfix: remove blocking document analysis from wizard completion \\(v1.1.0\\)\n\nRoot cause: complete_wizard synchronously parsed 1436 files \\(280 MB\\) before\nresponding. The HTTP request hung for minutes, making the button appear broken.\n\nChanges:\n- Remove documents.analyze_documents\\(\\) from complete_wizard endpoint\n- Add loading spinner + \"Enregistrement...\" state to complete button\n- Auto-trigger analysis when Settings page loads \\(if no cached documents\\)\n- Add analyzing state with progress indicator in Metadata tab\n- TypeScript compiles clean, Python tests pass \\(complete in 0.01s\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.1.0)"
     ]
   }
 }

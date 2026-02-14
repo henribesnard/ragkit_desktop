@@ -24,6 +24,7 @@ from .models import (
     FileTypeInfo,
     FolderNode,
 )
+from .analysis_progress import AnalysisProgress
 
 import os
 
@@ -47,6 +48,8 @@ try:
 except ImportError:
     langdetect_detect = None
 
+import mimetypes
+
 @dataclass
 class ParsedContent:
     text: str
@@ -55,6 +58,11 @@ class ParsedContent:
     author: str | None
     creation_date: str | None
     encoding: str | None
+    has_tables: bool = False
+    has_images: bool = False
+    has_code: bool = False
+    parser_engine: str | None = None
+    ocr_applied: bool = False
 
 SUPPORTED_DISPLAY_NAMES = {
     "pdf": "PDF",
@@ -231,8 +239,12 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
     seen_hashes: set[str] = set()
     seen_token_sets: list[set[str]] = []
 
+    progress = AnalysisProgress.get_instance()
+    progress.start(total=len(files))
+
     for file_path in files:
         try:
+            progress.update(current_file=file_path.name)
             parsed = _extract_content(file_path)
             preprocessed = _preprocess_text(parsed.text, config)
             if _is_duplicate(preprocessed, config, seen_hashes, seen_token_sets):
@@ -263,11 +275,23 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
                     description=description,
                     keywords=keywords,
                     creation_date=parsed.creation_date,
+                    mime_type=mimetypes.guess_type(file_path)[0],
+                    ingested_at=datetime.now(timezone.utc).isoformat(),
+                    char_count=len(parsed.text),
+                    has_tables=parsed.has_tables,
+                    has_images=parsed.has_images,
+                    has_code=parsed.has_code,
+                    parser_engine=parsed.parser_engine,
+                    ocr_applied=parsed.ocr_applied,
+                    tags=keywords,
+                    category=None,
                 )
             )
         except Exception as exc:  # pragma: no cover - defensive at runtime
+            progress.update(current_file=file_path.name, error=True)
             errors.append(f"{file_path.name}: {exc}")
-
+    
+    progress.finish()
     return parsed_documents, errors
 
 
@@ -467,8 +491,19 @@ def _extract_pdf(path: Path) -> ParsedContent:
     reader = PdfReader(str(path))
     page_count = len(reader.pages)
     text_chunks = []
+    has_images = False
     for page in reader.pages:
         text_chunks.append(page.extract_text() or "")
+        if not has_images and '/XObject' in page: # simplified check
+             # Deep check requires iterating resources
+             pass 
+        # pypdf images access is expensive, maybe skip for speed or do better check if reliable
+        try:
+            if len(page.images) > 0:
+                has_images = True
+        except:
+            pass
+
     metadata = reader.metadata or {}
 
     return ParsedContent(
@@ -478,6 +513,8 @@ def _extract_pdf(path: Path) -> ParsedContent:
         author=_clean_metadata_value(getattr(metadata, "author", None)),
         creation_date=_clean_metadata_value(getattr(metadata, "creation_date", None)),
         encoding=None,
+        has_images=has_images,
+        parser_engine="pypdf",
     )
 
 
@@ -493,6 +530,9 @@ def _extract_docx(path: Path) -> ParsedContent:
     core = document.core_properties
     creation_date = core.created.isoformat() if core.created else None
 
+    has_tables = len(document.tables) > 0
+    has_images = len(document.inline_shapes) > 0 # basic check for inline images
+
     return ParsedContent(
         text=text,
         page_count=page_count,
@@ -500,6 +540,9 @@ def _extract_docx(path: Path) -> ParsedContent:
         author=core.author or None,
         creation_date=creation_date,
         encoding="utf-8",
+        has_tables=has_tables,
+        has_images=has_images,
+        parser_engine="python-docx",
     )
 
 
@@ -510,7 +553,7 @@ def _extract_json(path: Path) -> ParsedContent:
         text = json.dumps(parsed, ensure_ascii=False, indent=2)
     except Exception:
         pass
-    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding)
+    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding, parser_engine="json", has_code=True)
 
 
 def _extract_yaml(path: Path) -> ParsedContent:
@@ -521,7 +564,7 @@ def _extract_yaml(path: Path) -> ParsedContent:
             text = json.dumps(parsed, ensure_ascii=False, indent=2) if parsed is not None else ""
         except Exception:
             pass
-    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding)
+    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding, parser_engine="yaml", has_code=True)
 
 
 def _extract_html(path: Path) -> ParsedContent:
@@ -536,12 +579,15 @@ def _extract_html(path: Path) -> ParsedContent:
         author=None,
         creation_date=None,
         encoding=encoding,
+        parser_engine="html",
+        has_code=True,
     )
 
 
 def _extract_text(path: Path) -> ParsedContent:
     text, encoding = _read_text_file(path)
-    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding)
+    has_code = path.suffix.lower() in {'.py', '.js', '.ts', '.rs', '.java', '.cpp', '.c', '.h', '.css', '.sh', '.bat'}
+    return ParsedContent(text=text, page_count=None, title=None, author=None, creation_date=None, encoding=encoding, parser_engine="text", has_code=has_code)
 
 
 def _read_text_file(path: Path) -> tuple[str, str | None]:
