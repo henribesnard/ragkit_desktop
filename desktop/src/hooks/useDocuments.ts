@@ -30,6 +30,19 @@ export interface DocumentInfo {
     keywords?: string[];
     encoding?: string;
     text_preview?: string;
+    // Hierarchie organisationnelle
+    domain?: string;
+    subdomain?: string;
+    // Classification etendue
+    confidentiality?: string;
+    status?: string;
+    source_url?: string;
+    version?: string;
+    // Qualite parsing
+    parsing_quality?: number;
+    parsing_warnings?: string[];
+    // Extensible
+    custom?: Record<string, any>;
 }
 
 export interface AnalysisProgress {

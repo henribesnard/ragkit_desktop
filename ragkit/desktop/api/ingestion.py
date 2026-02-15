@@ -38,6 +38,12 @@ def _get_current_config() -> IngestionConfig:
     return _CURRENT_CONFIG
 
 
+@router.get("/setup-status")
+async def get_setup_status():
+    saved = config_manager.load_config()
+    return {"setup_completed": bool(saved and saved.setup_completed)}
+
+
 @router.get("/config", response_model=IngestionConfig)
 async def get_config():
     return _get_current_config()
@@ -81,16 +87,10 @@ async def update_document_metadata(id: str, metadata: DocumentMetadataUpdate):
     # Find doc
     for doc in _DOCUMENTS:
         if doc.id == id:
-            if metadata.title is not None:
-                doc.title = metadata.title
-            if metadata.author is not None:
-                doc.author = metadata.author
-            if metadata.description is not None:
-                doc.description = metadata.description
-            if metadata.keywords is not None:
-                doc.keywords = metadata.keywords
-            if metadata.creation_date is not None:
-                doc.creation_date = metadata.creation_date
+            for field_name in metadata.model_fields_set:
+                value = getattr(metadata, field_name)
+                if value is not None:
+                    setattr(doc, field_name, value)
             return doc
             
     raise HTTPException(status_code=404, detail="Document not found")

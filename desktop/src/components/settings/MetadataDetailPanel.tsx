@@ -21,6 +21,10 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
     const [tags, setTags] = useState<string[]>([]);
     const [keywords, setKeywords] = useState<string[]>([]);
     const [category, setCategory] = useState("");
+    const [domain, setDomain] = useState("");
+    const [subdomain, setSubdomain] = useState("");
+    const [confidentiality, setConfidentiality] = useState("");
+    const [docStatus, setDocStatus] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -32,6 +36,10 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
             setTags(document.tags || []);
             setKeywords(document.keywords || []);
             setCategory(document.category || "");
+            setDomain(document.domain || "");
+            setSubdomain(document.subdomain || "");
+            setConfidentiality(document.confidentiality || "");
+            setDocStatus(document.status || "");
             setActiveTab('metadata');
         }
     }, [document]);
@@ -47,7 +55,11 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                 description,
                 language,
                 tags,
-                category
+                category,
+                domain: domain || null,
+                subdomain: subdomain || null,
+                confidentiality: confidentiality || null,
+                status: docStatus || null,
             });
             // Don't close, user might want to continue navigating
         } catch (e) {
@@ -208,6 +220,70 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                                     <option value="Finance" />
                                     <option value="Marketing" />
                                 </datalist>
+                            </div>
+                        </div>
+
+                        {/* Domain / Subdomain */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domaine</label>
+                                <input
+                                    type="text"
+                                    list="domains"
+                                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={domain}
+                                    onChange={(e) => setDomain(e.target.value)}
+                                    placeholder="Ex: Theologie, Finance..."
+                                />
+                                <datalist id="domains">
+                                    <option value="Theologie" />
+                                    <option value="Finance" />
+                                    <option value="Technique" />
+                                    <option value="Juridique" />
+                                    <option value="RH" />
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sous-domaine</label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={subdomain}
+                                    onChange={(e) => setSubdomain(e.target.value)}
+                                    placeholder="Ex: Sermons, Etudes..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* Confidentiality / Status */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confidentialite</label>
+                                <select
+                                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={confidentiality}
+                                    onChange={(e) => setConfidentiality(e.target.value)}
+                                >
+                                    <option value="">Non defini</option>
+                                    <option value="public">Public</option>
+                                    <option value="internal">Interne</option>
+                                    <option value="confidential">Confidentiel</option>
+                                    <option value="secret">Secret</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
+                                <select
+                                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={docStatus}
+                                    onChange={(e) => setDocStatus(e.target.value)}
+                                >
+                                    <option value="">Non defini</option>
+                                    <option value="draft">Brouillon</option>
+                                    <option value="review">En revue</option>
+                                    <option value="published">Publie</option>
+                                    <option value="archived">Archive</option>
+                                </select>
                             </div>
                         </div>
 

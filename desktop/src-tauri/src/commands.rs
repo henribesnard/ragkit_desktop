@@ -47,6 +47,13 @@ pub async fn detect_environment(app: AppHandle) -> Result<serde_json::Value, Str
     request(Method::GET, "/api/wizard/environment-detection", None, &app).await
 }
 
+// --- Setup Status ---
+
+#[tauri::command]
+pub async fn get_setup_status(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/ingestion/setup-status", None, &app).await
+}
+
 // --- Ingestion Commands ---
 
 #[tauri::command]

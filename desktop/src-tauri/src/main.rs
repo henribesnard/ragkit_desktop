@@ -51,6 +51,7 @@ fn main() {
             commands::analyze_wizard_profile,
             commands::complete_wizard,
             commands::detect_environment,
+            commands::get_setup_status,
             commands::get_ingestion_config,
             commands::update_ingestion_config,
             commands::reset_ingestion_config,

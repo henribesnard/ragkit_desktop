@@ -256,6 +256,19 @@ class DocumentInfo(BaseModel):
     parser_engine: str | None = None
     ocr_applied: bool = False
     text_preview: str | None = None
+    # Hierarchie organisationnelle (metadata.md)
+    domain: str | None = None
+    subdomain: str | None = None
+    # Classification etendue (metadata.md)
+    confidentiality: str | None = None  # public / internal / confidential / secret
+    status: str | None = None  # draft / review / published / archived
+    source_url: str | None = None
+    version: str | None = None
+    # Qualite parsing
+    parsing_quality: float | None = None  # Score 0-1
+    parsing_warnings: list[str] = Field(default_factory=list)
+    # Extensible
+    custom: dict[str, Any] = Field(default_factory=dict)
 
 
 class DocumentMetadataUpdate(BaseModel):
@@ -267,6 +280,12 @@ class DocumentMetadataUpdate(BaseModel):
     category: str | None = None
     language: str | None = None
     creation_date: str | None = None
+    domain: str | None = None
+    subdomain: str | None = None
+    confidentiality: str | None = None
+    status: str | None = None
+    source_url: str | None = None
+    version: str | None = None
 
 
 class AnalysisResult(BaseModel):

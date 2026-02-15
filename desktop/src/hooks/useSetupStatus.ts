@@ -1,16 +1,35 @@
-import { useIngestionConfig } from "./useIngestionConfig";
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 export function useSetupStatus() {
-    const { config, loading } = useIngestionConfig();
+    const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Derived state directly from props/context
-    const hasCompletedSetup = !!(
-        !loading &&
-        config &&
-        config.source &&
-        config.source.path &&
-        config.source.path.length > 0
-    );
+    useEffect(() => {
+        let cancelled = false;
 
-    return { hasCompletedSetup, isLoading: loading };
+        const checkStatus = async () => {
+            try {
+                const res: any = await invoke("get_setup_status");
+                if (!cancelled) {
+                    setHasCompletedSetup(!!res.setup_completed);
+                }
+            } catch {
+                // Backend not ready yet, retry after delay
+                if (!cancelled) {
+                    setTimeout(checkStatus, 1000);
+                    return;
+                }
+            }
+            if (!cancelled) {
+                setIsLoading(false);
+            }
+        };
+
+        checkStatus();
+
+        return () => { cancelled = true; };
+    }, []);
+
+    return { hasCompletedSetup, isLoading };
 }
