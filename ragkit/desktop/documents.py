@@ -48,6 +48,11 @@ try:
 except ImportError:
     langdetect_detect = None
 
+try:
+    import olefile
+except ImportError:
+    olefile = None
+
 import mimetypes
 
 @dataclass
@@ -349,6 +354,8 @@ def _iter_files(
         relative = path.relative_to(root)
         relative_str = relative.as_posix()
 
+        if path.name.startswith("~$"):
+            continue
         if _is_excluded(relative_str, excluded):
             continue
         if _matches_patterns(path.name, relative_str, exclusion_patterns):
@@ -470,6 +477,19 @@ def _extract_keywords(text: str, max_keywords: int = 8) -> list[str]:
 
 
 def _extract_content(path: Path) -> ParsedContent:
+    # 1. Check for empty file
+    if path.stat().st_size == 0:
+        return ParsedContent(text="", page_count=None, title=None, author=None, creation_date=None, encoding=None)
+
+    # 2. Check for OLE2 legacy Word format
+    try:
+        with open(path, "rb") as f:
+            header = f.read(8)
+            if header == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1":
+                return _extract_doc_legacy(path)
+    except Exception:
+        pass
+
     extension = _normalize_extension(path.suffix)
     if extension == "pdf":
         return _extract_pdf(path)
@@ -482,6 +502,68 @@ def _extract_content(path: Path) -> ParsedContent:
     if extension == "html":
         return _extract_html(path)
     return _extract_text(path)
+
+
+def _extract_doc_legacy(path: Path) -> ParsedContent:
+    if olefile is None:
+        # Fallback if olefile is missing (though it should be installed)
+        return ParsedContent(text="", page_count=None, title=None, author=None, creation_date=None, encoding=None, parser_engine="olefile-missing")
+    
+    text = ""
+    title = None
+    author = None
+    creation_date = None
+    
+    try:
+        with olefile.OleFileIO(path) as ole:
+            # Try to extract metadata from properties
+            meta = ole.get_metadata()
+            if meta:
+                title = meta.title
+                author = meta.author
+                if meta.create_time:
+                    creation_date = meta.create_time.isoformat()
+
+            # Extract text from WordDocument stream
+            if ole.exists("WordDocument"):
+                with ole.openstream("WordDocument") as stream:
+                    data = stream.read()
+                    # Basic string extraction: sequences of 4+ printable chars
+                    # 1. Try to find UTF-16LE strings (common in Word binary)
+                    # Pattern: [char][\x00] repeated 4+ times
+                    utf16_strings = re.findall(b"(?:[\x20-\x7E][\x00]){4,}", data)
+                    
+                    # 2. Try to find ASCII/CP1252 strings
+                    ascii_strings = re.findall(b"[\x20-\x7E]{4,}", data)
+                    
+                    # Decode and join
+                    decoded = []
+                    for s in utf16_strings:
+                        try:
+                            decoded.append(s.decode("utf-16le"))
+                        except:
+                            pass
+                    for s in ascii_strings:
+                        try:
+                            decoded.append(s.decode("cp1252"))
+                        except:
+                            pass
+                            
+                    text = "\n".join(decoded)
+    except Exception:
+        pass
+
+    return ParsedContent(
+        text=text,
+        page_count=None,
+        title=title,
+        author=author,
+        creation_date=creation_date,
+        encoding="ole2-binary",
+        parser_engine="olefile",
+        has_tables=False, 
+        has_images=False,
+    )
 
 
 def _extract_pdf(path: Path) -> ParsedContent:
