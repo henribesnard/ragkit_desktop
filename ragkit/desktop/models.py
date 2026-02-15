@@ -255,6 +255,7 @@ class DocumentInfo(BaseModel):
     has_code: bool = False
     parser_engine: str | None = None
     ocr_applied: bool = False
+    text_preview: str | None = None
 
 
 class DocumentMetadataUpdate(BaseModel):

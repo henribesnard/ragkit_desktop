@@ -29,6 +29,7 @@ export interface DocumentInfo {
     description?: string;
     keywords?: string[];
     encoding?: string;
+    text_preview?: string;
 }
 
 export interface AnalysisProgress {

@@ -290,6 +290,7 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
                     ocr_applied=parsed.ocr_applied,
                     tags=keywords,
                     category=None,
+                    text_preview=parsed.text[:500] if parsed.text else None,
                 )
             )
         except Exception as exc:  # pragma: no cover - defensive at runtime
@@ -550,13 +551,20 @@ def _extract_doc_legacy(path: Path) -> ParsedContent:
                             pass
                             
                     text = "\n".join(decoded)
+                    
+                    # Clean up common binary artifacts
+                    # "bjbj" is a common header in Word OLE streams
+                    text = re.sub(r"bjbj\w+", "", text)
+                    text = re.sub(r"\x00+", "", text)
+                    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+                    
     except Exception:
         pass
 
     return ParsedContent(
         text=text,
         page_count=None,
-        title=title,
+        title=_validate_extracted_title(title, path.stem),
         author=author,
         creation_date=creation_date,
         encoding="ole2-binary",
@@ -564,6 +572,31 @@ def _extract_doc_legacy(path: Path) -> ParsedContent:
         has_tables=False, 
         has_images=False,
     )
+
+def _validate_extracted_title(title: str | None, filename_stem: str) -> str | None:
+    if not title:
+        return None
+        
+    s = title.strip()
+    if not s:
+        return None
+        
+    # Check for binary artifacts / garbage
+    if s.lower().startswith("bjbj"):
+        return None
+        
+    # Check for high ratio of non-printable/special chars
+    # If < 50% of chars are alphanumeric/space, it's likely garbage
+    alnum_count = sum(c.isalnum() or c.isspace() for c in s)
+    if len(s) > 0 and (alnum_count / len(s)) < 0.5:
+        return None
+        
+    # Check if title is just the filename (redundant)
+    # or if it looks like a filename (extension)
+    if s.lower() == filename_stem.lower():
+        return None
+        
+    return s
 
 
 def _extract_pdf(path: Path) -> ParsedContent:
