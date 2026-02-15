@@ -105,7 +105,22 @@ export function useDocuments() {
     }, [analyzing]);
 
     useEffect(() => {
-        fetchDocuments();
+        const init = async () => {
+            setLoading(true);
+            try {
+                const res: any = await invoke("get_documents");
+                setDocuments(res);
+                if (!res || res.length === 0) {
+                    // No cached documents — auto-trigger analysis
+                    await analyzeDocuments();
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        init();
     }, []);
 
     return { documents, loading, analyzing, progress, fetchDocuments, analyzeDocuments };

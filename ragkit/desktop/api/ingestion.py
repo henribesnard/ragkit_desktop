@@ -110,7 +110,7 @@ def _run_analysis_background(config: IngestionConfig):
         _DOCUMENTS = docs
     except Exception as e:
         logger.error(f"Background analysis failed: {e}")
-        AnalysisProgress.get_instance().fail()
+        AnalysisProgress.get_instance().set_error()
 
 @router.post("/analyze", response_model=AnalysisResult)
 async def analyze_documents(background_tasks: BackgroundTasks) -> AnalysisResult:

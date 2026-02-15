@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 
 def create_app() -> FastAPI:
