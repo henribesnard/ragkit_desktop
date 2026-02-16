@@ -18,6 +18,14 @@ interface SemanticSearchResponse {
   results: SemanticSearchResult[];
 }
 
+function renderMetadataValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+
 export function Chat() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -88,6 +96,21 @@ export function Chat() {
               <span>{result.source_document}{result.source_page ? ` · p.${result.source_page}` : ""}</span>
             </div>
             <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{result.chunk_text}</p>
+            {Object.keys(result.metadata || {}).length > 0 && (
+              <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-2 text-xs text-gray-600 dark:text-gray-300">
+                {Object.entries(result.metadata).map(([key, value]) => {
+                  const rendered = renderMetadataValue(value);
+                  if (!rendered) return null;
+                  return (
+                    <div key={`${result.id}-${key}`} className="grid grid-cols-[120px_1fr] gap-2">
+                      <span className="font-medium">{key}</span>
+                      <span className="truncate" title={rendered}>{rendered}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
           </div>
         ))}
       </div>

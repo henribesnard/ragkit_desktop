@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
 from pydantic import BaseModel, Field
+
 
 from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.retrieval_schema import SemanticSearchConfig, SemanticSearchResponse, SemanticSearchResult
@@ -16,10 +19,30 @@ router = APIRouter(prefix="/api/retrieval", tags=["retrieval"])
 class SemanticSearchRequest(BaseModel):
     query: str = Field(min_length=1)
 
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Query must not be empty.")
+        return cleaned
 
 def _get_semantic_config() -> SemanticSearchConfig:
     settings = load_settings()
     retrieval = settings.retrieval or {}
+    if not isinstance(retrieval, dict):
+        return SemanticSearchConfig()
+
+    semantic_payload = retrieval.get("semantic")
+    if isinstance(semantic_payload, dict):
+        return SemanticSearchConfig.model_validate(semantic_payload)
+
+    # Backward compatibility with previous flat key used in wizard defaults
+    if "semantic_top_k" in retrieval:
+        return SemanticSearchConfig(top_k=int(retrieval.get("semantic_top_k") or 10))
+
+    return SemanticSearchConfig()
+
     semantic_payload = retrieval.get("semantic") if isinstance(retrieval, dict) else None
     return SemanticSearchConfig.model_validate(semantic_payload or {})
 
@@ -67,6 +90,9 @@ async def semantic_search(payload: SemanticSearchRequest):
                 id=point.id,
                 score=round(normalized_score, 4),
                 chunk_text=str(payload_data.get("chunk_text") or ""),
+                source_document=str(payload_data.get("doc_title") or payload_data.get("doc_path") or "inconnu"),
+                source_page=payload_data.get("page"),
+                metadata={k: v for k, v in payload_data.items() if k not in {"chunk_text"}},
                 source_document=str(payload_data.get("doc_path") or "inconnu"),
                 source_page=payload_data.get("page"),
                 metadata={k: v for k, v in payload_data.items() if k not in {"chunk_text", "doc_path"}},

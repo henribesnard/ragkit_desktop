@@ -108,7 +108,14 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
     # Calculate future settings based on answers
     future_settings = {
         "chunking": {},
-        "retrieval": {},
+        "retrieval": {
+            "semantic": {
+                "enabled": True,
+                "top_k": 10,
+                "similarity_threshold": 0.0,
+                "weight": 1.0,
+            }
+        },
         "rerank": {},
         "llm": {},
         "ingestion": {} # Extra ingestion settings
@@ -116,7 +123,7 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
     
     # Q2: Réponses précises vs Synthétiques ? (True = Précise)
     if calibration.get("q2"):
-        future_settings["retrieval"]["semantic_top_k"] = 20 # Example boost
+        future_settings["retrieval"]["semantic"]["top_k"] = 20
         future_settings["llm"]["context_max_chunks"] = 10
     
     # Q3: Documents longs/complexes ?
