@@ -22,7 +22,9 @@
         "placeholder": "Configuration settings will appear here",
         "description": "Configuration settings will appear here after setting up your knowledge base.",
         "chunking": "Chunking",
-        "chunkingDescription": "Tune splitting strategy and preview results."
+        "chunkingDescription": "Tune splitting strategy and preview results.",
+        "embedding": "Embedding",
+        "embeddingDescription": "Configure embedding provider, API keys, and cache."
     },
     "dashboard": {
         "title": "Dashboard",

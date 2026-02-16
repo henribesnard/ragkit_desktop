@@ -126,3 +126,76 @@ pub async fn preview_chunking_custom(app: AppHandle, document_id: String, config
     let body = serde_json::json!({ "document_id": document_id, "config": config });
     request(Method::POST, "/api/chunking/preview/custom", Some(body), &app).await
 }
+
+
+// --- Embedding Commands ---
+
+#[tauri::command]
+pub async fn get_embedding_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/embedding/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_embedding_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/embedding/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_embedding_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/embedding/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn store_secret(app: AppHandle, key_name: String, value: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"key_name": key_name, "value": value});
+    request(Method::POST, "/api/embedding/secrets/store", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn secret_exists(app: AppHandle, key_name: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"key_name": key_name});
+    request(Method::POST, "/api/embedding/secrets/exists", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn delete_secret(app: AppHandle, key_name: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"key_name": key_name});
+    request(Method::POST, "/api/embedding/secrets/delete", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn test_embedding_connection(app: AppHandle, provider: Option<String>, model: Option<String>) -> Result<serde_json::Value, String> {
+    let mut endpoint = String::from("/api/embedding/test-connection");
+    let mut query = vec![];
+    if let Some(p) = provider { query.push(format!("provider={}", p)); }
+    if let Some(m) = model { query.push(format!("model={}", m)); }
+    if !query.is_empty() { endpoint.push('?'); endpoint.push_str(&query.join("&")); }
+    request(Method::POST, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_embedding(app: AppHandle, text_a: String, text_b: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"text_a": text_a, "text_b": text_b});
+    request(Method::POST, "/api/embedding/test-embedding", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn get_embedding_environment(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/embedding/environment", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_available_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/embedding/models?provider={}", provider);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_embedding_cache_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/embedding/cache/stats", None, &app).await
+}
+
+#[tauri::command]
+pub async fn clear_embedding_cache(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/embedding/cache/clear", None, &app).await
+}

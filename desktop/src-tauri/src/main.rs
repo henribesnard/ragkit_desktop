@@ -65,6 +65,18 @@ fn main() {
             commands::validate_chunking_config,
             commands::preview_chunking,
             commands::preview_chunking_custom,
+            commands::get_embedding_config,
+            commands::update_embedding_config,
+            commands::reset_embedding_config,
+            commands::store_secret,
+            commands::secret_exists,
+            commands::delete_secret,
+            commands::test_embedding_connection,
+            commands::test_embedding,
+            commands::get_embedding_environment,
+            commands::get_available_models,
+            commands::get_embedding_cache_stats,
+            commands::clear_embedding_cache,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")
