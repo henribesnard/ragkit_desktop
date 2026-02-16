@@ -15,7 +15,13 @@
     "chat": {
         "title": "Chat",
         "placeholder": "Le chat sera disponible après configuration",
-        "description": "Configurez votre base de connaissances pour commencer à poser des questions."
+        "description": "Configurez votre base de connaissances pour commencer à poser des questions.",
+        "semanticDescription": "Posez une question pour lancer la recherche sémantique et afficher les chunks les plus proches.",
+        "searchPlaceholder": "Ex: Quelle est la politique de sauvegarde ? ",
+        "search": "Rechercher",
+        "searching": "Recherche…",
+        "emptyResults": "Saisissez une requête pour afficher des résultats de similarité.",
+        "score": "Score de similarité"
     },
     "settings": {
         "title": "Paramètres",
