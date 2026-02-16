@@ -290,3 +290,21 @@ pub async fn get_general_settings(app: AppHandle) -> Result<serde_json::Value, S
 pub async fn update_general_settings(app: AppHandle, settings: serde_json::Value) -> Result<serde_json::Value, String> {
     request(Method::PUT, "/api/ingestion/settings/general", Some(settings), &app).await
 }
+
+// --- Semantic retrieval Commands ---
+
+#[tauri::command]
+pub async fn get_semantic_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/retrieval/semantic/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_semantic_search_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/retrieval/semantic/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn run_semantic_search(app: AppHandle, query: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"query": query});
+    request(Method::POST, "/api/retrieval/semantic/search", Some(body), &app).await
+}

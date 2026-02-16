@@ -94,6 +94,9 @@ fn main() {
             commands::restore_ingestion_version,
             commands::get_general_settings,
             commands::update_general_settings,
+            commands::get_semantic_search_config,
+            commands::update_semantic_search_config,
+            commands::run_semantic_search,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")
