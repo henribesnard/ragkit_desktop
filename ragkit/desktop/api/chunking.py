@@ -68,8 +68,11 @@ def _validate_with_warnings(config: ChunkingConfig) -> ChunkingValidationResult:
     if config.chunk_overlap > config.chunk_size / 2:
         warnings.append("Un chevauchement supérieur à 50% est inhabituel.")
     embedding = _get_embedding_config()
-    if config.strategy.value == "semantic" and embedding and embedding.provider.value in {"openai", "cohere", "voyageai", "mistral"}:
-        warnings.append("Le chunking sémantique avec un provider cloud génère des coûts API. La prévisualisation reste en mode léger local.")
+    if config.strategy.value == "semantic":
+        if embedding is None:
+            warnings.append("Aucun modèle d'embedding configuré. Configurez l'étape EMBEDDING pour un chunking sémantique optimal.")
+        elif embedding.provider.value in {"openai", "cohere", "voyageai", "mistral"}:
+            warnings.append("Le chunking sémantique avec un provider cloud génère des coûts API. La prévisualisation reste en mode léger local.")
     return ChunkingValidationResult(valid=True, warnings=warnings)
 
 

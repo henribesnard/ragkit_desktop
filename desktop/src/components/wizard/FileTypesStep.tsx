@@ -72,7 +72,7 @@ export function FileTypesStep({ state, onPrev, onComplete, setIncludedFileTypes 
             }
         };
         scan();
-    }, [state.folderPath, state.recursive, state.excludedFolders]); // Re-scan if these change
+    }, [state.folderPath, state.recursive, state.excludedFolders, state.includedFileTypes.length, setIncludedFileTypes]); // Re-scan if these change
 
     const handleToggleType = (ext: string) => {
         const cleanExt = ext.replace(".", "");

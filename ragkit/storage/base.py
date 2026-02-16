@@ -49,6 +49,9 @@ class BaseVectorStore(ABC):
     @abstractmethod
     async def search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]: ...
 
+    @abstractmethod
+    async def all_points(self) -> list[VectorPoint]: ...
+
 
 
 
@@ -166,6 +169,11 @@ class LocalJsonVectorStore(BaseVectorStore):
         scored = [(point, _cosine_similarity(vector, point.vector)) for point in self._points.values()]
         scored.sort(key=lambda item: item[1], reverse=True)
         return scored[:top_k]
+
+    async def all_points(self) -> list[VectorPoint]:
+        if not self._points:
+            self._load()
+        return list(self._points.values())
 
 
 class QdrantVectorStore(LocalJsonVectorStore):

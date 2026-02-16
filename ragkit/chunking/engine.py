@@ -14,18 +14,40 @@ def split_sentences(text: str) -> list[str]:
     return [part.strip() for part in parts if part.strip()]
 
 
-def apply_overlap(chunks: list[str], overlap_tokens: int, token_counter: TokenCounter) -> list[str]:
+def apply_overlap(
+    chunks: list[str],
+    overlap_tokens: int,
+    token_counter: TokenCounter,
+    preserve_sentences: bool = False,
+) -> list[str]:
     if overlap_tokens <= 0 or len(chunks) < 2:
         return chunks
 
     merged = [chunks[0]]
     for index in range(1, len(chunks)):
-        previous_words = chunks[index - 1].split()
-        overlap = " ".join(previous_words[-overlap_tokens:]) if previous_words else ""
+        overlap = ""
+        if preserve_sentences:
+            previous_sentences = split_sentences(chunks[index - 1])
+            selected: list[str] = []
+            tokens = 0
+            for sentence in reversed(previous_sentences):
+                sentence_tokens = token_counter.count(sentence)
+                if selected and tokens + sentence_tokens > overlap_tokens:
+                    break
+                selected.insert(0, sentence)
+                tokens += sentence_tokens
+            overlap = " ".join(selected).strip()
+        else:
+            previous_words = chunks[index - 1].split()
+            overlap = " ".join(previous_words[-overlap_tokens:]) if previous_words else ""
+
         current = chunks[index]
         if overlap and not current.startswith(overlap):
             current = f"{overlap} {current}".strip()
-        if token_counter.count(current) > token_counter.count(chunks[index]) + overlap_tokens:
+        if preserve_sentences and token_counter.count(current) > token_counter.count(chunks[index]) + overlap_tokens:
+            # Keep sentence integrity: drop overlap instead of truncating mid-sentence.
+            current = chunks[index]
+        elif token_counter.count(current) > token_counter.count(chunks[index]) + overlap_tokens:
             current = token_counter.truncate(current, token_counter.count(chunks[index]) + overlap_tokens)
         merged.append(current)
     return merged
@@ -43,7 +65,12 @@ class BaseChunker(ABC):
     def chunk(self, text: str, metadata: dict) -> list[Chunk]:
         raw_chunks = self.split(text)
         raw_chunks = [chunk.strip() for chunk in raw_chunks if chunk and chunk.strip()]
-        raw_chunks = apply_overlap(raw_chunks, self.config.chunk_overlap, self.token_counter)
+        raw_chunks = apply_overlap(
+            raw_chunks,
+            self.config.chunk_overlap,
+            self.token_counter,
+            preserve_sentences=self.config.preserve_sentences,
+        )
 
         filtered: list[str] = []
         for chunk in raw_chunks:
@@ -65,6 +92,22 @@ class BaseChunker(ABC):
 
 class FixedSizeChunker(BaseChunker):
     def split(self, text: str) -> list[str]:
+        if self.config.preserve_sentences:
+            sentences = split_sentences(text)
+            if sentences:
+                chunks: list[str] = []
+                current: list[str] = []
+                for sentence in sentences:
+                    candidate = " ".join(current + [sentence]).strip()
+                    if current and self.token_counter.count(candidate) > self.config.chunk_size:
+                        chunks.append(" ".join(current).strip())
+                        current = [sentence]
+                    else:
+                        current.append(sentence)
+                if current:
+                    chunks.append(" ".join(current).strip())
+                return chunks
+
         words = text.split()
         if not words:
             return []

@@ -47,6 +47,11 @@ pub async fn detect_environment(app: AppHandle) -> Result<serde_json::Value, Str
     request(Method::GET, "/api/wizard/environment-detection", None, &app).await
 }
 
+#[tauri::command]
+pub async fn get_current_profile(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/wizard/current-profile", None, &app).await
+}
+
 // --- Setup Status ---
 
 #[tauri::command]
@@ -304,7 +309,28 @@ pub async fn update_semantic_search_config(app: AppHandle, config: serde_json::V
 }
 
 #[tauri::command]
+pub async fn reset_semantic_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/retrieval/semantic/config/reset", None, &app).await
+}
+
+#[tauri::command]
 pub async fn run_semantic_search(app: AppHandle, query: String) -> Result<serde_json::Value, String> {
     let body = serde_json::json!({"query": query});
     request(Method::POST, "/api/retrieval/semantic/search", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn run_semantic_search_with_options(app: AppHandle, payload: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/retrieval/semantic/search", Some(payload), &app).await
+}
+
+#[tauri::command]
+pub async fn get_search_filter_values(app: AppHandle, field: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/search/filters/values?field={}", field);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_chat_ready(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/chat/ready", None, &app).await
 }

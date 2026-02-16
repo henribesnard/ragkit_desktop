@@ -13,7 +13,7 @@ from pathlib import Path
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
 from ragkit.config.embedding_schema import EmbeddingConfig
-from ragkit.config.vector_store_schema import GeneralSettings, VectorStoreConfig
+from ragkit.config.vector_store_schema import GeneralSettings, IngestionMode, VectorStoreConfig
 from ragkit.desktop import documents
 from ragkit.desktop.models import (
     ChangeDetectionResult,
@@ -23,7 +23,7 @@ from ragkit.desktop.models import (
     IngestionProgress,
     SettingsPayload,
 )
-from ragkit.desktop.settings_store import get_data_dir, load_settings, save_settings
+from ragkit.desktop.settings_store import get_data_dir, load_settings
 from ragkit.embedding.engine import EmbeddingEngine
 from ragkit.storage.base import VectorPoint, create_vector_store
 
@@ -34,9 +34,12 @@ class IngestionRuntime:
         self.logs: list[IngestionLogEntry] = []
         self._subscribers: list[asyncio.Queue[dict]] = []
         self._task: asyncio.Task | None = None
+        self._auto_task: asyncio.Task | None = None
         self._pause = asyncio.Event()
         self._pause.set()
         self._cancelled = False
+        self._pending_auto_trigger_at: float | None = None
+        self._last_auto_signature: str | None = None
         self._registry = get_data_dir() / "ingestion_registry.db"
         self._ensure_db()
 
@@ -85,6 +88,15 @@ class IngestionRuntime:
         for queue in list(self._subscribers):
             await queue.put({"event": event, "data": data})
 
+    def ensure_background_tasks(self) -> None:
+        if self._auto_task and not self._auto_task.done():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._auto_task = loop.create_task(self._auto_ingestion_loop())
+
     def subscribe(self) -> asyncio.Queue[dict]:
         q: asyncio.Queue[dict] = asyncio.Queue()
         self._subscribers.append(q)
@@ -109,6 +121,56 @@ class IngestionRuntime:
             }
             for row in rows
         }
+
+    async def _auto_ingestion_loop(self) -> None:
+        while True:
+            try:
+                settings = load_settings()
+                general_settings = GeneralSettings.model_validate(settings.general or {})
+
+                if general_settings.ingestion_mode != IngestionMode.AUTOMATIC:
+                    self._pending_auto_trigger_at = None
+                    self._last_auto_signature = None
+                    await asyncio.sleep(2)
+                    continue
+
+                if self._task and not self._task.done():
+                    await asyncio.sleep(2)
+                    continue
+
+                changes = self.detect_changes(settings)
+                signature = "|".join(sorted(f"{change.type}:{change.path}" for change in changes.changes))
+                now = time.monotonic()
+
+                if not signature:
+                    self._pending_auto_trigger_at = None
+                    self._last_auto_signature = None
+                    await asyncio.sleep(2)
+                    continue
+
+                if signature != self._last_auto_signature:
+                    self._last_auto_signature = signature
+                    self._pending_auto_trigger_at = now + max(general_settings.auto_ingestion_delay, 5)
+                    await asyncio.sleep(2)
+                    continue
+
+                if self._pending_auto_trigger_at and now >= self._pending_auto_trigger_at:
+                    self.logs.append(
+                        IngestionLogEntry(
+                            timestamp=self._now(),
+                            level="info",
+                            message="Auto ingestion déclenchée après délai de stabilisation.",
+                        )
+                    )
+                    await self.start(incremental=True)
+                    self._pending_auto_trigger_at = None
+                    self._last_auto_signature = None
+            except Exception:
+                # Keep watcher loop resilient and try again.
+                await asyncio.sleep(2)
+                continue
+
+            await asyncio.sleep(2)
 
     def detect_changes(self, settings: SettingsPayload | None = None) -> ChangeDetectionResult:
         settings = settings or load_settings()
@@ -155,6 +217,7 @@ class IngestionRuntime:
         )
 
     async def start(self, incremental: bool = False) -> dict:
+        self.ensure_background_tasks()
         if self._task and not self._task.done():
             return {"version": self.progress.version, "status": self.progress.status}
         self._cancelled = False
@@ -186,6 +249,7 @@ class IngestionRuntime:
         return f"v{int(row[0].lstrip('v')) + 1}"
 
     async def _run(self, incremental: bool) -> None:
+        self.ensure_background_tasks()
         settings = load_settings()
         if not settings.ingestion:
             self.progress.status = "failed"
@@ -209,13 +273,19 @@ class IngestionRuntime:
         chunker = create_chunker(chunk_cfg)
 
         changes = self.detect_changes(settings)
+        registry_before = self._load_registry()
+        removed_paths = [change.path for change in changes.changes if change.type == "removed"]
+        docs_added = sum(1 for change in changes.changes if change.type == "added")
+        docs_modified = sum(1 for change in changes.changes if change.type == "modified")
+        docs_removed = len(removed_paths)
+        docs_skipped = 0
         docs, _ = documents.analyze_documents(settings.ingestion)
-        by_path = {d.file_path: d for d in docs}
 
         to_process = docs
         if incremental:
             impacted = {c.path for c in changes.changes if c.type in {"added", "modified"}}
             to_process = [d for d in docs if d.file_path in impacted]
+            docs_skipped = max(len(docs) - len(to_process), 0)
 
         if to_process:
             sample_text = documents.get_document_text(settings.ingestion, to_process[0])
@@ -224,6 +294,18 @@ class IngestionRuntime:
             dims = emb_cfg.dimensions or 768
         await store.initialize(dims)
         await store.create_snapshot(version)
+
+        # Keep index in sync when files were removed from the source folder.
+        for removed_path in removed_paths:
+            previous = registry_before.get(removed_path)
+            if not previous:
+                continue
+            doc_id = previous.get("doc_id")
+            if not doc_id:
+                continue
+            await store.delete_by_doc_id(str(doc_id))
+            with sqlite3.connect(self._registry) as con:
+                con.execute("DELETE FROM ingestion_registry WHERE doc_id = ?", (doc_id,))
 
         with sqlite3.connect(self._registry) as con:
             con.execute(
@@ -252,7 +334,15 @@ class IngestionRuntime:
                     vector=outputs[i].vector,
                     payload={
                         "doc_id": doc.id,
+                        "doc_title": doc.title or doc.filename,
+                        "filename": doc.filename,
                         "doc_path": doc.file_path,
+                        "doc_type": doc.file_type,
+                        "doc_language": doc.language,
+                        "category": doc.category,
+                        "keywords": list(doc.keywords),
+                        "tags": list(doc.tags),
+                        "page_number": doc.page_count,
                         "chunk_index": i,
                         "chunk_total": len(chunks),
                         "chunk_text": chunk.content,
@@ -291,8 +381,19 @@ class IngestionRuntime:
         completed_at = self._now()
         with sqlite3.connect(self._registry) as con:
             con.execute(
-                "UPDATE ingestion_history SET completed_at=?,status=?,total_chunks=?,duration_seconds=?,docs_failed=? WHERE version=?",
-                (completed_at, end_status, stats.vectors_count, self.progress.elapsed_seconds, self.progress.docs_failed, version),
+                "UPDATE ingestion_history SET completed_at=?,status=?,total_chunks=?,duration_seconds=?,docs_added=?,docs_modified=?,docs_removed=?,docs_skipped=?,docs_failed=? WHERE version=?",
+                (
+                    completed_at,
+                    end_status,
+                    stats.vectors_count,
+                    self.progress.elapsed_seconds,
+                    docs_added,
+                    docs_modified,
+                    docs_removed,
+                    docs_skipped,
+                    self.progress.docs_failed,
+                    version,
+                ),
             )
         self.logs.append(IngestionLogEntry(timestamp=completed_at, level="info", message=f"Ingestion {version} {end_status}"))
         await self.publish("complete", self.progress.model_dump(mode="json"))

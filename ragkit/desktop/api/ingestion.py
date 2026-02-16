@@ -27,6 +27,7 @@ from ragkit.storage.base import create_vector_store
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ingestion", tags=["ingestion"])
+settings_router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 _CURRENT_CONFIG: IngestionConfig | None = None
 _DOCUMENTS: List[DocumentInfo] = []
@@ -154,11 +155,13 @@ async def cancel_ingestion():
 
 @router.get("/status")
 async def ingestion_status():
+    runtime.ensure_background_tasks()
     return runtime.progress
 
 
 @router.get("/changes", response_model=ChangeDetectionResult)
 async def ingestion_changes():
+    runtime.ensure_background_tasks()
     return runtime.detect_changes()
 
 
@@ -206,13 +209,25 @@ async def progress_stream():
 
 @router.get("/settings/general")
 async def get_general_settings():
+    runtime.ensure_background_tasks()
     settings = settings_store.load_settings()
     return GeneralSettings.model_validate(settings.general or {}).model_dump(mode="json")
 
 
 @router.put("/settings/general")
 async def update_general_settings(payload: GeneralSettings):
+    runtime.ensure_background_tasks()
     settings = settings_store.load_settings()
     settings.general = payload.model_dump(mode="json")
     settings_store.save_settings(settings)
     return payload.model_dump(mode="json")
+
+
+@settings_router.get("/general")
+async def get_general_settings_alias():
+    return await get_general_settings()
+
+
+@settings_router.put("/general")
+async def update_general_settings_alias(payload: GeneralSettings):
+    return await update_general_settings(payload)

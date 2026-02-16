@@ -45,6 +45,17 @@ export function ChunkingSettings() {
 
     const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
     const [chunkPage, setChunkPage] = useState(0);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+    const moveSeparator = (index: number, direction: -1 | 1) => {
+        if (!config) return;
+        const target = index + direction;
+        if (target < 0 || target >= config.separators.length) return;
+        const next = [...config.separators];
+        const [item] = next.splice(index, 1);
+        next.splice(target, 0, item);
+        void updateConfig({ separators: next });
+    };
 
     const pagedChunks = useMemo(() => {
         const chunks = preview?.chunks ?? [];
@@ -112,9 +123,43 @@ export function ChunkingSettings() {
             {config.strategy === "recursive" && (
                 <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Séparateurs</h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                         {config.separators.map((separator, index) => (
-                            <div key={`${separator}-${index}`} className="text-xs rounded bg-gray-100 dark:bg-gray-800 px-2 py-1">{JSON.stringify(separator)}</div>
+                            <div
+                                key={`${separator}-${index}`}
+                                draggable
+                                onDragStart={() => setDragIndex(index)}
+                                onDragEnd={() => setDragIndex(null)}
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={() => {
+                                    if (dragIndex === null || dragIndex === index || !config) return;
+                                    const next = [...config.separators];
+                                    const [item] = next.splice(dragIndex, 1);
+                                    next.splice(index, 0, item);
+                                    setDragIndex(null);
+                                    void updateConfig({ separators: next });
+                                }}
+                                className="flex items-center justify-between gap-2 rounded bg-gray-100 dark:bg-gray-800 px-2 py-1 cursor-move"
+                            >
+                                <div className="text-xs">{JSON.stringify(separator)}</div>
+                                <div className="flex gap-1">
+                                    <Button size="sm" variant="outline" onClick={() => moveSeparator(index, -1)} disabled={index === 0}>↑</Button>
+                                    <Button size="sm" variant="outline" onClick={() => moveSeparator(index, 1)} disabled={index === config.separators.length - 1}>↓</Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            const next = config.separators.filter((_, i) => i !== index);
+                                            if (next.length) {
+                                                void updateConfig({ separators: next });
+                                            }
+                                        }}
+                                        disabled={config.separators.length <= 1}
+                                    >
+                                        Supprimer
+                                    </Button>
+                                </div>
+                            </div>
                         ))}
                     </div>
                     <div className="flex gap-2">

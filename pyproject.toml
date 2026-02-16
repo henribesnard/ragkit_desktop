@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragkit"
-version = "1.2.3"
+version = "5.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.100",
@@ -14,6 +14,22 @@ dependencies = [
     "python-docx>=0.8",
     "pyyaml>=6.0",
     "olefile>=0.46",
+    "tiktoken>=0.5",
+    "nltk>=3.8",
+    "sentence-transformers>=2.2",
+    "openai>=1.0",
+    "cohere>=5.0",
+    "voyageai>=0.2",
+    "mistralai>=0.1",
+    "httpx>=0.25",
+    "onnxruntime>=1.16",
+    "huggingface_hub>=0.20",
+    "keyring>=24.0",
+    "cryptography>=41.0",
+    "numpy>=1.24",
+    "qdrant-client>=1.6",
+    "chromadb>=0.4",
+    "watchdog>=3.0",
 ]
 
 [project.optional-dependencies]

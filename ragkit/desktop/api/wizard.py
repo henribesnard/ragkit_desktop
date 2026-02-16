@@ -207,3 +207,9 @@ async def detect_environment() -> EnvironmentInfo:
         local_models=["llama3", "mistral"] if ollama_path else []
     )
 
+
+@router.get("/current-profile")
+async def get_current_profile():
+    settings = config_manager.load_config() or SettingsPayload()
+    return {"profile": settings.profile or "general"}
+

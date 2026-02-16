@@ -51,6 +51,7 @@ fn main() {
             commands::analyze_wizard_profile,
             commands::complete_wizard,
             commands::detect_environment,
+            commands::get_current_profile,
             commands::get_setup_status,
             commands::get_ingestion_config,
             commands::update_ingestion_config,
@@ -96,7 +97,11 @@ fn main() {
             commands::update_general_settings,
             commands::get_semantic_search_config,
             commands::update_semantic_search_config,
+            commands::reset_semantic_search_config,
             commands::run_semantic_search,
+            commands::run_semantic_search_with_options,
+            commands::get_search_filter_values,
+            commands::get_chat_ready,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")
