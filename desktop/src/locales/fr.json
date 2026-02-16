@@ -22,7 +22,9 @@
         "placeholder": "Les paramètres de configuration apparaîtront ici",
         "description": "Les paramètres de configuration apparaîtront ici après la mise en place de votre base de connaissances.",
         "chunking": "Chunking",
-        "chunkingDescription": "Ajustez la stratégie de découpage et prévisualisez les résultats."
+        "chunkingDescription": "Ajustez la stratégie de découpage et prévisualisez les résultats.",
+        "embedding": "Embedding",
+        "embeddingDescription": "Configurez le provider d'embedding, les clés API et le cache."
     },
     "dashboard": {
         "title": "Tableau de bord",

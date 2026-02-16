@@ -17,6 +17,7 @@ from ragkit.config.chunking_schema import (
     ChunkPreview,
     SizeBucket,
 )
+from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.manager import config_manager
 from ragkit.desktop import documents
 from ragkit.desktop.api.ingestion import _get_current_config, _get_documents
@@ -51,10 +52,24 @@ def _save_chunking_config(config: ChunkingConfig) -> ChunkingConfig:
     return config
 
 
+
+
+def _get_embedding_config() -> EmbeddingConfig | None:
+    settings = config_manager.load_config()
+    if settings and settings.embedding:
+        try:
+            return EmbeddingConfig.model_validate(settings.embedding)
+        except Exception:
+            return None
+    return None
+
 def _validate_with_warnings(config: ChunkingConfig) -> ChunkingValidationResult:
     warnings: list[str] = []
     if config.chunk_overlap > config.chunk_size / 2:
         warnings.append("Un chevauchement supérieur à 50% est inhabituel.")
+    embedding = _get_embedding_config()
+    if config.strategy.value == "semantic" and embedding and embedding.provider.value in {"openai", "cohere", "voyageai", "mistral"}:
+        warnings.append("Le chunking sémantique avec un provider cloud génère des coûts API. La prévisualisation reste en mode léger local.")
     return ChunkingValidationResult(valid=True, warnings=warnings)
 
 
@@ -105,9 +120,10 @@ def _build_preview(document_id: str, config: ChunkingConfig) -> ChunkingPreviewR
         raise HTTPException(status_code=400, detail="Document has no parsable text")
 
     if config.strategy.value == "semantic":
-        warnings.append(
-            "La stratégie sémantique utilise un mode léger de similarité locale pour la prévisualisation."
-        )
+        embedding = _get_embedding_config()
+        if embedding:
+            warnings.append(f"Chunking sémantique: le modèle configuré ({embedding.provider.value}/{embedding.model}) sera utilisé hors prévisualisation.")
+        warnings.append("La stratégie sémantique utilise un mode léger de similarité locale pour la prévisualisation.")
 
     base_metadata: dict[str, Any] = {
         "source": document.file_path,

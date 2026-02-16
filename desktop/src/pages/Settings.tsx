@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { Settings as SettingsIcon, Layers, FileText, Scissors } from "lucide-react";
+import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
 import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
+import { EmbeddingSettings } from "@/components/settings/EmbeddingSettings";
 
 export function Settings() {
     const { t } = useTranslation();
-    const [activeSection, setActiveSection] = useState<"general" | "ingestion" | "chunking">("ingestion");
+    const [activeSection, setActiveSection] = useState<"general" | "ingestion" | "chunking" | "embedding">("ingestion");
 
     return (
         <div className="h-full flex flex-col">
@@ -44,6 +45,18 @@ export function Settings() {
                             <FileText className="w-4 h-4" />
                             Ingestion & Préprocessing
                         </button>
+
+                        <button
+                            onClick={() => setActiveSection("embedding")}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeSection === "embedding"
+                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-200"
+                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                }`}
+                        >
+                            <Brain className="w-4 h-4" />
+                            Embedding
+                        </button>
+
                         <button
                             onClick={() => setActiveSection("chunking")}
                             className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeSection === "chunking"
@@ -87,6 +100,21 @@ export function Settings() {
                         </div>
                     )}
 
+
+
+                    {activeSection === "embedding" && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                                    Configuration de l'embedding
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    Configurez provider, sécurité de clés API, cache et tests de similarité.
+                                </p>
+                            </div>
+                            <EmbeddingSettings />
+                        </div>
+                    )}
 
                     {activeSection === "chunking" && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
