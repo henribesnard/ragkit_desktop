@@ -20,7 +20,9 @@
     "settings": {
         "title": "Settings",
         "placeholder": "Configuration settings will appear here",
-        "description": "Configuration settings will appear here after setting up your knowledge base."
+        "description": "Configuration settings will appear here after setting up your knowledge base.",
+        "chunking": "Chunking",
+        "chunkingDescription": "Tune splitting strategy and preview results."
     },
     "dashboard": {
         "title": "Dashboard",

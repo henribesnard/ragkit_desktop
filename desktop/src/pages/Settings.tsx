@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Settings as SettingsIcon, Layers, FileText } from "lucide-react";
+import { Settings as SettingsIcon, Layers, FileText, Scissors } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
+import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
 
 export function Settings() {
     const { t } = useTranslation();
-    const [activeSection, setActiveSection] = useState<"general" | "ingestion">("ingestion");
+    const [activeSection, setActiveSection] = useState<"general" | "ingestion" | "chunking">("ingestion");
 
     return (
         <div className="h-full flex flex-col">
@@ -43,6 +44,16 @@ export function Settings() {
                             <FileText className="w-4 h-4" />
                             Ingestion & Préprocessing
                         </button>
+                        <button
+                            onClick={() => setActiveSection("chunking")}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeSection === "chunking"
+                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-200"
+                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                }`}
+                        >
+                            <Scissors className="w-4 h-4" />
+                            Chunking
+                        </button>
                     </nav>
                 </div>
 
@@ -73,6 +84,21 @@ export function Settings() {
                                 </p>
                             </div>
                             <IngestionSettings />
+                        </div>
+                    )}
+
+
+                    {activeSection === "chunking" && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                                    Configuration du chunking
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    Ajustez la stratégie de découpage et prévisualisez les résultats en temps réel.
+                                </p>
+                            </div>
+                            <ChunkingSettings />
                         </div>
                     )}
                 </div>

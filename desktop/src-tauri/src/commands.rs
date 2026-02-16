@@ -91,3 +91,38 @@ pub async fn analyze_documents(app: AppHandle) -> Result<serde_json::Value, Stri
 pub async fn get_analysis_progress(app: AppHandle) -> Result<serde_json::Value, String> {
     request(Method::GET, "/api/ingestion/analyze/progress", None, &app).await
 }
+
+
+// --- Chunking Commands ---
+
+#[tauri::command]
+pub async fn get_chunking_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/chunking/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_chunking_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/chunking/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_chunking_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/chunking/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn validate_chunking_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/chunking/config/validate", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn preview_chunking(app: AppHandle, document_id: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "document_id": document_id });
+    request(Method::POST, "/api/chunking/preview", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn preview_chunking_custom(app: AppHandle, document_id: String, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "document_id": document_id, "config": config });
+    request(Method::POST, "/api/chunking/preview/custom", Some(body), &app).await
+}

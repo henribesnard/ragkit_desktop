@@ -301,6 +301,16 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
     return parsed_documents, errors
 
 
+
+
+def get_document_text(config: IngestionConfig, document: DocumentInfo) -> str:
+    """Load and preprocess full text for a document metadata entry."""
+    source_root = Path(config.source.path).expanduser()
+    file_path = source_root / document.file_path
+    parsed = _extract_content(file_path)
+    return _preprocess_text(parsed.text, config)
+
+
 def _build_folder_stats(root: Path, files: list[Path]) -> FolderStats:
     extension_counts: dict[str, int] = defaultdict(int)
     total_size = 0
