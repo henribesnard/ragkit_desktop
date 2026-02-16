@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -99,6 +100,9 @@ async def get_documents():
 
 @router.put("/documents/{id}/metadata", response_model=DocumentInfo)
 async def update_document_metadata(id: str, metadata: DocumentMetadataUpdate):
+    if not re.fullmatch(r"[a-f0-9]{40}", id):
+        raise HTTPException(status_code=400, detail="Invalid document id format")
+
     # Logic to update
     # Find doc
     docs = _get_documents()

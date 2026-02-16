@@ -76,7 +76,18 @@ class SourceConfig(BaseModel):
         deduplicated = list(dict.fromkeys(normalized))
         if not deduplicated:
             raise ValueError("At least one file type must be selected.")
+        unsupported = sorted(set(deduplicated) - set(SUPPORTED_FILE_TYPES))
+        if unsupported:
+            raise ValueError(f"Unsupported file types: {', '.join(unsupported)}")
         return deduplicated
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        normalized = value.strip()
+        if "\x00" in normalized:
+            raise ValueError("Invalid source path.")
+        return normalized
 
     @field_validator("excluded_dirs", "exclusion_patterns")
     @classmethod
@@ -286,6 +297,22 @@ class DocumentMetadataUpdate(BaseModel):
     status: str | None = None
     source_url: str | None = None
     version: str | None = None
+
+    @field_validator("title", "author", "description", "category", "language", "domain", "subdomain", "confidentiality", "status", "source_url", "version")
+    @classmethod
+    def strip_text_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        cleaned = value.strip()
+        return cleaned or None
+
+    @field_validator("keywords", "tags")
+    @classmethod
+    def sanitize_list_fields(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        cleaned = [item.strip() for item in value if item and item.strip()]
+        return cleaned
 
 
 class AnalysisResult(BaseModel):

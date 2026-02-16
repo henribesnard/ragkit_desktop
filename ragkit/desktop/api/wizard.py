@@ -182,8 +182,8 @@ async def complete_wizard(request: WizardCompletionRequest):
 
         return {"success": True}
     except Exception as e:
-        logger.error(f"Failed to complete wizard: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to complete wizard")
+        raise HTTPException(status_code=500, detail="Unable to save setup configuration.")
 
 
 @router.get("/environment-detection")

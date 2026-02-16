@@ -334,6 +334,7 @@ def _iter_files(
     exclusion_patterns: list[str],
     max_file_size_mb: int | None,
 ):
+    root_resolved = root.resolve()
     excluded: set[str] = set()
     for value in excluded_dirs:
         if not value.strip():
@@ -350,7 +351,14 @@ def _iter_files(
     iterator = root.rglob("*") if recursive else root.glob("*")
 
     for path in iterator:
+        if path.is_symlink():
+            continue
         if not path.is_file():
+            continue
+        try:
+            path.resolve().relative_to(root_resolved)
+        except ValueError:
+            # Ignore paths escaping the selected root (e.g. via symlink/mount tricks)
             continue
         relative = path.relative_to(root)
         relative_str = relative.as_posix()
