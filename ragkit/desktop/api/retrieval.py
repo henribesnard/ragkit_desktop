@@ -197,10 +197,17 @@ async def _execute_search(payload: SearchQuery) -> SemanticSearchResponse:
     embedding_latency_ms = max(1, int((time.perf_counter() - embedding_started) * 1000))
 
     store = create_vector_store(vec_cfg)
-    await store.initialize(embed_cfg.dimensions or len(embed_output.vector))
+    query_dims = len(embed_output.vector)
+    try:
+        await store.initialize(query_dims)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     search_started = time.perf_counter()
-    raw_results = await store.search(embed_output.vector, candidate_count)
+    try:
+        raw_results = await store.search(embed_output.vector, candidate_count)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     search_latency_ms = max(1, int((time.perf_counter() - search_started) * 1000))
 
     ranked = [
@@ -308,7 +315,11 @@ async def search_filter_values(field: str = Query(..., pattern="^(doc_type|langu
     embed_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
     vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
     store = create_vector_store(vec_cfg)
-    await store.initialize(embed_cfg.dimensions or 768)
+    embedder = EmbeddingEngine(embed_cfg)
+    try:
+        await store.initialize(embedder.resolve_dimensions())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     points = await store.all_points()
 
     values: set[str] = set()
@@ -325,6 +336,10 @@ async def chat_ready():
     embed_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
     vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
     store = create_vector_store(vec_cfg)
-    await store.initialize(embed_cfg.dimensions or 768)
+    embedder = EmbeddingEngine(embed_cfg)
+    try:
+        await store.initialize(embedder.resolve_dimensions())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     stats = await store.collection_stats()
     return {"ready": stats.vectors_count > 0, "vectors_count": stats.vectors_count}

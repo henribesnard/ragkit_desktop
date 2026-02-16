@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections import Counter
 import hashlib
 import math
-import random
+import re
 import time
 import urllib.error
 import urllib.request
@@ -42,7 +43,7 @@ class EmbeddingEngine:
     def model_id(self) -> str:
         return f"{self.config.provider}:{self.config.model}:{self.config.dimensions or 'default'}"
 
-    def _resolve_dimensions(self) -> int:
+    def resolve_dimensions(self) -> int:
         model = get_model_info(self.config.provider, self.config.model)
         if self.config.dimensions:
             return self.config.dimensions
@@ -50,15 +51,37 @@ class EmbeddingEngine:
             return model.dimensions_default
         return 768
 
-    def _deterministic_embed(self, text: str, dimensions: int) -> list[float]:
-        seed = int(hashlib.sha256(f"{self.config.provider}:{self.config.model}:{text}".encode("utf-8")).hexdigest()[:16], 16)
-        rng = random.Random(seed)
-        vec = [rng.uniform(-1.0, 1.0) for _ in range(dimensions)]
+    def _hashed_lexical_embed(self, text: str, dimensions: int) -> list[float]:
+        if dimensions <= 0:
+            raise ValueError("Embedding dimensions must be > 0.")
+
+        tokens = re.findall(r"\w+", text.lower(), flags=re.UNICODE)
+        if not tokens:
+            return [0.0 for _ in range(dimensions)]
+
+        counts = Counter(tokens)
+        total = sum(counts.values())
+        vec = [0.0 for _ in range(dimensions)]
+
+        # Token hashing projection: deterministic and text-sensitive without
+        # pseudo-random vectors.
+        for token, freq in counts.items():
+            digest = hashlib.sha256(token.encode("utf-8")).digest()
+            weight = freq / total
+
+            index_a = int.from_bytes(digest[:8], byteorder="big", signed=False) % dimensions
+            sign_a = 1.0 if (digest[8] & 1) == 0 else -1.0
+            vec[index_a] += sign_a * weight
+
+            index_b = int.from_bytes(digest[9:17], byteorder="big", signed=False) % dimensions
+            sign_b = 1.0 if (digest[17] & 1) == 0 else -1.0
+            vec[index_b] += sign_b * (weight * 0.5)
+
         return _l2_normalize(vec) if self.config.normalize else vec
 
     def embed_text(self, text: str) -> EmbedOutput:
         start = time.perf_counter()
-        vector = self._deterministic_embed(text, self._resolve_dimensions())
+        vector = self._hashed_lexical_embed(text, self.resolve_dimensions())
         latency = int((time.perf_counter() - start) * 1000)
         return EmbedOutput(vector=vector, latency_ms=max(1, latency))
 
@@ -94,12 +117,14 @@ class EmbeddingEngine:
             except Exception:
                 return ConnectionTestResult(success=False, status="network_error", message="Provider injoignable — vérifiez votre connexion")
 
-        dims = self._resolve_dimensions()
+        dims = self.resolve_dimensions()
         latency = int((time.perf_counter() - start) * 1000)
         return ConnectionTestResult(success=True, status="success", message="Connexion réussie", latency_ms=max(1, latency), dimensions=dims)
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b):
+        raise ValueError(f"Vector dimensions mismatch: {len(a)} != {len(b)}")
     denom_a = math.sqrt(sum(x * x for x in a))
     denom_b = math.sqrt(sum(x * x for x in b))
     if denom_a == 0 or denom_b == 0:

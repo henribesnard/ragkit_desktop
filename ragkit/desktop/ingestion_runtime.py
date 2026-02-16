@@ -275,6 +275,7 @@ class IngestionRuntime:
         changes = self.detect_changes(settings)
         registry_before = self._load_registry()
         removed_paths = [change.path for change in changes.changes if change.type == "removed"]
+        modified_paths = {change.path for change in changes.changes if change.type == "modified"}
         docs_added = sum(1 for change in changes.changes if change.type == "added")
         docs_modified = sum(1 for change in changes.changes if change.type == "modified")
         docs_removed = len(removed_paths)
@@ -287,13 +288,31 @@ class IngestionRuntime:
             to_process = [d for d in docs if d.file_path in impacted]
             docs_skipped = max(len(docs) - len(to_process), 0)
 
-        if to_process:
-            sample_text = documents.get_document_text(settings.ingestion, to_process[0])
-            dims = emb_cfg.dimensions or len(embedder.embed_text(sample_text[:300]).vector)
-        else:
-            dims = emb_cfg.dimensions or 768
-        await store.initialize(dims)
+        dims = embedder.resolve_dimensions()
         await store.create_snapshot(version)
+        try:
+            await store.initialize(dims)
+        except ValueError as exc:
+            if incremental:
+                self.progress.status = "failed"
+                self.logs.append(
+                    IngestionLogEntry(
+                        timestamp=self._now(),
+                        level="error",
+                        message=f"Ingestion failed: {exc}",
+                    )
+                )
+                await self.publish("complete", self.progress.model_dump(mode="json"))
+                return
+            self.logs.append(
+                IngestionLogEntry(
+                    timestamp=self._now(),
+                    level="warning",
+                    message="Embedding dimensions changed, rebuilding vector collection from scratch.",
+                )
+            )
+            await store.delete_collection()
+            await store.initialize(dims)
 
         # Keep index in sync when files were removed from the source folder.
         for removed_path in removed_paths:
@@ -328,6 +347,12 @@ class IngestionRuntime:
             self.progress.phase = "embedding"
             outputs = embedder.embed_texts([c.content for c in chunks])
             self.progress.phase = "storing"
+
+            # For modified documents (or full re-index runs), remove all previous
+            # chunks first so obsolete chunks do not remain in the index.
+            if (not incremental) or (doc.file_path in modified_paths):
+                await store.delete_by_doc_id(doc.id)
+
             points = [
                 VectorPoint(
                     id=hashlib.sha1(f"{doc.id}:{i}:{chunk.content}".encode("utf-8")).hexdigest(),

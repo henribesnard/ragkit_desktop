@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
+from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.vector_store_schema import VectorStoreConfig
 from ragkit.desktop.profiles import build_full_config
 from ragkit.desktop.settings_store import load_settings, save_settings
+from ragkit.embedding.engine import EmbeddingEngine
 from ragkit.storage.base import create_vector_store
 
 router = APIRouter(prefix="/api/vector-store", tags=["vector-store"])
@@ -57,8 +59,12 @@ async def test_vector_store_connection():
 async def get_collection_stats():
     settings = load_settings()
     store = create_vector_store(_default_config())
-    dims = int((settings.embedding or {}).get("dimensions") or 768)
-    await store.initialize(dims)
+    embed_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
+    dims = EmbeddingEngine(embed_cfg).resolve_dimensions()
+    try:
+        await store.initialize(dims)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return (await store.collection_stats()).model_dump(mode="json")
 
 
