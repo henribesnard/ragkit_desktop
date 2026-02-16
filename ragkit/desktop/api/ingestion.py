@@ -16,6 +16,7 @@ from ragkit.desktop.models import (
 )
 from ragkit.config.manager import config_manager
 from ragkit.desktop import documents
+from ragkit.desktop import settings_store
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,21 @@ router = APIRouter(prefix="/api/ingestion", tags=["ingestion"])
 # In-memory cache – populated lazily from disk
 _CURRENT_CONFIG: IngestionConfig | None = None
 _DOCUMENTS: List[DocumentInfo] = []
+_DOCUMENTS_LOADED: bool = False
+
+
+def _get_documents() -> List[DocumentInfo]:
+    """Lazy-load documents from disk on first access."""
+    global _DOCUMENTS, _DOCUMENTS_LOADED
+    if not _DOCUMENTS_LOADED:
+        _DOCUMENTS = settings_store.load_documents()
+        _DOCUMENTS_LOADED = True
+    return _DOCUMENTS
+
+
+def _save_documents() -> None:
+    """Persist current documents list to disk."""
+    settings_store.save_documents(_DOCUMENTS)
 
 
 def _get_current_config() -> IngestionConfig:
@@ -78,21 +94,23 @@ async def reset_config():
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_documents():
-    return _DOCUMENTS
+    return _get_documents()
 
 
 @router.put("/documents/{id}/metadata", response_model=DocumentInfo)
 async def update_document_metadata(id: str, metadata: DocumentMetadataUpdate):
     # Logic to update
     # Find doc
-    for doc in _DOCUMENTS:
+    docs = _get_documents()
+    for doc in docs:
         if doc.id == id:
             for field_name in metadata.model_fields_set:
                 value = getattr(metadata, field_name)
                 if value is not None:
                     setattr(doc, field_name, value)
+            _save_documents()
             return doc
-            
+
     raise HTTPException(status_code=404, detail="Document not found")
 
 
@@ -106,8 +124,10 @@ async def get_analysis_progress():
 def _run_analysis_background(config: IngestionConfig):
     try:
         docs, errors = documents.analyze_documents(config)
-        global _DOCUMENTS
+        global _DOCUMENTS, _DOCUMENTS_LOADED
         _DOCUMENTS = docs
+        _DOCUMENTS_LOADED = True
+        _save_documents()
     except Exception as e:
         logger.error(f"Background analysis failed: {e}")
         AnalysisProgress.get_instance().set_error()
