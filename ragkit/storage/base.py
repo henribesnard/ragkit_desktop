@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +45,19 @@ class BaseVectorStore(ABC):
 
     @abstractmethod
     async def restore_snapshot(self, version: str) -> None: ...
+
+    @abstractmethod
+    async def search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]: ...
+
+
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    denom_a = math.sqrt(sum(x * x for x in a))
+    denom_b = math.sqrt(sum(x * x for x in b))
+    if denom_a == 0 or denom_b == 0:
+        return 0.0
+    return max(-1.0, min(1.0, sum(x * y for x, y in zip(a, b)) / (denom_a * denom_b)))
 
 
 class LocalJsonVectorStore(BaseVectorStore):
@@ -145,6 +159,13 @@ class LocalJsonVectorStore(BaseVectorStore):
         self._root.mkdir(parents=True, exist_ok=True)
         self._db_file.write_bytes(snap_file.read_bytes())
         self._load()
+
+    async def search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]:
+        if not self._points:
+            self._load()
+        scored = [(point, _cosine_similarity(vector, point.vector)) for point in self._points.values()]
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return scored[:top_k]
 
 
 class QdrantVectorStore(LocalJsonVectorStore):

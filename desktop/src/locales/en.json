@@ -15,7 +15,13 @@
     "chat": {
         "title": "Chat",
         "placeholder": "Chat will be available after configuration",
-        "description": "Configure your knowledge base to start asking questions."
+        "description": "Configure your knowledge base to start asking questions.",
+        "semanticDescription": "Ask a question to run semantic retrieval and display the most relevant chunks.",
+        "searchPlaceholder": "Example: What is the backup policy?",
+        "search": "Search",
+        "searching": "Searching…",
+        "emptyResults": "Type a query to display similarity results.",
+        "score": "Similarity score"
     },
     "settings": {
         "title": "Settings",

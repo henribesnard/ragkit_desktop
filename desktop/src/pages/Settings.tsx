@@ -1,15 +1,16 @@
 import { useTranslation } from "react-i18next";
-import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database } from "lucide-react";
+import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database, Search } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
 import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
 import { EmbeddingSettings } from "@/components/settings/EmbeddingSettings";
 import { VectorStoreSettings } from "@/components/settings/VectorStoreSettings";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
+import { SemanticSearchSettings } from "@/components/settings/SemanticSearchSettings";
 
 export function Settings() {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<"general" | "ingestion" | "chunking" | "embedding" | "vector">("ingestion");
+  const [activeSection, setActiveSection] = useState<"general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic">("ingestion");
 
   return (
     <div className="h-full flex flex-col">
@@ -27,6 +28,7 @@ export function Settings() {
             <button onClick={() => setActiveSection("embedding")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "embedding" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Brain className="w-4 h-4" />Embedding</button>
             <button onClick={() => setActiveSection("chunking")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "chunking" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Scissors className="w-4 h-4" />Chunking</button>
             <button onClick={() => setActiveSection("vector")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "vector" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Database className="w-4 h-4" />Base vectorielle</button>
+            <button onClick={() => setActiveSection("semantic")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "semantic" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche sémantique</button>
           </nav>
         </div>
 
@@ -36,6 +38,7 @@ export function Settings() {
           {activeSection === "embedding" && <EmbeddingSettings />}
           {activeSection === "chunking" && <ChunkingSettings />}
           {activeSection === "vector" && <VectorStoreSettings />}
+          {activeSection === "semantic" && <SemanticSearchSettings />}
         </div>
       </div>
     </div>
