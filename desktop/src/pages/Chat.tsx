@@ -25,6 +25,7 @@ function renderMetadataValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+
 export function Chat() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -109,6 +110,7 @@ export function Chat() {
                 })}
               </div>
             )}
+
           </div>
         ))}
       </div>

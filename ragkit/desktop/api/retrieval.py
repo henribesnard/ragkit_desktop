@@ -3,6 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from pydantic import BaseModel, Field
+
+
 from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.retrieval_schema import SemanticSearchConfig, SemanticSearchResponse, SemanticSearchResult
 from ragkit.config.vector_store_schema import VectorStoreConfig
@@ -24,7 +27,6 @@ class SemanticSearchRequest(BaseModel):
             raise ValueError("Query must not be empty.")
         return cleaned
 
-
 def _get_semantic_config() -> SemanticSearchConfig:
     settings = load_settings()
     retrieval = settings.retrieval or {}
@@ -40,6 +42,9 @@ def _get_semantic_config() -> SemanticSearchConfig:
         return SemanticSearchConfig(top_k=int(retrieval.get("semantic_top_k") or 10))
 
     return SemanticSearchConfig()
+
+    semantic_payload = retrieval.get("semantic") if isinstance(retrieval, dict) else None
+    return SemanticSearchConfig.model_validate(semantic_payload or {})
 
 
 @router.get("/semantic/config")
@@ -88,6 +93,9 @@ async def semantic_search(payload: SemanticSearchRequest):
                 source_document=str(payload_data.get("doc_title") or payload_data.get("doc_path") or "inconnu"),
                 source_page=payload_data.get("page"),
                 metadata={k: v for k, v in payload_data.items() if k not in {"chunk_text"}},
+                source_document=str(payload_data.get("doc_path") or "inconnu"),
+                source_page=payload_data.get("page"),
+                metadata={k: v for k, v in payload_data.items() if k not in {"chunk_text", "doc_path"}},
             )
         )
 
