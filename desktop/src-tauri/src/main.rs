@@ -59,6 +59,12 @@ fn main() {
             commands::update_document_metadata,
             commands::analyze_documents,
             commands::get_analysis_progress,
+            commands::get_chunking_config,
+            commands::update_chunking_config,
+            commands::reset_chunking_config,
+            commands::validate_chunking_config,
+            commands::preview_chunking,
+            commands::preview_chunking_custom,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

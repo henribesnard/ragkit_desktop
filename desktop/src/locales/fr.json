@@ -20,7 +20,9 @@
     "settings": {
         "title": "Paramètres",
         "placeholder": "Les paramètres de configuration apparaîtront ici",
-        "description": "Les paramètres de configuration apparaîtront ici après la mise en place de votre base de connaissances."
+        "description": "Les paramètres de configuration apparaîtront ici après la mise en place de votre base de connaissances.",
+        "chunking": "Chunking",
+        "chunkingDescription": "Ajustez la stratégie de découpage et prévisualisez les résultats."
     },
     "dashboard": {
         "title": "Tableau de bord",
