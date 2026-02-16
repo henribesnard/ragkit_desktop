@@ -77,6 +77,23 @@ fn main() {
             commands::get_available_models,
             commands::get_embedding_cache_stats,
             commands::clear_embedding_cache,
+            commands::get_vector_store_config,
+            commands::update_vector_store_config,
+            commands::reset_vector_store_config,
+            commands::test_vector_store_connection,
+            commands::get_vector_store_collection_stats,
+            commands::delete_vector_store_collection,
+            commands::start_ingestion,
+            commands::pause_ingestion,
+            commands::resume_ingestion,
+            commands::cancel_ingestion,
+            commands::get_ingestion_status,
+            commands::detect_changes,
+            commands::get_ingestion_history,
+            commands::get_ingestion_log,
+            commands::restore_ingestion_version,
+            commands::get_general_settings,
+            commands::update_general_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")
