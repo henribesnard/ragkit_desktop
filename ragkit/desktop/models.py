@@ -321,6 +321,60 @@ class AnalysisResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+
+
+class IngestionChange(BaseModel):
+    type: str
+    path: str
+    file_size: int | None = None
+    last_modified: str | None = None
+
+
+class ChangeDetectionResult(BaseModel):
+    changes: list[IngestionChange] = Field(default_factory=list)
+    added: int = 0
+    modified: int = 0
+    removed: int = 0
+
+
+class IngestionProgress(BaseModel):
+    status: str = "idle"
+    version: str = "v0"
+    is_incremental: bool = False
+    phase: str = "idle"
+    doc_index: int = 0
+    doc_total: int = 0
+    current_doc: str | None = None
+    elapsed_seconds: float = 0
+    estimated_remaining_seconds: float | None = None
+    docs_succeeded: int = 0
+    docs_warnings: int = 0
+    docs_failed: int = 0
+    docs_skipped: int = 0
+    total_chunks: int = 0
+
+
+class IngestionHistoryEntry(BaseModel):
+    version: str
+    started_at: str
+    completed_at: str | None = None
+    status: str
+    total_docs: int = 0
+    total_chunks: int = 0
+    docs_added: int = 0
+    docs_modified: int = 0
+    docs_removed: int = 0
+    docs_skipped: int = 0
+    docs_failed: int = 0
+    duration_seconds: float | None = None
+    is_incremental: bool = False
+
+
+class IngestionLogEntry(BaseModel):
+    timestamp: str
+    level: str
+    message: str
+
 class SettingsPayload(BaseModel):
     version: str = "1.0.0"
     setup_completed: bool = False
@@ -330,6 +384,8 @@ class SettingsPayload(BaseModel):
     chunking: dict[str, Any] = Field(default_factory=dict)
     embedding: dict[str, Any] = Field(default_factory=dict)
     retrieval: dict[str, Any] = Field(default_factory=dict)
+    vector_store: dict[str, Any] = Field(default_factory=dict)
+    general: dict[str, Any] = Field(default_factory=dict)
     rerank: dict[str, Any] = Field(default_factory=dict)
     llm: dict[str, Any] = Field(default_factory=dict)
     agents: dict[str, Any] = Field(default_factory=dict)

@@ -199,3 +199,94 @@ pub async fn get_embedding_cache_stats(app: AppHandle) -> Result<serde_json::Val
 pub async fn clear_embedding_cache(app: AppHandle) -> Result<serde_json::Value, String> {
     request(Method::POST, "/api/embedding/cache/clear", None, &app).await
 }
+
+// --- Vector store Commands ---
+#[tauri::command]
+pub async fn get_vector_store_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/vector-store/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_vector_store_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/vector-store/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_vector_store_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/vector-store/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_vector_store_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/vector-store/test-connection", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_vector_store_collection_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/vector-store/collection/stats", None, &app).await
+}
+
+#[tauri::command]
+pub async fn delete_vector_store_collection(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::DELETE, "/api/vector-store/collection/delete", None, &app).await
+}
+
+// --- ingestion controls ---
+#[tauri::command]
+pub async fn start_ingestion(app: AppHandle, incremental: Option<bool>) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"incremental": incremental.unwrap_or(false)});
+    request(Method::POST, "/api/ingestion/start", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn pause_ingestion(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/ingestion/pause", None, &app).await
+}
+
+#[tauri::command]
+pub async fn resume_ingestion(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/ingestion/resume", None, &app).await
+}
+
+#[tauri::command]
+pub async fn cancel_ingestion(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/ingestion/cancel", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_ingestion_status(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/ingestion/status", None, &app).await
+}
+
+#[tauri::command]
+pub async fn detect_changes(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/ingestion/changes", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_ingestion_history(app: AppHandle, limit: Option<u32>) -> Result<serde_json::Value, String> {
+    let endpoint = if let Some(l) = limit { format!("/api/ingestion/history?limit={}", l) } else { "/api/ingestion/history".to_string() };
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_ingestion_log(app: AppHandle, version: Option<String>) -> Result<serde_json::Value, String> {
+    let endpoint = if let Some(v) = version { format!("/api/ingestion/log?version={}", v) } else { "/api/ingestion/log".to_string() };
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn restore_ingestion_version(app: AppHandle, version: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/ingestion/history/{}/restore", version);
+    request(Method::POST, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_general_settings(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/ingestion/settings/general", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_general_settings(app: AppHandle, settings: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/ingestion/settings/general", Some(settings), &app).await
+}
