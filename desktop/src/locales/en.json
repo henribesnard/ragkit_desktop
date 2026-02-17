@@ -1,44 +1,45 @@
-{
-    "app": {
-        "name": "RAGKIT",
-    "version": "v5.0.2"
-    },
-    "navigation": {
-        "chat": "Chat",
-        "settings": "Settings",
-        "dashboard": "Dashboard"
-    },
-    "layout": {
-        "darkMode": "Dark Mode",
-        "lightMode": "Light Mode"
-    },
-    "chat": {
-        "title": "Chat",
-        "placeholder": "Chat will be available after configuration",
-        "description": "Configure your knowledge base to start asking questions.",
-        "semanticDescription": "Ask a question to run semantic retrieval and display the most relevant chunks.",
-        "searchPlaceholder": "Example: What is the backup policy?",
-        "search": "Search",
-        "searching": "Searching…",
-        "emptyResults": "Type a query to display similarity results.",
-        "score": "Similarity score"
-    },
-    "settings": {
-        "title": "Settings",
-        "placeholder": "Configuration settings will appear here",
-        "description": "Configuration settings will appear here after setting up your knowledge base.",
-        "chunking": "Chunking",
-        "chunkingDescription": "Tune splitting strategy and preview results.",
-        "embedding": "Embedding",
-        "embeddingDescription": "Configure embedding provider, API keys, and cache."
-    },
-    "dashboard": {
-        "title": "Dashboard",
-        "placeholder": "Monitoring will appear here",
-        "description": "Monitoring and statistics will appear here once ingestion is launched."
-    },
-    "backend": {
-        "connected": "Backend connected",
-        "disconnected": "Backend disconnected"
-    }
+﻿{
+  "app": {
+    "name": "RAGKIT",
+    "version": "v7.0.0"
+  },
+  "navigation": {
+    "chat": "Chat",
+    "settings": "Settings",
+    "dashboard": "Dashboard"
+  },
+  "layout": {
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode"
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Chat will be available after configuration",
+    "description": "Configure your knowledge base to start asking questions.",
+    "semanticDescription": "Ask a question to run semantic retrieval and display the most relevant chunks.",
+    "lexicalDescription": "Ask a question to run lexical BM25 retrieval on exact terms.",
+    "searchPlaceholder": "Example: What is the backup policy?",
+    "search": "Search",
+    "searching": "Searching...",
+    "emptyResults": "Type a query to display results.",
+    "score": "Similarity score"
+  },
+  "settings": {
+    "title": "Settings",
+    "placeholder": "Configuration settings will appear here",
+    "description": "Configuration settings will appear here after setting up your knowledge base.",
+    "chunking": "Chunking",
+    "chunkingDescription": "Tune splitting strategy and preview results.",
+    "embedding": "Embedding",
+    "embeddingDescription": "Configure embedding provider, API keys, and cache."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "placeholder": "Monitoring will appear here",
+    "description": "Monitoring and statistics will appear here once ingestion is launched."
+  },
+  "backend": {
+    "connected": "Backend connected",
+    "disconnected": "Backend disconnected"
+  }
 }

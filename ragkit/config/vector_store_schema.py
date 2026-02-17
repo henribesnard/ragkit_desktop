@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator
 
+from ragkit.config.retrieval_schema import SearchType
+
 
 class VectorStoreProvider(str, Enum):
     QDRANT = "qdrant"
@@ -67,3 +69,4 @@ class IngestionMode(str, Enum):
 class GeneralSettings(BaseModel):
     ingestion_mode: IngestionMode = IngestionMode.MANUAL
     auto_ingestion_delay: int = Field(default=30, ge=5, le=300)
+    search_type: SearchType = SearchType.HYBRID

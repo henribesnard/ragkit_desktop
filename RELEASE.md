@@ -16,6 +16,8 @@
 | Étape 3 | `spécifications/specs-etape-3.md` | `v3.0.0` | `3.0.0` |
 | Étape 4 | `spécifications/specs-etape-4.md` | `v4.0.0` | `4.0.0` |
 | Étape 5 | `spécifications/specs-etape-5.md` | `v5.0.0` | `5.0.0` |
+| Étape 6 | `spécifications/specs-etape-6.md` | `v6.0.0` | `6.0.0` |
+| Étape 7 | `spécifications/specs-etape-7.md` | `v7.0.0` | `7.0.0` |
 
 > Adapter la table au fur et à mesure de l'avancement.
 

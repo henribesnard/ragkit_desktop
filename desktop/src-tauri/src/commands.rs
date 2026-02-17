@@ -334,3 +334,57 @@ pub async fn get_search_filter_values(app: AppHandle, field: String) -> Result<s
 pub async fn get_chat_ready(app: AppHandle) -> Result<serde_json::Value, String> {
     request(Method::GET, "/api/chat/ready", None, &app).await
 }
+
+// --- Lexical retrieval Commands ---
+
+#[tauri::command]
+pub async fn get_lexical_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/retrieval/lexical/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_lexical_search_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/retrieval/lexical/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_lexical_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/retrieval/lexical/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn lexical_search(app: AppHandle, query: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/search/lexical", Some(query), &app).await
+}
+
+#[tauri::command]
+pub async fn get_bm25_index_stats(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/retrieval/lexical/index/stats", None, &app).await
+}
+
+#[tauri::command]
+pub async fn rebuild_bm25_index(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/retrieval/lexical/index/rebuild", None, &app).await
+}
+
+// --- Hybrid retrieval Commands ---
+
+#[tauri::command]
+pub async fn get_hybrid_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/retrieval/hybrid/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_hybrid_search_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/retrieval/hybrid/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_hybrid_search_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/retrieval/hybrid/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn unified_search(app: AppHandle, query: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/search", Some(query), &app).await
+}

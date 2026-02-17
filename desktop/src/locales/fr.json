@@ -1,44 +1,45 @@
-{
-    "app": {
-        "name": "RAGKIT",
-    "version": "v5.0.2"
-    },
-    "navigation": {
-        "chat": "Chat",
-        "settings": "Paramètres",
-        "dashboard": "Tableau de bord"
-    },
-    "layout": {
-        "darkMode": "Mode sombre",
-        "lightMode": "Mode clair"
-    },
-    "chat": {
-        "title": "Chat",
-        "placeholder": "Le chat sera disponible après configuration",
-        "description": "Configurez votre base de connaissances pour commencer à poser des questions.",
-        "semanticDescription": "Posez une question pour lancer la recherche sémantique et afficher les chunks les plus proches.",
-        "searchPlaceholder": "Ex: Quelle est la politique de sauvegarde ? ",
-        "search": "Rechercher",
-        "searching": "Recherche…",
-        "emptyResults": "Saisissez une requête pour afficher des résultats de similarité.",
-        "score": "Score de similarité"
-    },
-    "settings": {
-        "title": "Paramètres",
-        "placeholder": "Les paramètres de configuration apparaîtront ici",
-        "description": "Les paramètres de configuration apparaîtront ici après la mise en place de votre base de connaissances.",
-        "chunking": "Chunking",
-        "chunkingDescription": "Ajustez la stratégie de découpage et prévisualisez les résultats.",
-        "embedding": "Embedding",
-        "embeddingDescription": "Configurez le provider d'embedding, les clés API et le cache."
-    },
-    "dashboard": {
-        "title": "Tableau de bord",
-        "placeholder": "Le monitoring apparaîtra ici",
-        "description": "Le monitoring et les statistiques apparaîtront ici une fois l'ingestion lancée."
-    },
-    "backend": {
-        "connected": "Backend connecté",
-        "disconnected": "Backend déconnecté"
-    }
+﻿{
+  "app": {
+    "name": "RAGKIT",
+    "version": "v7.0.0"
+  },
+  "navigation": {
+    "chat": "Chat",
+    "settings": "Parametres",
+    "dashboard": "Tableau de bord"
+  },
+  "layout": {
+    "darkMode": "Mode sombre",
+    "lightMode": "Mode clair"
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Le chat sera disponible apres configuration",
+    "description": "Configurez votre base de connaissances pour commencer a poser des questions.",
+    "semanticDescription": "Posez une question pour lancer la recherche semantique et afficher les chunks les plus proches.",
+    "lexicalDescription": "Posez une question pour lancer la recherche lexicale BM25 sur les termes exacts.",
+    "searchPlaceholder": "Ex: Quelle est la politique de sauvegarde ?",
+    "search": "Rechercher",
+    "searching": "Recherche...",
+    "emptyResults": "Saisissez une requete pour afficher des resultats.",
+    "score": "Score de similarite"
+  },
+  "settings": {
+    "title": "Parametres",
+    "placeholder": "Les parametres de configuration apparaitront ici",
+    "description": "Les parametres de configuration apparaitront ici apres la mise en place de votre base de connaissances.",
+    "chunking": "Chunking",
+    "chunkingDescription": "Ajustez la strategie de decoupage et previsualisez les resultats.",
+    "embedding": "Embedding",
+    "embeddingDescription": "Configurez le provider d'embedding, les cles API et le cache."
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "placeholder": "Le monitoring apparaitra ici",
+    "description": "Le monitoring et les statistiques apparaitront ici une fois l'ingestion lancee."
+  },
+  "backend": {
+    "connected": "Backend connecte",
+    "disconnected": "Backend deconnecte"
+  }
 }

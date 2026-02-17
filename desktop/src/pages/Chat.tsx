@@ -1,51 +1,13 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronUp, MessageSquare, Search, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
-
-interface SearchResultItem {
-  chunk_id: string;
-  score: number;
-  text: string;
-  text_preview: string;
-  doc_title?: string | null;
-  doc_path?: string | null;
-  doc_type?: string | null;
-  page_number?: number | null;
-  chunk_index?: number | null;
-  chunk_total?: number | null;
-  chunk_tokens?: number | null;
-  section_header?: string | null;
-  doc_language?: string | null;
-  category?: string | null;
-  keywords: string[];
-  ingestion_version?: string | null;
-}
-
-interface SearchDebugInfo {
-  query_text: string;
-  query_tokens: number;
-  embedding_latency_ms: number;
-  search_latency_ms: number;
-  mmr_latency_ms: number;
-  total_latency_ms: number;
-  results_from_db: number;
-  results_after_threshold: number;
-  results_after_filters: number;
-  results_after_mmr: number;
-}
-
-interface SemanticSearchResponse {
-  query: string;
-  results: SearchResultItem[];
-  total_results: number;
-  page: number;
-  page_size: number;
-  has_more: boolean;
-  debug?: SearchDebugInfo | null;
-}
+import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
+import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchModeSelector";
+import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
+import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
 
 interface FilterValuesResponse {
   values: string[];
@@ -54,6 +16,7 @@ interface FilterValuesResponse {
 interface ChatReadyResponse {
   ready: boolean;
   vectors_count: number;
+  lexical_chunks?: number;
 }
 
 interface ChatFilters {
@@ -61,6 +24,15 @@ interface ChatFilters {
   doc_types: string[];
   languages: string[];
   categories: string[];
+}
+
+interface SearchConfigState {
+  enabled: boolean;
+  lexical_stemming?: boolean;
+}
+
+interface GeneralSettingsPayload {
+  search_type?: ChatSearchMode;
 }
 
 function scoreClass(score: number): string {
@@ -100,18 +72,55 @@ function selectedValues(select: HTMLSelectElement): string[] {
   return Array.from(select.selectedOptions).map((option) => option.value);
 }
 
+function resultDescription(mode: ChatSearchMode): string {
+  if (mode === "semantic") return "Recherche semantique active.";
+  if (mode === "lexical") return "Recherche lexicale BM25 active.";
+  return "Recherche hybride active (fusion semantique + lexicale).";
+}
+
+function toLexicalResult(result: UnifiedSearchResultItem): LexicalSearchResultItem {
+  return {
+    chunk_id: result.chunk_id,
+    score: result.score,
+    text: result.text,
+    text_preview: result.text_preview,
+    matched_terms: result.matched_terms || {},
+    highlight_positions: [],
+    doc_title: result.doc_title,
+    doc_path: result.doc_path,
+    doc_type: result.doc_type,
+    page_number: result.page_number,
+    chunk_index: result.chunk_index,
+    chunk_total: result.chunk_total,
+    chunk_tokens: result.chunk_tokens,
+    section_header: result.section_header,
+    doc_language: result.doc_language,
+    category: result.category,
+    keywords: result.keywords,
+    ingestion_version: result.ingestion_version,
+  };
+}
+
 export function Chat() {
   const { t } = useTranslation();
+  const { search: runUnifiedSearch } = useUnifiedSearch();
+
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [debug, setDebug] = useState<SearchDebugInfo | null>(null);
-  const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0 });
+  const [results, setResults] = useState<UnifiedSearchResultItem[]>([]);
+  const [debug, setDebug] = useState<Record<string, any> | null>(null);
+  const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
+  const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
+  const [semanticEnabled, setSemanticEnabled] = useState(true);
+  const [lexicalEnabled, setLexicalEnabled] = useState(true);
+  const [lexicalStemming, setLexicalStemming] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
   const [showScores, setShowScores] = useState(true);
   const [showMetadata, setShowMetadata] = useState(true);
+  const [showProvenance, setShowProvenance] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
+  const [alphaOverride, setAlphaOverride] = useState(0.5);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
@@ -129,26 +138,71 @@ export function Chat() {
     categories: [],
   });
 
-  const hasActiveFilters = useMemo(
-    () => Object.values(filters).some((items) => items.length > 0),
-    [filters]
-  );
+  const hasActiveFilters = useMemo(() => Object.values(filters).some((items) => items.length > 0), [filters]);
+  const selectedModeEnabled =
+    searchMode === "semantic" ? semanticEnabled : searchMode === "lexical" ? lexicalEnabled : semanticEnabled && lexicalEnabled;
+
+  const applySearchConfig = (
+    semanticCfg: SearchConfigState,
+    lexicalCfg: SearchConfigState,
+    generalCfg: GeneralSettingsPayload,
+  ) => {
+    const semanticIsEnabled = Boolean(semanticCfg.enabled ?? true);
+    const lexicalIsEnabled = Boolean(lexicalCfg.enabled ?? true);
+    setSemanticEnabled(semanticIsEnabled);
+    setLexicalEnabled(lexicalIsEnabled);
+    setLexicalStemming(Boolean(lexicalCfg.lexical_stemming ?? true));
+
+    const preferredMode = generalCfg.search_type || "hybrid";
+    const preferredAvailable =
+      (preferredMode === "semantic" && semanticIsEnabled) ||
+      (preferredMode === "lexical" && lexicalIsEnabled) ||
+      (preferredMode === "hybrid" && semanticIsEnabled && lexicalIsEnabled);
+
+    if (preferredAvailable) {
+      setSearchMode(preferredMode);
+      return;
+    }
+
+    if (semanticIsEnabled) {
+      setSearchMode("semantic");
+      return;
+    }
+    if (lexicalIsEnabled) {
+      setSearchMode("lexical");
+      return;
+    }
+    setSearchMode("hybrid");
+  };
 
   const refreshChatState = async () => {
     const ready = await invoke<ChatReadyResponse>("get_chat_ready");
     setChatReady(ready);
-    const [docTypes, languages, categories, docIds] = await Promise.all([
+
+    const [docTypes, languages, categories, docIds, semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
       invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_type" }),
       invoke<FilterValuesResponse>("get_search_filter_values", { field: "language" }),
       invoke<FilterValuesResponse>("get_search_filter_values", { field: "category" }),
       invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_id" }),
+      invoke<SearchConfigState>("get_semantic_search_config"),
+      invoke<{ enabled: boolean; stemming: boolean }>("get_lexical_search_config"),
+      invoke<GeneralSettingsPayload>("get_general_settings"),
+      invoke<{ alpha?: number }>("get_hybrid_search_config"),
     ]);
+
     setAvailableFilters({
       doc_types: docTypes.values || [],
       languages: languages.values || [],
       categories: categories.values || [],
       doc_ids: docIds.values || [],
     });
+
+    applySearchConfig(
+      semanticCfg,
+      { enabled: lexicalCfg.enabled, lexical_stemming: lexicalCfg.stemming },
+      generalCfg,
+    );
+    setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
   };
 
   useEffect(() => {
@@ -174,28 +228,41 @@ export function Chat() {
     try {
       const payload = {
         query: query.trim(),
+        search_type: searchMode,
+        alpha: searchMode === "hybrid" ? alphaOverride : undefined,
         page: targetPage,
         page_size: 5,
         include_debug: debugMode,
         filters,
       };
 
-      const response = await invoke<SemanticSearchResponse>("run_semantic_search_with_options", { payload });
-      setResults((prev) => (append ? [...prev, ...(response.results || [])] : (response.results || [])));
+      const response = await runUnifiedSearch(payload);
+      setResults((prev) => (append ? [...prev, ...(response.results || [])] : response.results || []));
       setHasMore(Boolean(response.has_more));
       setPage(response.page || targetPage);
       setTotalResults(response.total_results || 0);
-      setDebug(response.debug || null);
+      setDebug((response.debug as Record<string, any>) || null);
+
       if (!append) {
         setExpanded({});
       }
     } catch (err: any) {
-      if (!append) setResults([]);
+      if (!append) {
+        setResults([]);
+      }
       setError(String(err));
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (searchMode !== "hybrid" || !query.trim()) return;
+    const timer = window.setTimeout(() => {
+      void executeSearch(1, false);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [alphaOverride]);
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
@@ -207,25 +274,47 @@ export function Chat() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t("chat.title")}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("chat.semanticDescription")}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{resultDescription(searchMode)}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {chatReady.ready ? `Index prêt (${chatReady.vectors_count} vecteurs)` : "Base vide: lancez une ingestion pour activer le chat."}
+            {chatReady.ready
+              ? `Index pret (${chatReady.vectors_count} vecteurs, ${chatReady.lexical_chunks || 0} chunks BM25)`
+              : "Base vide: lancez une ingestion pour activer le chat."}
           </p>
         </div>
 
         <Button variant="outline" onClick={() => setShowOptions((value) => !value)}>
           <Settings2 className="w-4 h-4 mr-2" />
-          ⚙ Options
+          Options
         </Button>
       </div>
 
       {showOptions && (
         <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">
-          <div className="grid md:grid-cols-3 gap-3">
+          <div className="grid md:grid-cols-4 gap-3">
             <Toggle checked={debugMode} onChange={setDebugMode} label="Mode debug" />
             <Toggle checked={showScores} onChange={setShowScores} label="Afficher scores" />
-            <Toggle checked={showMetadata} onChange={setShowMetadata} label="Afficher métadonnées" />
+            <Toggle checked={showMetadata} onChange={setShowMetadata} label="Afficher metadonnees" />
+            <Toggle checked={showProvenance} onChange={setShowProvenance} label="Afficher provenance" />
           </div>
+
+          {searchMode === "hybrid" && (
+            <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+              <label className="text-sm font-medium">Alpha ({alphaOverride.toFixed(2)})</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={alphaOverride}
+                onChange={(event) => setAlphaOverride(Number(event.target.value))}
+                className="mt-2 w-full"
+              />
+              <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                <span>Lexical {Math.round((1 - alphaOverride) * 100)}%</span>
+                <span>Semantique {Math.round(alphaOverride * 100)}%</span>
+              </div>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 gap-3">
             <label className="text-sm">
@@ -261,7 +350,7 @@ export function Chat() {
             </label>
 
             <label className="text-sm">
-              Catégories
+              Categories
               <select
                 className="mt-1 w-full border rounded px-2 py-1 min-h-28"
                 multiple
@@ -294,11 +383,8 @@ export function Chat() {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setFilters({ doc_ids: [], doc_types: [], languages: [], categories: [] })}
-            >
-              Réinitialiser filtres
+            <Button variant="ghost" onClick={() => setFilters({ doc_ids: [], doc_types: [], languages: [], categories: [] })}>
+              Reinitialiser filtres
             </Button>
             {hasActiveFilters && <span className="text-xs text-amber-700 self-center">Filtres actifs</span>}
           </div>
@@ -306,15 +392,31 @@ export function Chat() {
       )}
 
       <form onSubmit={onSearch} className="flex gap-2">
+        <SearchModeSelector
+          mode={searchMode}
+          onModeChange={(mode) => {
+            setSearchMode(mode);
+            setResults([]);
+            setDebug(null);
+            setPage(1);
+            setHasMore(false);
+            setTotalResults(0);
+            setExpanded({});
+          }}
+          lexicalEnabled={lexicalEnabled}
+          semanticEnabled={semanticEnabled}
+        />
+
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("chat.searchPlaceholder")}
           className="flex-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
         />
+
         <button
           type="submit"
-          disabled={loading || !query.trim() || !chatReady.ready}
+          disabled={loading || !query.trim() || !chatReady.ready || !selectedModeEnabled}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-60"
         >
           <Search size={16} />
@@ -325,15 +427,13 @@ export function Chat() {
       {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
 
       {debugMode && debug && (
-        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs grid md:grid-cols-2 gap-2">
-          <div>Latence embedding: <b>{debug.embedding_latency_ms} ms</b></div>
-          <div>Latence recherche: <b>{debug.search_latency_ms} ms</b></div>
-          <div>Latence MMR: <b>{debug.mmr_latency_ms} ms</b></div>
-          <div>Latence totale: <b>{debug.total_latency_ms} ms</b></div>
-          <div>Résultats DB: <b>{debug.results_from_db}</b></div>
-          <div>Après seuil: <b>{debug.results_after_threshold}</b></div>
-          <div>Après filtres: <b>{debug.results_after_filters}</b></div>
-          <div>Après MMR: <b>{debug.results_after_mmr}</b></div>
+        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
+          {Object.entries(debug).map(([key, value]) => (
+            <div key={key} className="break-words">
+              <span className="font-semibold">{key}: </span>
+              <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+            </div>
+          ))}
         </section>
       )}
 
@@ -349,65 +449,76 @@ export function Chat() {
           </div>
         )}
 
-        {results.map((result) => {
-          const opened = Boolean(expanded[result.chunk_id]);
-          return (
-            <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
-                  {result.page_number ? <span> · p.{result.page_number}</span> : null}
+        {searchMode === "lexical" &&
+          results.map((result) => (
+            <LexicalResultCard
+              key={result.chunk_id}
+              result={toLexicalResult(result)}
+              expanded={Boolean(expanded[result.chunk_id])}
+              onToggle={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !prev[result.chunk_id] }))}
+              showScores={showScores}
+              showMetadata={showMetadata}
+              stemming={lexicalStemming}
+            />
+          ))}
+
+        {searchMode !== "lexical" &&
+          results.map((result) => {
+            const opened = Boolean(expanded[result.chunk_id]);
+            return (
+              <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
+                    {result.page_number ? <span> | p.{result.page_number}</span> : null}
+                  </div>
+                  {showScores ? (
+                    <span className={`text-xs px-2 py-1 rounded ${scoreClass(result.score)}`}>
+                      {t("chat.score")}: {result.score.toFixed(4)}
+                    </span>
+                  ) : null}
                 </div>
-                {showScores ? (
-                  <span className={`text-xs px-2 py-1 rounded ${scoreClass(result.score)}`}>
-                    {t("chat.score")}: {result.score.toFixed(4)}
-                  </span>
-                ) : null}
-              </div>
 
-              <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                {renderHighlighted(opened ? result.text : result.text_preview, query)}
-              </p>
+                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                  {renderHighlighted(opened ? result.text : result.text_preview, query)}
+                </p>
 
-              {showMetadata && (
-                <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 grid md:grid-cols-2 gap-2">
-                  <div>Type: <b>{result.doc_type || "n/a"}</b></div>
-                  <div>Langue: <b>{result.doc_language || "n/a"}</b></div>
-                  <div>Catégorie: <b>{result.category || "n/a"}</b></div>
-                  <div>Chunk: <b>{result.chunk_index ?? "n/a"}/{result.chunk_total ?? "n/a"}</b></div>
+                {searchMode === "hybrid" && showProvenance && (
+                  <div className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                    Semantique: #{result.semantic_rank ?? "-"} ({result.semantic_score?.toFixed(4) ?? "n/a"})
+                    {" | "}
+                    Lexicale: #{result.lexical_rank ?? "-"} ({result.lexical_score?.toFixed(4) ?? "n/a"})
+                  </div>
+                )}
+
+                {showMetadata && (
+                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 grid md:grid-cols-2 gap-2">
+                    <div>Type: <b>{result.doc_type || "n/a"}</b></div>
+                    <div>Langue: <b>{result.doc_language || "n/a"}</b></div>
+                    <div>Categorie: <b>{result.category || "n/a"}</b></div>
+                    <div>Chunk: <b>{result.chunk_index ?? "n/a"}/{result.chunk_total ?? "n/a"}</b></div>
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <Button variant="ghost" size="sm" onClick={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !opened }))}>
+                    {opened ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                    {opened ? "Reduire" : "Voir le texte complet"}
+                  </Button>
                 </div>
-              )}
-
-              <div className="mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !opened }))}
-                >
-                  {opened ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-                  {opened ? "Réduire" : "Voir le texte complet"}
-                </Button>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })}
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">{totalResults} résultat(s)</span>
+        <span className="text-xs text-gray-500">{totalResults} resultat(s)</span>
         {hasMore && (
-          <Button
-            variant="outline"
-            disabled={loading}
-            onClick={() => {
-              void executeSearch(page + 1, true);
-            }}
-          >
-            Voir plus de résultats
+          <Button variant="outline" disabled={loading} onClick={() => { void executeSearch(page + 1, true); }}>
+            Voir plus de resultats
           </Button>
         )}
       </div>
     </div>
   );
 }
-

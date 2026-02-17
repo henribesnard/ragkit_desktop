@@ -102,6 +102,16 @@ fn main() {
             commands::run_semantic_search_with_options,
             commands::get_search_filter_values,
             commands::get_chat_ready,
+            commands::get_lexical_search_config,
+            commands::update_lexical_search_config,
+            commands::reset_lexical_search_config,
+            commands::lexical_search,
+            commands::get_bm25_index_stats,
+            commands::rebuild_bm25_index,
+            commands::get_hybrid_search_config,
+            commands::update_hybrid_search_config,
+            commands::reset_hybrid_search_config,
+            commands::unified_search,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

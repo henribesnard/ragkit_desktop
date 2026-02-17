@@ -4,11 +4,13 @@ import { invoke } from "@tauri-apps/api/core";
 export interface GeneralSettings {
   ingestion_mode: "manual" | "automatic";
   auto_ingestion_delay: number;
+  search_type: "semantic" | "lexical" | "hybrid";
 }
 
 const defaultSettings: GeneralSettings = {
   ingestion_mode: "manual",
   auto_ingestion_delay: 30,
+  search_type: "hybrid",
 };
 
 export function useGeneralSettings() {
@@ -49,4 +51,3 @@ export function useGeneralSettings() {
 
   return { settings, loading, error, update, refresh };
 }
-

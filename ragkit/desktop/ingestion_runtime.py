@@ -13,6 +13,7 @@ from pathlib import Path
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
 from ragkit.config.embedding_schema import EmbeddingConfig
+from ragkit.config.retrieval_schema import LexicalSearchConfig
 from ragkit.config.vector_store_schema import GeneralSettings, IngestionMode, VectorStoreConfig
 from ragkit.desktop import documents
 from ragkit.desktop.models import (
@@ -23,8 +24,10 @@ from ragkit.desktop.models import (
     IngestionProgress,
     SettingsPayload,
 )
+from ragkit.desktop.profiles import build_full_config
 from ragkit.desktop.settings_store import get_data_dir, load_settings
 from ragkit.embedding.engine import EmbeddingEngine
+from ragkit.retrieval.lexical_engine import BM25Index
 from ragkit.storage.base import VectorPoint, create_vector_store
 
 
@@ -121,6 +124,23 @@ class IngestionRuntime:
             }
             for row in rows
         }
+
+    def _bm25_index_dir(self) -> Path:
+        return get_data_dir() / "bm25_index"
+
+    def _resolve_lexical_config(self, settings: SettingsPayload) -> LexicalSearchConfig:
+        retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
+        lexical_payload = retrieval_payload.get("lexical", {}) if isinstance(retrieval_payload, dict) else {}
+        if lexical_payload:
+            return LexicalSearchConfig.model_validate(lexical_payload)
+
+        profile_name = settings.profile or "general"
+        full_config = build_full_config(profile_name, settings.calibration_answers)
+        retrieval_profile_payload = full_config.get("retrieval", {})
+        lexical_profile_payload = (
+            retrieval_profile_payload.get("lexical", {}) if isinstance(retrieval_profile_payload, dict) else {}
+        )
+        return LexicalSearchConfig.model_validate(lexical_profile_payload)
 
     async def _auto_ingestion_loop(self) -> None:
         while True:
@@ -268,6 +288,9 @@ class IngestionRuntime:
         chunk_cfg = ChunkingConfig.model_validate(settings.chunking or {})
         emb_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
         vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
+        lexical_cfg = self._resolve_lexical_config(settings)
+        bm25_index = BM25Index(lexical_cfg)
+        bm25_index.load(self._bm25_index_dir())
         store = create_vector_store(vec_cfg)
         embedder = EmbeddingEngine(emb_cfg)
         chunker = create_chunker(chunk_cfg)
@@ -323,6 +346,7 @@ class IngestionRuntime:
             if not doc_id:
                 continue
             await store.delete_by_doc_id(str(doc_id))
+            bm25_index.remove_document_chunks(str(doc_id))
             with sqlite3.connect(self._registry) as con:
                 con.execute("DELETE FROM ingestion_registry WHERE doc_id = ?", (doc_id,))
 
@@ -352,6 +376,7 @@ class IngestionRuntime:
             # chunks first so obsolete chunks do not remain in the index.
             if (not incremental) or (doc.file_path in modified_paths):
                 await store.delete_by_doc_id(doc.id)
+                bm25_index.remove_document_chunks(doc.id)
 
             points = [
                 VectorPoint(
@@ -379,6 +404,16 @@ class IngestionRuntime:
                 for i, chunk in enumerate(chunks)
             ]
             await store.upsert(points)
+
+            for point in points:
+                payload = dict(point.payload or {})
+                bm25_index.add_document(
+                    doc_id=point.id,
+                    text=str(payload.get("chunk_text") or ""),
+                    metadata=payload,
+                    language=doc.language,
+                )
+
             file_abs = source_root / doc.file_path
             file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
             with sqlite3.connect(self._registry) as con:
@@ -400,6 +435,7 @@ class IngestionRuntime:
 
         self.progress.phase = "finalizing"
         stats = await store.collection_stats()
+        bm25_index.save(self._bm25_index_dir())
         end_status = "cancelled" if self._cancelled else "completed"
         self.progress.status = end_status
         self.progress.elapsed_seconds = time.perf_counter() - started

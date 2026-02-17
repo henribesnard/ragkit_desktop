@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ragkit.config.manager import config_manager
+from ragkit.config.retrieval_schema import SearchType
 from ragkit.config.vector_store_schema import GeneralSettings, VectorStoreConfig
 from ragkit.desktop import documents, settings_store
 from ragkit.desktop.analysis_progress import AnalysisProgress
@@ -22,6 +23,7 @@ from ragkit.desktop.models import (
     SettingsPayload,
     SourceConfig,
 )
+from ragkit.desktop.profiles import build_full_config
 from ragkit.storage.base import create_vector_store
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,41 @@ settings_router = APIRouter(prefix="/api/settings", tags=["settings"])
 _CURRENT_CONFIG: IngestionConfig | None = None
 _DOCUMENTS: List[DocumentInfo] = []
 _DOCUMENTS_LOADED: bool = False
+
+
+def _default_general_settings_from_profile(settings: SettingsPayload) -> GeneralSettings:
+    profile_name = settings.profile or "general"
+    full_config = build_full_config(profile_name, settings.calibration_answers)
+    retrieval_payload = full_config.get("retrieval", {})
+    retrieval_payload = retrieval_payload if isinstance(retrieval_payload, dict) else {}
+
+    architecture = str(retrieval_payload.get("architecture") or "").strip().lower()
+    semantic_payload = retrieval_payload.get("semantic", {})
+    lexical_payload = retrieval_payload.get("lexical", {})
+    semantic_enabled = bool(
+        semantic_payload.get("enabled", True) if isinstance(semantic_payload, dict) else True
+    )
+    lexical_enabled = bool(
+        lexical_payload.get("enabled", True) if isinstance(lexical_payload, dict) else True
+    )
+
+    if not semantic_enabled and lexical_enabled:
+        search_type = SearchType.LEXICAL
+    elif not lexical_enabled and semantic_enabled:
+        search_type = SearchType.SEMANTIC
+    elif architecture == "semantic":
+        search_type = SearchType.SEMANTIC
+    elif architecture == "lexical":
+        search_type = SearchType.LEXICAL
+    else:
+        search_type = SearchType.HYBRID
+
+    defaults = GeneralSettings()
+    return GeneralSettings(
+        ingestion_mode=defaults.ingestion_mode,
+        auto_ingestion_delay=defaults.auto_ingestion_delay,
+        search_type=search_type,
+    )
 
 
 def _get_documents() -> List[DocumentInfo]:
@@ -211,7 +248,10 @@ async def progress_stream():
 async def get_general_settings():
     runtime.ensure_background_tasks()
     settings = settings_store.load_settings()
-    return GeneralSettings.model_validate(settings.general or {}).model_dump(mode="json")
+    payload = settings.general if isinstance(settings.general, dict) else {}
+    if payload:
+        return GeneralSettings.model_validate(payload).model_dump(mode="json")
+    return _default_general_settings_from_profile(settings).model_dump(mode="json")
 
 
 @router.put("/settings/general")
