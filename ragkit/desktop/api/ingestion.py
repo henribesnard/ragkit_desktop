@@ -14,6 +14,7 @@ from ragkit.config.vector_store_schema import GeneralSettings, VectorStoreConfig
 from ragkit.desktop import documents, settings_store
 from ragkit.desktop.analysis_progress import AnalysisProgress
 from ragkit.desktop.ingestion_runtime import runtime
+from ragkit.desktop.llm_service import sync_llm_from_general_fields
 from ragkit.desktop.models import (
     AnalysisResult,
     ChangeDetectionResult,
@@ -41,6 +42,8 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
     full_config = build_full_config(profile_name, settings.calibration_answers)
     retrieval_payload = full_config.get("retrieval", {})
     retrieval_payload = retrieval_payload if isinstance(retrieval_payload, dict) else {}
+    llm_payload = full_config.get("llm", {})
+    llm_payload = llm_payload if isinstance(llm_payload, dict) else {}
 
     architecture = str(retrieval_payload.get("architecture") or "").strip().lower()
     semantic_payload = retrieval_payload.get("semantic", {})
@@ -64,10 +67,19 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
         search_type = SearchType.HYBRID
 
     defaults = GeneralSettings()
+    llm_provider = str(llm_payload.get("provider") or "openai").strip().lower() or "openai"
+    llm_model = str(llm_payload.get("model") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    llm_temperature = float(llm_payload.get("temperature", defaults.llm_temperature))
+    response_language = str(llm_payload.get("response_language") or defaults.response_language).strip().lower()
+    if response_language not in {"auto", "fr", "en"}:
+        response_language = "auto"
     return GeneralSettings(
         ingestion_mode=defaults.ingestion_mode,
         auto_ingestion_delay=defaults.auto_ingestion_delay,
         search_type=search_type,
+        llm_model=f"{llm_provider}/{llm_model}",
+        llm_temperature=llm_temperature,
+        response_language=response_language,
     )
 
 
@@ -249,9 +261,11 @@ async def get_general_settings():
     runtime.ensure_background_tasks()
     settings = settings_store.load_settings()
     payload = settings.general if isinstance(settings.general, dict) else {}
+    defaults = _default_general_settings_from_profile(settings).model_dump(mode="json")
     if payload:
-        return GeneralSettings.model_validate(payload).model_dump(mode="json")
-    return _default_general_settings_from_profile(settings).model_dump(mode="json")
+        merged = {**defaults, **payload}
+        return GeneralSettings.model_validate(merged).model_dump(mode="json")
+    return defaults
 
 
 @router.put("/settings/general")
@@ -259,6 +273,13 @@ async def update_general_settings(payload: GeneralSettings):
     runtime.ensure_background_tasks()
     settings = settings_store.load_settings()
     settings.general = payload.model_dump(mode="json")
+    llm_payload = settings.llm if isinstance(settings.llm, dict) else {}
+    settings.llm = sync_llm_from_general_fields(
+        llm_payload=llm_payload,
+        llm_model=payload.llm_model,
+        llm_temperature=payload.llm_temperature,
+        response_language=payload.response_language,
+    )
     settings_store.save_settings(settings)
     return payload.model_dump(mode="json")
 

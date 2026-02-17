@@ -98,6 +98,43 @@ export function GeneralSettings() {
           </label>
         </div>
       </div>
+
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <h3 className="font-semibold mb-2">LLM (generation)</h3>
+        <div>
+          <label className="text-sm">Modele LLM</label>
+          <input
+            className="border rounded px-2 py-1 ml-2 w-72"
+            value={settings.llm_model}
+            onChange={(e) => void update({ llm_model: e.target.value })}
+            placeholder="openai/gpt-4o-mini"
+          />
+        </div>
+        <div>
+          <label className="text-sm">Temperature ({settings.llm_temperature.toFixed(2)})</label>
+          <input
+            type="range"
+            min={0}
+            max={2}
+            step={0.05}
+            className="ml-2 align-middle"
+            value={settings.llm_temperature}
+            onChange={(e) => void update({ llm_temperature: Number(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="text-sm">Langue de reponse</label>
+          <select
+            className="border rounded px-2 py-1 ml-2"
+            value={settings.response_language}
+            onChange={(e) => void update({ response_language: e.target.value as "auto" | "fr" | "en" })}
+          >
+            <option value="auto">Auto</option>
+            <option value="fr">Francais</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
     </div>
   );
 }

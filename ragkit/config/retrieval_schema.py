@@ -389,6 +389,13 @@ class UnifiedSearchResultItem(BaseModel):
     lexical_score: float | None = None
     matched_terms: dict[str, int] | None = None
 
+    # Reranking metadata.
+    rerank_score: float | None = None
+    original_rank: int | None = None
+    original_score: float | None = None
+    rank_change: int | None = None
+    is_reranked: bool = False
+
     # Common metadata.
     doc_title: str | None = None
     doc_path: str | None = None

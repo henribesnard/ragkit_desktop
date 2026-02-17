@@ -70,3 +70,6 @@ class GeneralSettings(BaseModel):
     ingestion_mode: IngestionMode = IngestionMode.MANUAL
     auto_ingestion_delay: int = Field(default=30, ge=5, le=300)
     search_type: SearchType = SearchType.HYBRID
+    llm_model: str = "openai/gpt-4o-mini"
+    llm_temperature: float = Field(default=0.1, ge=0.0, le=2.0)
+    response_language: str = Field(default="auto", pattern=r"^(auto|fr|en)$")

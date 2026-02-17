@@ -1,6 +1,6 @@
 [package]
 name = "ragkit-desktop"
-version = "7.0.0"
+version = "9.0.0"
 description = "RAGKIT Desktop Application"
 authors = ["RAGKIT Contributors"]
 edition = "2021"
@@ -15,7 +15,8 @@ tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"

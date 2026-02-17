@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from ragkit.chunking.tokenizer import TokenCounter
+from ragkit.config.rerank_schema import RerankConfig, RerankProvider
 from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.retrieval_schema import (
     BM25IndexStats,
@@ -32,10 +33,12 @@ from ragkit.config.retrieval_schema import (
 )
 from ragkit.config.vector_store_schema import GeneralSettings, VectorStoreConfig
 from ragkit.desktop.profiles import build_full_config
+from ragkit.desktop.rerank_service import get_rerank_config, resolve_reranker
 from ragkit.desktop.settings_store import get_data_dir, load_settings, save_settings
 from ragkit.embedding.engine import EmbeddingEngine, cosine_similarity
 from ragkit.retrieval import BM25Index, LexicalSearchEngine
 from ragkit.retrieval.hybrid_engine import HybridSearchEngine
+from ragkit.retrieval.reranker.base import RerankCandidate
 from ragkit.retrieval.search_router import SearchRouter
 from ragkit.storage.base import VectorPoint, create_vector_store
 
@@ -503,6 +506,104 @@ def _lexical_item_to_unified(item: LexicalSearchResultItem) -> UnifiedSearchResu
     )
 
 
+def _unified_item_metadata(item: UnifiedSearchResultItem) -> dict[str, Any]:
+    return {
+        "semantic_rank": item.semantic_rank,
+        "semantic_score": item.semantic_score,
+        "lexical_rank": item.lexical_rank,
+        "lexical_score": item.lexical_score,
+        "matched_terms": dict(item.matched_terms or {}),
+        "doc_title": item.doc_title,
+        "doc_path": item.doc_path,
+        "doc_type": item.doc_type,
+        "page_number": item.page_number,
+        "chunk_index": item.chunk_index,
+        "chunk_total": item.chunk_total,
+        "chunk_tokens": item.chunk_tokens,
+        "section_header": item.section_header,
+        "doc_language": item.doc_language,
+        "category": item.category,
+        "keywords": list(item.keywords),
+        "ingestion_version": item.ingestion_version,
+    }
+
+
+async def _rerank_unified_results(
+    *,
+    query: str,
+    results: list[UnifiedSearchResultItem],
+    rerank_config: RerankConfig,
+    candidates_limit: int,
+    top_n: int,
+    relevance_threshold: float,
+) -> tuple[list[UnifiedSearchResultItem], list[dict[str, Any]], list[dict[str, Any]]]:
+    if not results:
+        return [], [], []
+
+    reranker = resolve_reranker(rerank_config)
+    if reranker is None:
+        return results, [], []
+
+    selected = list(results[: max(candidates_limit, 0)])
+    if not selected:
+        return [], [], []
+
+    before = [
+        {
+            "chunk_id": item.chunk_id,
+            "rank": index + 1,
+            "score": item.score,
+        }
+        for index, item in enumerate(selected)
+    ]
+
+    candidates = [
+        RerankCandidate(
+            chunk_id=item.chunk_id,
+            text=item.text,
+            original_rank=index + 1,
+            original_score=item.score,
+            metadata=_unified_item_metadata(item),
+        )
+        for index, item in enumerate(selected)
+    ]
+
+    reranked = await reranker.rerank(
+        query=query,
+        candidates=candidates,
+        top_n=min(max(top_n, 1), len(candidates)),
+        relevance_threshold=relevance_threshold,
+    )
+
+    selected_map = {item.chunk_id: item for item in selected}
+    reranked_items: list[UnifiedSearchResultItem] = []
+    for result in reranked:
+        source = selected_map.get(result.chunk_id)
+        if source is None:
+            continue
+        item = source.model_copy(deep=True)
+        item.score = result.rerank_score
+        item.rerank_score = result.rerank_score
+        item.original_rank = result.original_rank
+        item.original_score = result.original_score
+        item.rank_change = result.rank_change
+        item.is_reranked = True
+        reranked_items.append(item)
+
+    after = [
+        {
+            "chunk_id": item.chunk_id,
+            "rank": index + 1,
+            "score": item.rerank_score,
+            "original_rank": item.original_rank,
+            "rank_change": item.rank_change,
+        }
+        for index, item in enumerate(reranked_items)
+    ]
+
+    return reranked_items, before, after
+
+
 def _bm25_index_dir() -> Path:
     return get_data_dir() / "bm25_index"
 
@@ -713,7 +814,7 @@ async def _execute_hybrid_search(*, payload: UnifiedSearchQuery) -> UnifiedSearc
     page_size = payload.page_size
     configured_top_k = payload.top_k or hybrid_cfg.top_k
     required_top_k = max(configured_top_k, page * page_size)
-    source_top_k = max(required_top_k * 2, semantic_cfg.top_k, lexical_cfg.top_k)
+    source_top_k = min(max(required_top_k * 2, semantic_cfg.top_k, lexical_cfg.top_k), 100)
 
     semantic_query = SearchQuery(
         query=payload.query,
@@ -858,13 +959,108 @@ async def _execute_unified_lexical(*, payload: UnifiedSearchQuery) -> UnifiedSea
 
 async def _execute_unified_search(payload: UnifiedSearchQuery) -> UnifiedSearchResponse:
     general_settings = _resolve_general_settings()
+    semantic_cfg = _get_semantic_config()
+    lexical_cfg = _get_lexical_config()
+    hybrid_cfg = _get_hybrid_config()
+    resolved_search_type = payload.search_type or general_settings.search_type
+
+    rerank_cfg = get_rerank_config()
+    rerank_enabled = bool(rerank_cfg.enabled and rerank_cfg.provider != RerankProvider.NONE)
+
+    configured_top_k = payload.top_k
+    if configured_top_k is None:
+        if resolved_search_type == SearchType.SEMANTIC:
+            configured_top_k = semantic_cfg.top_k
+        elif resolved_search_type == SearchType.LEXICAL:
+            configured_top_k = lexical_cfg.top_k
+        else:
+            configured_top_k = hybrid_cfg.top_k
+
+    minimum_for_pagination = payload.page * payload.page_size
+    configured_top_k = max(int(configured_top_k), int(minimum_for_pagination), 1)
+
+    warnings: list[str] = []
+    routed_payload = payload
+    if rerank_enabled:
+        max_supported_candidates = 100
+        candidate_budget = min(rerank_cfg.candidates, max_supported_candidates)
+        if rerank_cfg.candidates > max_supported_candidates:
+            warnings.append(
+                f"rerank.candidates capped to {max_supported_candidates} due retrieval limits."
+            )
+        if configured_top_k < candidate_budget:
+            warnings.append(
+                f"top_k auto-adjusted from {configured_top_k} to {candidate_budget} to feed reranking."
+            )
+            configured_top_k = candidate_budget
+        routed_payload = payload.model_copy(
+            update={
+                "top_k": configured_top_k,
+                "page": 1,
+                "page_size": configured_top_k,
+                "include_debug": bool(payload.include_debug or rerank_cfg.debug_default),
+            }
+        )
+
     search_router = SearchRouter(
         semantic_handler=_execute_unified_semantic,
         lexical_handler=_execute_unified_lexical,
         hybrid_handler=_execute_hybrid_search,
         default_type=general_settings.search_type,
     )
-    return await search_router.search(search_type=payload.search_type, payload=payload)
+    response = await search_router.search(search_type=resolved_search_type, payload=routed_payload)
+
+    if not rerank_enabled:
+        return response
+
+    try:
+        reranked_results, before_debug, after_debug = await _rerank_unified_results(
+            query=payload.query,
+            results=response.results,
+            rerank_config=rerank_cfg,
+            candidates_limit=rerank_cfg.candidates,
+            top_n=rerank_cfg.top_n,
+            relevance_threshold=rerank_cfg.relevance_threshold,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reranking failed: {exc}") from exc
+
+    start_idx = (payload.page - 1) * payload.page_size
+    end_idx = start_idx + payload.page_size
+    paged_results = reranked_results[start_idx:end_idx]
+    has_more = end_idx < len(reranked_results)
+
+    include_debug = bool(payload.include_debug or rerank_cfg.debug_default or response.debug or warnings)
+    debug_payload = dict(response.debug or {}) if include_debug else None
+    if debug_payload is not None:
+        rerank_debug: dict[str, Any] = {
+            "provider": rerank_cfg.provider.value,
+            "model": rerank_cfg.model,
+            "candidates_requested": rerank_cfg.candidates,
+            "candidates_used": min(rerank_cfg.candidates, len(response.results)),
+            "top_n": rerank_cfg.top_n,
+            "relevance_threshold": rerank_cfg.relevance_threshold,
+        }
+        if warnings:
+            rerank_debug["warnings"] = warnings
+        if payload.include_debug or rerank_cfg.debug_default:
+            rerank_debug["before"] = before_debug
+            rerank_debug["after"] = after_debug
+        debug_payload["rerank"] = rerank_debug
+        debug_payload["pipeline"] = f"{resolved_search_type.value} + reranking"
+
+    return UnifiedSearchResponse(
+        query=payload.query,
+        search_type=resolved_search_type,
+        results=paged_results,
+        total_results=len(reranked_results),
+        page=payload.page,
+        page_size=payload.page_size,
+        has_more=has_more,
+        debug=debug_payload,
+    )
 
 
 def _filters_field_value(payload: dict[str, Any], field: str) -> str | None:

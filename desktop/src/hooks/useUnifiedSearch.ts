@@ -32,6 +32,11 @@ export interface UnifiedSearchResultItem {
   lexical_rank?: number | null;
   lexical_score?: number | null;
   matched_terms?: Record<string, number> | null;
+  rerank_score?: number | null;
+  original_rank?: number | null;
+  original_score?: number | null;
+  rank_change?: number | null;
+  is_reranked?: boolean;
   doc_title?: string | null;
   doc_path?: string | null;
   doc_type?: string | null;

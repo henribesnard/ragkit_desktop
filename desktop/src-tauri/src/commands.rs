@@ -1,7 +1,12 @@
-use tauri::AppHandle;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use futures_util::StreamExt;
+use tauri::{AppHandle, Emitter, Manager, Window};
 use serde::{Deserialize, Serialize};
-use crate::backend::request;
+use crate::backend::{request, BackendState};
 use reqwest::Method;
+
+static CHAT_STREAM_STOP: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthCheckResponse {
@@ -387,4 +392,174 @@ pub async fn reset_hybrid_search_config(app: AppHandle) -> Result<serde_json::Va
 #[tauri::command]
 pub async fn unified_search(app: AppHandle, query: serde_json::Value) -> Result<serde_json::Value, String> {
     request(Method::POST, "/api/search", Some(query), &app).await
+}
+
+// --- Rerank Commands ---
+
+#[tauri::command]
+pub async fn get_rerank_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/rerank/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_rerank_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/rerank/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_rerank_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/rerank/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_rerank_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/rerank/test-connection", None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_rerank(app: AppHandle, query: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/rerank/test", Some(query), &app).await
+}
+
+#[tauri::command]
+pub async fn get_rerank_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/rerank/models?provider={}", provider);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+// --- LLM Commands ---
+
+#[tauri::command]
+pub async fn get_llm_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/llm/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_llm_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/llm/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_llm_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/llm/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_llm_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/llm/test-connection", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_llm_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/llm/models?provider={}", provider);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+// --- Chat Commands ---
+
+#[tauri::command]
+pub async fn chat(app: AppHandle, query: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/chat", Some(query), &app).await
+}
+
+#[tauri::command]
+pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<String, String> {
+    CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+
+    let app = window.app_handle();
+    let state = app.state::<BackendState>();
+    let port = (*state.port.lock().map_err(|e| e.to_string())?)
+        .ok_or_else(|| "Backend not ready".to_string())?;
+    let url = format!("http://127.0.0.1:{}/api/chat/stream", port);
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .json(&query)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !response.status().is_success() {
+        let text = response.text().await.unwrap_or_else(|_| "Unknown streaming error".to_string());
+        return Err(format!("Chat stream failed: {}", text));
+    }
+
+    let mut stream = response.bytes_stream();
+    let mut buffer = String::new();
+
+    while let Some(next) = stream.next().await {
+        if CHAT_STREAM_STOP.load(Ordering::SeqCst) {
+            break;
+        }
+        let bytes = next.map_err(|e| e.to_string())?;
+        buffer.push_str(&String::from_utf8_lossy(&bytes));
+
+        while let Some(delim_pos) = buffer.find("\n\n") {
+            let block = buffer[..delim_pos].to_string();
+            buffer = buffer[(delim_pos + 2)..].to_string();
+
+            let mut event_name = String::from("message");
+            let mut data_lines: Vec<String> = Vec::new();
+            for line in block.lines() {
+                if let Some(value) = line.strip_prefix("event:") {
+                    event_name = value.trim().to_string();
+                } else if let Some(value) = line.strip_prefix("data:") {
+                    data_lines.push(value.trim().to_string());
+                }
+            }
+            let data_payload = data_lines.join("\n");
+            if data_payload.is_empty() {
+                continue;
+            }
+
+            if event_name == "token" {
+                let parsed: serde_json::Value = serde_json::from_str(&data_payload)
+                    .unwrap_or_else(|_| serde_json::json!({ "content": data_payload }));
+                let token = parsed
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                if !token.is_empty() {
+                    window
+                        .emit("chat-stream-chunk", token)
+                        .map_err(|e| e.to_string())?;
+                }
+            } else if event_name == "done" {
+                let parsed: serde_json::Value =
+                    serde_json::from_str(&data_payload).unwrap_or_else(|_| serde_json::json!({}));
+                window
+                    .emit("chat-stream-done", parsed)
+                    .map_err(|e| e.to_string())?;
+                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                return Ok("stream_completed".to_string());
+            } else if event_name == "error" {
+                let parsed: serde_json::Value = serde_json::from_str(&data_payload)
+                    .unwrap_or_else(|_| serde_json::json!({ "error": data_payload }));
+                window
+                    .emit("chat-stream-done", parsed)
+                    .map_err(|e| e.to_string())?;
+                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                return Ok("stream_error".to_string());
+            }
+        }
+    }
+
+    if CHAT_STREAM_STOP.load(Ordering::SeqCst) {
+        window
+            .emit("chat-stream-done", serde_json::json!({"stopped": true}))
+            .map_err(|e| e.to_string())?;
+        CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+        return Ok("stream_stopped".to_string());
+    }
+
+    CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+    Ok("stream_ended".to_string())
+}
+
+#[tauri::command]
+pub async fn chat_stream_stop() -> Result<(), String> {
+    CHAT_STREAM_STOP.store(true, Ordering::SeqCst);
+    Ok(())
 }

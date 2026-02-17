@@ -112,6 +112,20 @@ fn main() {
             commands::update_hybrid_search_config,
             commands::reset_hybrid_search_config,
             commands::unified_search,
+            commands::get_rerank_config,
+            commands::update_rerank_config,
+            commands::reset_rerank_config,
+            commands::test_rerank_connection,
+            commands::test_rerank,
+            commands::get_rerank_models,
+            commands::get_llm_config,
+            commands::update_llm_config,
+            commands::reset_llm_config,
+            commands::test_llm_connection,
+            commands::get_llm_models,
+            commands::chat,
+            commands::chat_stream,
+            commands::chat_stream_stop,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

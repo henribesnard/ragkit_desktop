@@ -8,6 +8,7 @@ import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
 import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchModeSelector";
 import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
 import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
+import { useChatStream } from "@/hooks/useChatStream";
 
 interface FilterValuesResponse {
   values: string[];
@@ -72,10 +73,21 @@ function selectedValues(select: HTMLSelectElement): string[] {
   return Array.from(select.selectedOptions).map((option) => option.value);
 }
 
-function resultDescription(mode: ChatSearchMode): string {
-  if (mode === "semantic") return "Recherche semantique active.";
-  if (mode === "lexical") return "Recherche lexicale BM25 active.";
-  return "Recherche hybride active (fusion semantique + lexicale).";
+function resultDescription(mode: ChatSearchMode, rerankingEnabled: boolean): string {
+  const base =
+    mode === "semantic"
+      ? "Recherche semantique active."
+      : mode === "lexical"
+        ? "Recherche lexicale BM25 active."
+        : "Recherche hybride active (fusion semantique + lexicale).";
+  return rerankingEnabled ? `${base} Reranking actif.` : base;
+}
+
+function rankChangeLabel(rankChange: number | null | undefined): string {
+  if (rankChange === null || rankChange === undefined) return "";
+  if (rankChange > 0) return `▲ +${rankChange}`;
+  if (rankChange < 0) return `▼ ${rankChange}`;
+  return "═ 0";
 }
 
 function toLexicalResult(result: UnifiedSearchResultItem): LexicalSearchResultItem {
@@ -104,6 +116,14 @@ function toLexicalResult(result: UnifiedSearchResultItem): LexicalSearchResultIt
 export function Chat() {
   const { t } = useTranslation();
   const { search: runUnifiedSearch } = useUnifiedSearch();
+  const {
+    content: streamedAnswer,
+    isStreaming,
+    finalResponse,
+    error: streamError,
+    startStream,
+    stopStream,
+  } = useChatStream();
 
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -139,6 +159,10 @@ export function Chat() {
   });
 
   const hasActiveFilters = useMemo(() => Object.values(filters).some((items) => items.length > 0), [filters]);
+  const rerankingEnabled = useMemo(
+    () => results.some((item) => Boolean(item.is_reranked)) || Boolean(debug?.rerank),
+    [results, debug],
+  );
   const selectedModeEnabled =
     searchMode === "semantic" ? semanticEnabled : searchMode === "lexical" ? lexicalEnabled : semanticEnabled && lexicalEnabled;
 
@@ -266,7 +290,14 @@ export function Chat() {
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    await executeSearch(1, false);
+    const payload = {
+      query: query.trim(),
+      search_type: searchMode,
+      alpha: searchMode === "hybrid" ? alphaOverride : undefined,
+      filters,
+      include_debug: debugMode,
+    };
+    await Promise.allSettled([executeSearch(1, false), startStream(payload)]);
   };
 
   return (
@@ -274,7 +305,7 @@ export function Chat() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t("chat.title")}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{resultDescription(searchMode)}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{resultDescription(searchMode, rerankingEnabled)}</p>
           <p className="text-xs text-gray-500 mt-1">
             {chatReady.ready
               ? `Index pret (${chatReady.vectors_count} vecteurs, ${chatReady.lexical_chunks || 0} chunks BM25)`
@@ -425,6 +456,7 @@ export function Chat() {
       </form>
 
       {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
+      {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
 
       {debugMode && debug && (
         <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
@@ -434,6 +466,50 @@ export function Chat() {
               <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
             </div>
           ))}
+        </section>
+      )}
+
+      {(streamedAnswer || isStreaming || finalResponse) && (
+        <section className="rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Reponse LLM</h3>
+            {isStreaming ? (
+              <Button variant="outline" size="sm" onClick={() => void stopStream()}>
+                Arreter
+              </Button>
+            ) : null}
+          </div>
+
+          {isStreaming ? <p className="text-xs text-blue-700 dark:text-blue-300">Generation en cours...</p> : null}
+          <div className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{streamedAnswer}</div>
+
+          {finalResponse?.sources?.length ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sources</h4>
+              {finalResponse.sources.map((source) => (
+                <article
+                  key={`${source.id}-${source.chunk_id}`}
+                  className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-xs"
+                >
+                  <div className="font-medium">
+                    [{source.id}] {source.title} {source.page ? `p.${source.page}` : ""}
+                  </div>
+                  <div className="text-gray-600 dark:text-gray-300 mt-1">{source.text_preview}</div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          {debugMode && finalResponse?.debug ? (
+            <section className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20 p-2 text-xs space-y-1">
+              {Object.entries(finalResponse.debug).map(([key, value]) => (
+                <div key={key} className="break-words">
+                  <span className="font-semibold">{key}: </span>
+                  <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+                </div>
+              ))}
+            </section>
+          ) : null}
         </section>
       )}
 
@@ -465,16 +541,32 @@ export function Chat() {
         {searchMode !== "lexical" &&
           results.map((result) => {
             const opened = Boolean(expanded[result.chunk_id]);
+            const displayedScore =
+              result.is_reranked && result.rerank_score !== null && result.rerank_score !== undefined
+              ? result.rerank_score
+              : result.score;
+            const rerankToRank =
+              result.original_rank !== null &&
+              result.original_rank !== undefined &&
+              result.rank_change !== null &&
+              result.rank_change !== undefined
+                ? result.original_rank - result.rank_change
+                : null;
             return (
               <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                     <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
                     {result.page_number ? <span> | p.{result.page_number}</span> : null}
+                    {result.is_reranked ? (
+                      <span className="inline-flex items-center rounded px-1.5 py-0.5 bg-indigo-100 text-indigo-700">
+                        {rankChangeLabel(result.rank_change)}
+                      </span>
+                    ) : null}
                   </div>
                   {showScores ? (
-                    <span className={`text-xs px-2 py-1 rounded ${scoreClass(result.score)}`}>
-                      {t("chat.score")}: {result.score.toFixed(4)}
+                    <span className={`text-xs px-2 py-1 rounded ${scoreClass(displayedScore)}`}>
+                      {result.is_reranked ? "Score rerank" : t("chat.score")}: {displayedScore.toFixed(4)}
                     </span>
                   ) : null}
                 </div>
@@ -488,6 +580,13 @@ export function Chat() {
                     Semantique: #{result.semantic_rank ?? "-"} ({result.semantic_score?.toFixed(4) ?? "n/a"})
                     {" | "}
                     Lexicale: #{result.lexical_rank ?? "-"} ({result.lexical_score?.toFixed(4) ?? "n/a"})
+                    {result.is_reranked ? (
+                      <>
+                        {" | "}
+                        Rerank: #{result.original_rank ?? "-"}{" -> "}#{rerankToRank ?? "-"}
+                        {" "}({result.rerank_score?.toFixed(4) ?? "n/a"})
+                      </>
+                    ) : null}
                   </div>
                 )}
 

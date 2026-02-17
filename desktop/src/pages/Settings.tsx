@@ -9,11 +9,13 @@ import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import { SemanticSearchSettings } from "@/components/settings/SemanticSearchSettings";
 import { LexicalSearchSettings } from "@/components/settings/LexicalSearchSettings";
 import { HybridSearchSettings } from "@/components/settings/HybridSearchSettings";
+import { RerankSettings } from "@/components/settings/RerankSettings";
+import { LLMSettings } from "@/components/settings/LLMSettings";
 
 export function Settings() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<
-    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid"
+    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm"
   >("ingestion");
 
   return (
@@ -35,6 +37,8 @@ export function Settings() {
             <button onClick={() => setActiveSection("semantic")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "semantic" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche semantique</button>
             <button onClick={() => setActiveSection("lexical")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "lexical" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche lexicale</button>
             <button onClick={() => setActiveSection("hybrid")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "hybrid" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche hybride</button>
+            <button onClick={() => setActiveSection("rerank")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "rerank" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Reranking</button>
+            <button onClick={() => setActiveSection("llm")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "llm" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />LLM / Generation</button>
           </nav>
         </div>
 
@@ -47,6 +51,8 @@ export function Settings() {
           {activeSection === "semantic" && <SemanticSearchSettings />}
           {activeSection === "lexical" && <LexicalSearchSettings />}
           {activeSection === "hybrid" && <HybridSearchSettings />}
+          {activeSection === "rerank" && <RerankSettings />}
+          {activeSection === "llm" && <LLMSettings />}
         </div>
       </div>
     </div>
