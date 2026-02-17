@@ -43,9 +43,59 @@ jobs:
           # Skip type check for now if tsc fails on empty project
           # npx tsc --noEmit
 
-  build:
+  build-windows:
     needs: lint-frontend
-    if: ${{ matrix.platform == 'windows-latest' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_scope == 'all') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frontend dependencies
+        run: |
+          cd desktop
+          npm ci
+
+      - name: Build Python Backend
+        shell: bash
+        run: |
+          pip install -e ".[desktop]"
+          pyinstaller ragkit-backend.spec
+
+      - name: Prepare Sidecar
+        shell: bash
+        run: |
+          mkdir -p desktop/src-tauri/binaries
+          cp "dist/ragkit-backend.exe" "desktop/src-tauri/binaries/ragkit-backend-x86_64-pc-windows-msvc.exe"
+
+      - name: Build Tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'RAGKIT Desktop v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ''
+
+  build-other-platforms:
+    needs: lint-frontend
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_scope == 'all' }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,9 +103,6 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: ''
             target_suffix: 'x86_64-unknown-linux-gnu'
-          - platform: 'windows-latest'
-            args: ''
-            target_suffix: 'x86_64-pc-windows-msvc'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             target_suffix: 'x86_64-apple-darwin'
@@ -102,18 +149,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p desktop/src-tauri/binaries
-          
-          # Determines source path based on OS
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            SRC="dist/ragkit-backend.exe"
-            DEST="desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}.exe"
-          else
-            SRC="dist/ragkit-backend"
-            DEST="desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
-          fi
-
-          echo "Copying $SRC to $DEST"
-          cp "$SRC" "$DEST"
+          cp "dist/ragkit-backend" "desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
 
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0
