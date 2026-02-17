@@ -5,6 +5,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      build_scope:
+        description: "Targets to build"
+        required: true
+        default: "windows"
+        type: choice
+        options:
+          - windows
+          - all
 
 permissions:
   contents: write
@@ -36,6 +45,7 @@ jobs:
 
   build:
     needs: lint-frontend
+    if: ${{ matrix.platform == 'windows-latest' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_scope == 'all') }}
     strategy:
       fail-fast: false
       matrix:
