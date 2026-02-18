@@ -9,6 +9,7 @@ import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchMode
 import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
 import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useConversation } from "@/hooks/useConversation";
 
 interface FilterValuesResponse {
   values: string[];
@@ -123,7 +124,9 @@ export function Chat() {
     error: streamError,
     startStream,
     stopStream,
+    clear: clearStreamState,
   } = useChatStream();
+  const { history, refresh: refreshHistory, resetConversation } = useConversation();
 
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -243,6 +246,11 @@ export function Chat() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!finalResponse) return;
+    void refreshHistory();
+  }, [finalResponse]);
+
   const executeSearch = async (targetPage: number, append: boolean) => {
     if (!query.trim()) return;
 
@@ -290,6 +298,7 @@ export function Chat() {
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
+    if (!query.trim()) return;
     const payload = {
       query: query.trim(),
       search_type: searchMode,
@@ -297,7 +306,12 @@ export function Chat() {
       filters,
       include_debug: debugMode,
     };
-    await Promise.allSettled([executeSearch(1, false), startStream(payload)]);
+    setResults([]);
+    setDebug(null);
+    setPage(1);
+    setHasMore(false);
+    setTotalResults(0);
+    await startStream(payload);
   };
 
   return (
@@ -313,10 +327,26 @@ export function Chat() {
           </p>
         </div>
 
-        <Button variant="outline" onClick={() => setShowOptions((value) => !value)}>
-          <Settings2 className="w-4 h-4 mr-2" />
-          Options
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!confirm("Demarrer une nouvelle conversation ?")) return;
+              void (async () => {
+                await resetConversation();
+                clearStreamState();
+                setResults([]);
+                setDebug(null);
+              })();
+            }}
+          >
+            Nouvelle conversation
+          </Button>
+          <Button variant="outline" onClick={() => setShowOptions((value) => !value)}>
+            <Settings2 className="w-4 h-4 mr-2" />
+            Options
+          </Button>
+        </div>
       </div>
 
       {showOptions && (
@@ -458,6 +488,26 @@ export function Chat() {
       {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
       {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
 
+      {history.messages.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Conversation</h3>
+          {history.messages.slice(-8).map((message, index) => (
+            <article
+              key={`${message.timestamp}-${index}`}
+              className={`rounded border px-3 py-2 text-sm ${
+                message.role === "user"
+                  ? "border-blue-200 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-900/20"
+                  : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60"
+              }`}
+            >
+              <div className="text-xs text-gray-500 mb-1">{message.role === "user" ? "Vous" : "Assistant"}</div>
+              <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100">{message.content}</div>
+              {message.intent ? <div className="mt-1 text-xs text-indigo-600">Intent: {message.intent}</div> : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
+
       {debugMode && debug && (
         <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
           {Object.entries(debug).map(([key, value]) => (
@@ -482,6 +532,13 @@ export function Chat() {
 
           {isStreaming ? <p className="text-xs text-blue-700 dark:text-blue-300">Generation en cours...</p> : null}
           <div className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{streamedAnswer}</div>
+
+          {finalResponse?.intent ? (
+            <div className="text-xs text-indigo-700 dark:text-indigo-300">
+              Intent: <b>{finalResponse.intent}</b> | RAG: <b>{String(finalResponse.needs_rag)}</b>
+              {finalResponse.rewritten_query ? <> | Reformulee: <b>{finalResponse.rewritten_query}</b></> : null}
+            </div>
+          ) : null}
 
           {finalResponse?.sources?.length ? (
             <div className="space-y-2">

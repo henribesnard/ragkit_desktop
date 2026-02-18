@@ -60,7 +60,12 @@ class ResponseGenerator:
             )
         )
 
-    def _build_messages(self, query: str, context: AssembledContext) -> list[LLMMessage]:
+    def _build_messages(
+        self,
+        query: str,
+        context: AssembledContext,
+        history_messages: list[dict[str, str]] | None = None,
+    ) -> list[LLMMessage]:
         language_instruction = ""
         if self.config.response_language == "fr":
             language_instruction = "\nReponds en francais."
@@ -68,10 +73,17 @@ class ResponseGenerator:
             language_instruction = "\nAnswer in English."
 
         user_content = f"{context.formatted_text}\n\nQuestion : {query}{language_instruction}"
-        return [
-            LLMMessage(role="system", content=self._build_system_prompt()),
-            LLMMessage(role="user", content=user_content),
-        ]
+        messages: list[LLMMessage] = [LLMMessage(role="system", content=self._build_system_prompt())]
+        for item in history_messages or []:
+            role = str(item.get("role") or "").strip().lower()
+            content = str(item.get("content") or "")
+            if role not in {"user", "assistant", "system"}:
+                continue
+            if not content:
+                continue
+            messages.append(LLMMessage(role=role, content=content))
+        messages.append(LLMMessage(role="user", content=user_content))
+        return messages
 
     def _build_sources(self, context: AssembledContext) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
@@ -111,6 +123,7 @@ class ResponseGenerator:
         query: str,
         retrieval_results: list[Any],
         *,
+        history_messages: list[dict[str, str]] | None = None,
         retrieval_latency_ms: int = 0,
         search_type: str = "hybrid",
         reranking_applied: bool = False,
@@ -118,7 +131,7 @@ class ResponseGenerator:
     ) -> RAGResponse:
         started = time.perf_counter()
         context = self.assembler.assemble(retrieval_results)
-        messages = self._build_messages(query, context)
+        messages = self._build_messages(query, context, history_messages=history_messages)
         response = await self.llm.generate(
             messages=messages,
             temperature=self.config.temperature,
@@ -163,6 +176,7 @@ class ResponseGenerator:
         query: str,
         retrieval_results: list[Any],
         *,
+        history_messages: list[dict[str, str]] | None = None,
         retrieval_latency_ms: int = 0,
         search_type: str = "hybrid",
         reranking_applied: bool = False,
@@ -170,7 +184,7 @@ class ResponseGenerator:
     ) -> AsyncIterator[dict[str, Any]]:
         started = time.perf_counter()
         context = self.assembler.assemble(retrieval_results)
-        messages = self._build_messages(query, context)
+        messages = self._build_messages(query, context, history_messages=history_messages)
         sources = self._build_sources(context)
 
         answer_parts: list[str] = []

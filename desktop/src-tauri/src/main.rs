@@ -123,9 +123,15 @@ fn main() {
             commands::reset_llm_config,
             commands::test_llm_connection,
             commands::get_llm_models,
+            commands::get_agents_config,
+            commands::update_agents_config,
+            commands::reset_agents_config,
             commands::chat,
             commands::chat_stream,
             commands::chat_stream_stop,
+            commands::chat_orchestrated,
+            commands::new_conversation,
+            commands::get_conversation_history,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

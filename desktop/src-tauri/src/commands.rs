@@ -455,6 +455,23 @@ pub async fn get_llm_models(app: AppHandle, provider: String) -> Result<serde_js
     request(Method::GET, &endpoint, None, &app).await
 }
 
+// --- Agents Commands ---
+
+#[tauri::command]
+pub async fn get_agents_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/agents/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_agents_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/agents/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_agents_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/agents/config/reset", None, &app).await
+}
+
 // --- Chat Commands ---
 
 #[tauri::command]
@@ -562,4 +579,19 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
 pub async fn chat_stream_stop() -> Result<(), String> {
     CHAT_STREAM_STOP.store(true, Ordering::SeqCst);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn chat_orchestrated(window: Window, query: serde_json::Value) -> Result<String, String> {
+    chat_stream(window, query).await
+}
+
+#[tauri::command]
+pub async fn new_conversation(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/chat/new", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_conversation_history(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/chat/history", None, &app).await
 }

@@ -51,7 +51,7 @@ export function useChatStream() {
     unlistenDoneRef.current = doneUnlisten;
 
     try {
-      await invoke("chat_stream", { query: payload });
+      await invoke("chat_orchestrated", { query: payload });
     } catch (err: any) {
       setIsStreaming(false);
       cleanupListeners();
@@ -64,6 +64,14 @@ export function useChatStream() {
     await invoke("chat_stream_stop");
   };
 
+  const clear = () => {
+    cleanupListeners();
+    setContent("");
+    setIsStreaming(false);
+    setFinalResponse(null);
+    setError(null);
+  };
+
   return {
     content,
     isStreaming,
@@ -71,5 +79,6 @@ export function useChatStream() {
     error,
     startStream,
     stopStream,
+    clear,
   };
 }

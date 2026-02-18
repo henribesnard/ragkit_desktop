@@ -28,7 +28,9 @@ export interface ChatResponse {
   query: string;
   answer: string;
   sources: ChatSource[];
-  search_type: string;
+  intent?: string;
+  needs_rag?: boolean;
+  rewritten_query?: string | null;
   debug?: Record<string, any> | null;
 }
 

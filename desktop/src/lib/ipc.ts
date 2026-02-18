@@ -39,7 +39,13 @@ export const ipc = {
   resetLLMConfig: () => invoke("reset_llm_config"),
   testLLMConnection: () => invoke("test_llm_connection"),
   getLLMModels: (provider: string) => invoke("get_llm_models", { provider }),
+  getAgentsConfig: () => invoke("get_agents_config"),
+  updateAgentsConfig: (config: any) => invoke("update_agents_config", { config }),
+  resetAgentsConfig: () => invoke("reset_agents_config"),
   runChat: (query: any) => invoke("chat", { query }),
   startChatStream: (query: any) => invoke("chat_stream", { query }),
   stopChatStream: () => invoke("chat_stream_stop"),
+  startOrchestratedChat: (query: any) => invoke("chat_orchestrated", { query }),
+  newConversation: () => invoke("new_conversation"),
+  getConversationHistory: () => invoke("get_conversation_history"),
 };

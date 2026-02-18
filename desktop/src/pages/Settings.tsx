@@ -11,11 +11,12 @@ import { LexicalSearchSettings } from "@/components/settings/LexicalSearchSettin
 import { HybridSearchSettings } from "@/components/settings/HybridSearchSettings";
 import { RerankSettings } from "@/components/settings/RerankSettings";
 import { LLMSettings } from "@/components/settings/LLMSettings";
+import { AgentsSettings } from "@/components/settings/AgentsSettings";
 
 export function Settings() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<
-    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm"
+    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents"
   >("ingestion");
 
   return (
@@ -39,6 +40,7 @@ export function Settings() {
             <button onClick={() => setActiveSection("hybrid")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "hybrid" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche hybride</button>
             <button onClick={() => setActiveSection("rerank")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "rerank" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Reranking</button>
             <button onClick={() => setActiveSection("llm")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "llm" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />LLM / Generation</button>
+            <button onClick={() => setActiveSection("agents")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "agents" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Agents</button>
           </nav>
         </div>
 
@@ -53,6 +55,7 @@ export function Settings() {
           {activeSection === "hybrid" && <HybridSearchSettings />}
           {activeSection === "rerank" && <RerankSettings />}
           {activeSection === "llm" && <LLMSettings />}
+          {activeSection === "agents" && <AgentsSettings />}
         </div>
       </div>
     </div>
