@@ -18,7 +18,7 @@ from ragkit.config.agents_schema import (
 from ragkit.config.llm_schema import ChatQuery, ChatSource, LLMConfig
 from ragkit.config.retrieval_schema import UnifiedSearchQuery
 from ragkit.desktop.agents_service import get_agents_config
-from ragkit.desktop.api import retrieval as retrieval_api
+from ragkit.desktop.api.retrieval.unified_api import execute_unified_search
 from ragkit.desktop.llm_service import get_llm_config, resolve_llm_provider
 from ragkit.desktop.monitoring_service import get_query_logger
 from ragkit.llm.response_generator import ResponseGenerator
@@ -88,7 +88,7 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool]:
             page=1,
             page_size=50,
         )
-        return await retrieval_api._execute_unified_search(unified_query)
+        return await execute_unified_search(unified_query)
 
     orchestrator = Orchestrator(
         config=agents_config,

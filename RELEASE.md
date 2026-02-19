@@ -21,6 +21,8 @@
 | Étape 8 | `spécifications/specs-etape-8.md` | `v8.0.0` | `8.0.0` |
 | Étape 9 | `spécifications/specs-etape-9.md` | `v9.0.0` | `9.0.0` |
 | Étape 10 | `spécifications/specs-etape-10.md` | `v10.0.0` | `10.0.0` |
+| Étape 11 | `spécifications/specs-etape-11.md` | `v11.0.0` | `11.0.0` |
+| Étape 12 | `spécifications/specs-etape-12.md` | `v12.0.0` | `12.0.0` |
 
 > Adapter la table au fur et à mesure de l'avancement.
 

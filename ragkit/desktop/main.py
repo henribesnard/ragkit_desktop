@@ -1,5 +1,5 @@
 # ragkit/desktop/main.py
-"""RAGKIT Desktop backend - Étape 0 : squelette minimal."""
+"""RAGKIT Desktop backend — Étape 12 : finalisation."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VERSION = "10.0.0"
+VERSION = "12.0.0"
 
 
 def create_app() -> FastAPI:
