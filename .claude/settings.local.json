@@ -34,7 +34,14 @@
       "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.0.9)",
       "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" add ragkit/desktop/api/wizard.py ragkit/desktop/main.py ragkit/desktop/models.py desktop/src/components/wizard/FileTypesStep.tsx desktop/src/components/wizard/WizardContainer.tsx desktop/src/hooks/useDocuments.ts desktop/src/components/settings/IngestionSettings.tsx desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml desktop/src/locales/fr.json desktop/src/locales/en.json)",
       "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" commit -m \"$\\(cat <<''EOF''\nfix: remove blocking document analysis from wizard completion \\(v1.1.0\\)\n\nRoot cause: complete_wizard synchronously parsed 1436 files \\(280 MB\\) before\nresponding. The HTTP request hung for minutes, making the button appear broken.\n\nChanges:\n- Remove documents.analyze_documents\\(\\) from complete_wizard endpoint\n- Add loading spinner + \"Enregistrement...\" state to complete button\n- Auto-trigger analysis when Settings page loads \\(if no cached documents\\)\n- Add analyzing state with progress indicator in Metadata tab\n- TypeScript compiles clean, Python tests pass \\(complete in 0.01s\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.1.0)"
+      "Bash(git -C \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\" tag v1.1.0)",
+      "Bash(cargo check:*)",
+      "Bash(gh run view:*)",
+      "Bash(where:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash(\"/c/Program Files \\(x86\\)/GitHub CLI/gh.exe\" --version)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }

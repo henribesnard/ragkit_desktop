@@ -23,6 +23,21 @@ CALIBRATION_DEFAULTS = {
     "q6_citations_needed": False,
 }
 
+MONITORING_DEFAULTS = {
+    "log_queries": True,
+    "log_retrieval_results": True,
+    "log_llm_outputs": True,
+    "feedback_collection": True,
+    "retention_days": 30,
+    "max_log_size_mb": 100,
+    "alert_latency_p95_ms": 5000,
+    "alert_success_rate": 0.9,
+    "alert_negative_feedback": 0.4,
+    "alert_daily_cost": 1.0,
+    "service_check_interval": 60,
+    "dashboard_refresh_interval": 30,
+}
+
 PROFILE_REFERENTIAL: dict[str, dict[str, Any]] = {
     "technical_documentation": {
         "display_name_fr": "Documentation technique",
@@ -517,6 +532,7 @@ def get_profile_metadata(profile_name: str, language: str = "fr") -> dict[str, s
 
 def build_full_config(profile_name: str, calibration: dict[str, bool] | None = None) -> dict[str, Any]:
     full_config = deepcopy(PROFILE_REFERENTIAL[profile_name]["config"])
+    full_config.setdefault("monitoring", deepcopy(MONITORING_DEFAULTS))
     calibration_answers = normalize_calibration_answers(calibration)
 
     parsing = full_config["ingestion"]["parsing"]

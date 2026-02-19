@@ -536,17 +536,17 @@ async def _rerank_unified_results(
     candidates_limit: int,
     top_n: int,
     relevance_threshold: float,
-) -> tuple[list[UnifiedSearchResultItem], list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[UnifiedSearchResultItem], list[dict[str, Any]], list[dict[str, Any]], int]:
     if not results:
-        return [], [], []
+        return [], [], [], 0
 
     reranker = resolve_reranker(rerank_config)
     if reranker is None:
-        return results, [], []
+        return results, [], [], 0
 
     selected = list(results[: max(candidates_limit, 0)])
     if not selected:
-        return [], [], []
+        return [], [], [], 0
 
     before = [
         {
@@ -568,12 +568,14 @@ async def _rerank_unified_results(
         for index, item in enumerate(selected)
     ]
 
+    rerank_started = time.perf_counter()
     reranked = await reranker.rerank(
         query=query,
         candidates=candidates,
         top_n=min(max(top_n, 1), len(candidates)),
         relevance_threshold=relevance_threshold,
     )
+    reranking_latency_ms = max(1, int((time.perf_counter() - rerank_started) * 1000))
 
     selected_map = {item.chunk_id: item for item in selected}
     reranked_items: list[UnifiedSearchResultItem] = []
@@ -601,7 +603,7 @@ async def _rerank_unified_results(
         for index, item in enumerate(reranked_items)
     ]
 
-    return reranked_items, before, after
+    return reranked_items, before, after, reranking_latency_ms
 
 
 def _bm25_index_dir() -> Path:
@@ -1014,7 +1016,7 @@ async def _execute_unified_search(payload: UnifiedSearchQuery) -> UnifiedSearchR
         return response
 
     try:
-        reranked_results, before_debug, after_debug = await _rerank_unified_results(
+        reranked_results, before_debug, after_debug, reranking_latency_ms = await _rerank_unified_results(
             query=payload.query,
             results=response.results,
             rerank_config=rerank_cfg,
@@ -1038,6 +1040,7 @@ async def _execute_unified_search(payload: UnifiedSearchQuery) -> UnifiedSearchR
         rerank_debug: dict[str, Any] = {
             "provider": rerank_cfg.provider.value,
             "model": rerank_cfg.model,
+            "latency_ms": reranking_latency_ms,
             "candidates_requested": rerank_cfg.candidates,
             "candidates_used": min(rerank_cfg.candidates, len(response.results)),
             "top_n": rerank_cfg.top_n,

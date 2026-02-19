@@ -49,3 +49,6 @@ desktop/src-tauri/binaries/
 # OS
 .DS_Store
 Thumbs.db
+
+# Release packaging
+tests/

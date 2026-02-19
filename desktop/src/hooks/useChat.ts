@@ -31,6 +31,7 @@ export interface ChatResponse {
   intent?: string;
   needs_rag?: boolean;
   rewritten_query?: string | null;
+  query_log_id?: string | null;
   debug?: Record<string, any> | null;
 }
 

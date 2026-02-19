@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from ragkit.config.agents_schema import AgentsConfig, MemoryStrategy
 from ragkit.llm.base import BaseLLMProvider, LLMMessage
@@ -20,6 +20,8 @@ class ConversationMessage:
     content: str
     intent: str | None = None
     sources: list[dict[str, Any]] | None = None
+    query_log_id: str | None = None
+    feedback: Literal["positive", "negative"] | None = None
     timestamp: str = field(default_factory=_utc_now_iso)
 
 
@@ -45,6 +47,8 @@ class ConversationMemory:
         *,
         intent: str | None = None,
         sources: list[dict[str, Any]] | None = None,
+        query_log_id: str | None = None,
+        feedback: Literal["positive", "negative"] | None = None,
     ) -> None:
         self.state.messages.append(
             ConversationMessage(
@@ -52,6 +56,8 @@ class ConversationMemory:
                 content=content,
                 intent=intent,
                 sources=sources,
+                query_log_id=query_log_id,
+                feedback=feedback,
             )
         )
         self.state.total_messages += 1
@@ -115,6 +121,13 @@ class ConversationMemory:
 
     def list_messages(self) -> list[ConversationMessage]:
         return list(self.state.messages)
+
+    def set_feedback(self, query_log_id: str, feedback: Literal["positive", "negative"]) -> bool:
+        for message in reversed(self.state.messages):
+            if message.query_log_id == query_log_id:
+                message.feedback = feedback
+                return True
+        return False
 
     def clear(self) -> None:
         self.state = ConversationState()

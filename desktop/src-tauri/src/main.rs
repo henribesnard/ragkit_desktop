@@ -132,6 +132,22 @@ fn main() {
             commands::chat_orchestrated,
             commands::new_conversation,
             commands::get_conversation_history,
+            commands::get_monitoring_config,
+            commands::update_monitoring_config,
+            commands::reset_monitoring_config,
+            commands::get_dashboard_health,
+            commands::get_dashboard_ingestion,
+            commands::get_dashboard_metrics,
+            commands::get_dashboard_activity,
+            commands::get_dashboard_intents,
+            commands::get_dashboard_feedback,
+            commands::get_dashboard_latency,
+            commands::get_dashboard_alerts,
+            commands::get_query_logs,
+            commands::get_query_log_detail,
+            commands::export_query_logs,
+            commands::purge_logs,
+            commands::submit_feedback,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

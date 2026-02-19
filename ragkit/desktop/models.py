@@ -389,6 +389,7 @@ class SettingsPayload(BaseModel):
     rerank: dict[str, Any] = Field(default_factory=dict)
     llm: dict[str, Any] = Field(default_factory=dict)
     agents: dict[str, Any] = Field(default_factory=dict)
+    monitoring: dict[str, Any] = Field(default_factory=dict)
 
 
 class WizardCompletionRequest(BaseModel):

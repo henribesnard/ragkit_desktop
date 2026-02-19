@@ -5,11 +5,13 @@ import { ChevronDown, ChevronUp, MessageSquare, Search, Settings2 } from "lucide
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
+import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchModeSelector";
 import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
 import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversation } from "@/hooks/useConversation";
+import { useFeedback } from "@/hooks/useFeedback";
 
 interface FilterValuesResponse {
   values: string[];
@@ -127,6 +129,13 @@ export function Chat() {
     clear: clearStreamState,
   } = useChatStream();
   const { history, refresh: refreshHistory, resetConversation } = useConversation();
+  const {
+    submit: submitFeedback,
+    error: feedbackError,
+    pendingByQueryId,
+    valueByQueryId,
+    setValueByQueryId,
+  } = useFeedback();
 
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -250,6 +259,23 @@ export function Chat() {
     if (!finalResponse) return;
     void refreshHistory();
   }, [finalResponse]);
+
+  useEffect(() => {
+    const values: Record<string, "positive" | "negative"> = {};
+    for (const message of history.messages) {
+      if (message.query_log_id && message.feedback) {
+        values[message.query_log_id] = message.feedback;
+      }
+    }
+    if (Object.keys(values).length) {
+      setValueByQueryId((prev) => ({ ...prev, ...values }));
+    }
+  }, [history.messages, setValueByQueryId]);
+
+  const onSubmitFeedback = async (queryId: string, feedback: "positive" | "negative") => {
+    await submitFeedback(queryId, feedback);
+    await refreshHistory();
+  };
 
   const executeSearch = async (targetPage: number, append: boolean) => {
     if (!query.trim()) return;
@@ -487,6 +513,7 @@ export function Chat() {
 
       {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
       {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
+      {feedbackError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{feedbackError}</div>}
 
       {history.messages.length > 0 ? (
         <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 space-y-2">
@@ -503,6 +530,16 @@ export function Chat() {
               <div className="text-xs text-gray-500 mb-1">{message.role === "user" ? "Vous" : "Assistant"}</div>
               <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100">{message.content}</div>
               {message.intent ? <div className="mt-1 text-xs text-indigo-600">Intent: {message.intent}</div> : null}
+              {message.role === "assistant" && message.query_log_id ? (
+                <div className="mt-2">
+                  <FeedbackButtons
+                    queryId={message.query_log_id}
+                    value={valueByQueryId[message.query_log_id] || message.feedback || null}
+                    loading={Boolean(pendingByQueryId[message.query_log_id])}
+                    onSubmit={onSubmitFeedback}
+                  />
+                </div>
+              ) : null}
             </article>
           ))}
         </section>
@@ -532,6 +569,14 @@ export function Chat() {
 
           {isStreaming ? <p className="text-xs text-blue-700 dark:text-blue-300">Generation en cours...</p> : null}
           <div className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{streamedAnswer}</div>
+          {finalResponse?.query_log_id ? (
+            <FeedbackButtons
+              queryId={finalResponse.query_log_id}
+              value={valueByQueryId[finalResponse.query_log_id] || null}
+              loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
+              onSubmit={onSubmitFeedback}
+            />
+          ) : null}
 
           {finalResponse?.intent ? (
             <div className="text-xs text-indigo-700 dark:text-indigo-300">

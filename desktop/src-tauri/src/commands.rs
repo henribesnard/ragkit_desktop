@@ -8,6 +8,15 @@ use reqwest::Method;
 
 static CHAT_STREAM_STOP: AtomicBool = AtomicBool::new(false);
 
+fn _encode_query_value(value: &str) -> String {
+    value
+        .replace('%', "%25")
+        .replace(' ', "%20")
+        .replace('&', "%26")
+        .replace('?', "%3F")
+        .replace('=', "%3D")
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthCheckResponse {
     pub ok: bool,
@@ -594,4 +603,171 @@ pub async fn new_conversation(app: AppHandle) -> Result<serde_json::Value, Strin
 #[tauri::command]
 pub async fn get_conversation_history(app: AppHandle) -> Result<serde_json::Value, String> {
     request(Method::GET, "/api/chat/history", None, &app).await
+}
+
+// --- Monitoring config commands ---
+
+#[tauri::command]
+pub async fn get_monitoring_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/monitoring/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_monitoring_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/monitoring/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_monitoring_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/monitoring/config/reset", None, &app).await
+}
+
+// --- Dashboard commands ---
+
+#[tauri::command]
+pub async fn get_dashboard_health(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/dashboard/health", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_ingestion(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/dashboard/ingestion", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_metrics(app: AppHandle, hours: Option<i32>) -> Result<serde_json::Value, String> {
+    let h = hours.unwrap_or(24).max(1);
+    let endpoint = format!("/api/dashboard/metrics?hours={}", h);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_activity(app: AppHandle, days: Option<i32>) -> Result<serde_json::Value, String> {
+    let d = days.unwrap_or(7).max(1);
+    let endpoint = format!("/api/dashboard/activity?days={}", d);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_intents(app: AppHandle, hours: Option<i32>) -> Result<serde_json::Value, String> {
+    let h = hours.unwrap_or(24).max(1);
+    let endpoint = format!("/api/dashboard/intents?hours={}", h);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_feedback(app: AppHandle, days: Option<i32>) -> Result<serde_json::Value, String> {
+    let d = days.unwrap_or(7).max(1);
+    let endpoint = format!("/api/dashboard/feedback?days={}", d);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_latency(app: AppHandle, hours: Option<i32>) -> Result<serde_json::Value, String> {
+    let h = hours.unwrap_or(24).max(1);
+    let endpoint = format!("/api/dashboard/latency?hours={}", h);
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_dashboard_alerts(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/dashboard/alerts", None, &app).await
+}
+
+// --- Query logs commands ---
+
+#[tauri::command]
+pub async fn get_query_logs(app: AppHandle, filters: serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut params: Vec<String> = Vec::new();
+    if let Some(intent) = filters.get("intent").and_then(|v| v.as_str()) {
+        if !intent.trim().is_empty() {
+            params.push(format!("intent={}", _encode_query_value(intent.trim())));
+        }
+    }
+    if let Some(feedback) = filters.get("feedback").and_then(|v| v.as_str()) {
+        if !feedback.trim().is_empty() {
+            params.push(format!("feedback={}", _encode_query_value(feedback.trim())));
+        }
+    }
+    if let Some(since_days) = filters.get("since_days").and_then(|v| v.as_i64()) {
+        params.push(format!("since_days={}", since_days.max(1)));
+    }
+    if let Some(page) = filters.get("page").and_then(|v| v.as_i64()) {
+        params.push(format!("page={}", page.max(1)));
+    }
+    if let Some(page_size) = filters.get("page_size").and_then(|v| v.as_i64()) {
+        params.push(format!("page_size={}", page_size.max(1)));
+    }
+    if let Some(search) = filters.get("search").and_then(|v| v.as_str()) {
+        if !search.trim().is_empty() {
+            params.push(format!("search={}", _encode_query_value(search.trim())));
+        }
+    }
+    let endpoint = if params.is_empty() {
+        "/api/logs/queries".to_string()
+    } else {
+        format!("/api/logs/queries?{}", params.join("&"))
+    };
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_query_log_detail(app: AppHandle, query_id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/logs/queries/{}", _encode_query_value(query_id.trim()));
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn export_query_logs(app: AppHandle, filters: serde_json::Value) -> Result<String, String> {
+    let mut params: Vec<String> = Vec::new();
+    if let Some(intent) = filters.get("intent").and_then(|v| v.as_str()) {
+        if !intent.trim().is_empty() {
+            params.push(format!("intent={}", _encode_query_value(intent.trim())));
+        }
+    }
+    if let Some(feedback) = filters.get("feedback").and_then(|v| v.as_str()) {
+        if !feedback.trim().is_empty() {
+            params.push(format!("feedback={}", _encode_query_value(feedback.trim())));
+        }
+    }
+    if let Some(since_days) = filters.get("since_days").and_then(|v| v.as_i64()) {
+        params.push(format!("since_days={}", since_days.max(1)));
+    }
+    if let Some(search) = filters.get("search").and_then(|v| v.as_str()) {
+        if !search.trim().is_empty() {
+            params.push(format!("search={}", _encode_query_value(search.trim())));
+        }
+    }
+    let endpoint = if params.is_empty() {
+        "/api/logs/export".to_string()
+    } else {
+        format!("/api/logs/export?{}", params.join("&"))
+    };
+
+    let state = app.state::<BackendState>();
+    let port = (*state.port.lock().map_err(|e| e.to_string())?)
+        .ok_or_else(|| "Backend not ready".to_string())?;
+    let url = format!("http://127.0.0.1:{}{}", port, endpoint);
+
+    let client = reqwest::Client::new();
+    let response = client.get(url).send().await.map_err(|e| e.to_string())?;
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("Request failed with status {}: {}", status, text));
+    }
+    response.text().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn purge_logs(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/logs/purge", None, &app).await
+}
+
+// --- Feedback commands ---
+
+#[tauri::command]
+pub async fn submit_feedback(app: AppHandle, query_id: String, feedback: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "query_id": query_id, "feedback": feedback });
+    request(Method::POST, "/api/feedback", Some(body), &app).await
 }

@@ -1,5 +1,5 @@
 ﻿import { useTranslation } from "react-i18next";
-import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database, Search } from "lucide-react";
+import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database, Search, Activity } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
 import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
@@ -12,11 +12,12 @@ import { HybridSearchSettings } from "@/components/settings/HybridSearchSettings
 import { RerankSettings } from "@/components/settings/RerankSettings";
 import { LLMSettings } from "@/components/settings/LLMSettings";
 import { AgentsSettings } from "@/components/settings/AgentsSettings";
+import { MonitoringSettings } from "@/components/settings/MonitoringSettings";
 
 export function Settings() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<
-    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents"
+    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring"
   >("ingestion");
 
   return (
@@ -41,6 +42,7 @@ export function Settings() {
             <button onClick={() => setActiveSection("rerank")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "rerank" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Reranking</button>
             <button onClick={() => setActiveSection("llm")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "llm" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />LLM / Generation</button>
             <button onClick={() => setActiveSection("agents")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "agents" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Agents</button>
+            <button onClick={() => setActiveSection("monitoring")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "monitoring" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Activity className="w-4 h-4" />Monitoring</button>
           </nav>
         </div>
 
@@ -56,6 +58,7 @@ export function Settings() {
           {activeSection === "rerank" && <RerankSettings />}
           {activeSection === "llm" && <LLMSettings />}
           {activeSection === "agents" && <AgentsSettings />}
+          {activeSection === "monitoring" && <MonitoringSettings />}
         </div>
       </div>
     </div>

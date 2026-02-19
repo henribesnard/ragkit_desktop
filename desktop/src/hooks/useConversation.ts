@@ -8,6 +8,8 @@ export interface ConversationMessage {
   content: string;
   intent?: string | null;
   sources?: ChatSource[] | null;
+  query_log_id?: string | null;
+  feedback?: "positive" | "negative" | null;
   timestamp: string;
 }
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import dataclasses
 import time
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Awaitable, Callable
 
 from ragkit.agents.memory import ConversationMemory
@@ -13,6 +15,7 @@ from ragkit.agents.query_rewriter import QueryRewriter, RewriteResult
 from ragkit.config.agents_schema import AgentsConfig, Intent, OrchestratorDebugInfo
 from ragkit.llm.base import BaseLLMProvider, LLMMessage
 from ragkit.llm.response_generator import ResponseGenerator
+from ragkit.monitoring.query_logger import QueryLogEntry, QueryLogger
 
 
 @dataclass
@@ -23,6 +26,7 @@ class OrchestratedResult:
     intent: str
     needs_rag: bool
     rewritten_query: str | None
+    query_log_id: str | None = None
     debug: OrchestratorDebugInfo | None = None
 
 
@@ -39,6 +43,7 @@ class Orchestrator:
         response_generator: ResponseGenerator,
         llm: BaseLLMProvider,
         retrieve_handler: Callable[[str], Awaitable[Any]],
+        query_logger: QueryLogger | None = None,
     ):
         self.config = config
         self.analyzer = analyzer
@@ -47,12 +52,20 @@ class Orchestrator:
         self.response_generator = response_generator
         self.llm = llm
         self.retrieve_handler = retrieve_handler
+        self.query_logger = query_logger
+
+    def _should_collect_metrics(self) -> bool:
+        return bool(
+            self.query_logger is not None
+            and getattr(self.query_logger.config, "log_queries", True)
+        )
 
     async def process(self, query: str, *, include_debug: bool = False) -> OrchestratedResult:
         started = time.perf_counter()
+        query_log_id = str(uuid.uuid4())
         history = self.memory.get_history_for_llm()
-        analysis = await self.analyzer.analyze(query, history)
-
+        capture_debug = bool(include_debug or self._should_collect_metrics())
+        analysis: AnalysisResult | None = None
         rewrite = RewriteResult(original_query=query, rewritten_queries=[query], latency_ms=0)
         retrieval_debug: dict[str, Any] | None = None
         generation_debug: dict[str, Any] | None = None
@@ -60,24 +73,68 @@ class Orchestrator:
         sources: list[dict[str, Any]] = []
         answer = ""
 
-        if analysis.needs_rag:
-            (
-                answer,
-                sources,
-                generation_debug,
-                retrieval_debug,
-                rewrite,
-                rewritten_query,
-            ) = await self._process_rag(query, history, include_debug=include_debug)
-        else:
-            answer, generation_debug = await self._process_non_rag(query, history, analysis, include_debug=include_debug)
+        try:
+            analysis = await self.analyzer.analyze(query, history)
 
-        self._append_memory(query=query, answer=answer, intent=analysis.intent, sources=sources)
+            if analysis.needs_rag:
+                (
+                    answer,
+                    sources,
+                    generation_debug,
+                    retrieval_debug,
+                    rewrite,
+                    rewritten_query,
+                ) = await self._process_rag(query, history, include_debug=capture_debug)
+            else:
+                answer, generation_debug = await self._process_non_rag(
+                    query,
+                    history,
+                    analysis,
+                    include_debug=capture_debug,
+                )
+        except Exception as exc:
+            self._log_query(
+                query_log_id=query_log_id,
+                query=query,
+                analysis=analysis,
+                rewrite=rewrite,
+                sources=sources,
+                retrieval_debug=retrieval_debug,
+                generation_debug=generation_debug,
+                total_latency_ms=max(1, int((time.perf_counter() - started) * 1000)),
+                answer=answer,
+                success=False,
+                error=str(exc),
+            )
+            raise
+
+        self._append_memory(
+            query=query,
+            answer=answer,
+            intent=analysis.intent,
+            sources=sources,
+            query_log_id=query_log_id,
+            feedback=None,
+        )
         await self.memory.update_summary_if_needed()
+
+        total_latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+        self._log_query(
+            query_log_id=query_log_id,
+            query=query,
+            analysis=analysis,
+            rewrite=rewrite,
+            sources=sources,
+            retrieval_debug=retrieval_debug,
+            generation_debug=generation_debug,
+            total_latency_ms=total_latency_ms,
+            answer=answer,
+            success=True,
+            error=None,
+        )
 
         debug = None
         if include_debug:
-            total_latency_ms = max(1, int((time.perf_counter() - started) * 1000))
             debug = self._build_debug(
                 analysis=analysis,
                 rewrite=rewrite,
@@ -94,111 +151,154 @@ class Orchestrator:
             intent=analysis.intent.value,
             needs_rag=analysis.needs_rag,
             rewritten_query=rewritten_query,
+            query_log_id=query_log_id,
             debug=debug,
         )
 
     async def stream(self, query: str, *, include_debug: bool = False) -> AsyncIterator[dict[str, Any]]:
         started = time.perf_counter()
+        query_log_id = str(uuid.uuid4())
         history = self.memory.get_history_for_llm()
-        analysis = await self.analyzer.analyze(query, history)
+        capture_debug = bool(include_debug or self._should_collect_metrics())
+        analysis: AnalysisResult | None = None
         rewrite = RewriteResult(original_query=query, rewritten_queries=[query], latency_ms=0)
         retrieval_debug: dict[str, Any] | None = None
         generation_debug: dict[str, Any] | None = None
         sources: list[dict[str, Any]] = []
         answer_parts: list[str] = []
         rewritten_query: str | None = None
+        try:
+            analysis = await self.analyzer.analyze(query, history)
 
-        if analysis.needs_rag:
-            (
-                retrieval_results,
-                retrieval_latency_ms,
-                resolved_search_type,
-                reranking_applied,
-                retrieval_debug,
-                rewrite,
-                rewritten_query,
-            ) = await self._collect_rag_retrieval(query, history, include_debug=include_debug)
+            if analysis.needs_rag:
+                (
+                    retrieval_results,
+                    retrieval_latency_ms,
+                    resolved_search_type,
+                    reranking_applied,
+                    retrieval_debug,
+                    rewrite,
+                    rewritten_query,
+                ) = await self._collect_rag_retrieval(query, history, include_debug=capture_debug)
 
-            async for event in self.response_generator.stream_events(
-                query=query,
-                retrieval_results=retrieval_results,
-                history_messages=history,
-                retrieval_latency_ms=retrieval_latency_ms,
-                search_type=resolved_search_type,
-                reranking_applied=reranking_applied,
-                include_debug=include_debug,
-            ):
-                event_type = str(event.get("type") or "")
-                if event_type == "token":
-                    token = str(event.get("content") or "")
+                async for event in self.response_generator.stream_events(
+                    query=query,
+                    retrieval_results=retrieval_results,
+                    history_messages=history,
+                    retrieval_latency_ms=retrieval_latency_ms,
+                    search_type=resolved_search_type,
+                    reranking_applied=reranking_applied,
+                    include_debug=capture_debug,
+                ):
+                    event_type = str(event.get("type") or "")
+                    if event_type == "token":
+                        token = str(event.get("content") or "")
+                        if token:
+                            answer_parts.append(token)
+                            yield {"type": "token", "content": token}
+                        continue
+                    if event_type == "done":
+                        sources = list(event.get("sources") or [])
+                        generation_debug = event.get("debug")
+                        done_answer = str(event.get("answer") or "".join(answer_parts))
+                        answer_parts = [done_answer]
+            else:
+                messages = self._build_non_rag_messages(query, history, analysis.intent)
+                prompt_tokens = 0
+                completion_tokens = 0
+                first_token_latency_ms = 0
+                async for chunk in self.llm.stream(
+                    messages=messages,
+                    temperature=0.5,
+                    max_tokens=500,
+                    top_p=0.95,
+                ):
+                    if chunk.is_final:
+                        if chunk.usage is not None:
+                            prompt_tokens = int(chunk.usage.prompt_tokens)
+                            completion_tokens = int(chunk.usage.completion_tokens)
+                        if chunk.latency_ms is not None:
+                            first_token_latency_ms = int(chunk.latency_ms)
+                        continue
+                    token = str(chunk.content or "")
                     if token:
                         answer_parts.append(token)
                         yield {"type": "token", "content": token}
-                    continue
-                if event_type == "done":
-                    sources = list(event.get("sources") or [])
-                    generation_debug = event.get("debug")
-                    done_answer = str(event.get("answer") or "".join(answer_parts))
-                    answer_parts = [done_answer]
-        else:
-            messages = self._build_non_rag_messages(query, history, analysis.intent)
-            prompt_tokens = 0
-            completion_tokens = 0
-            first_token_latency_ms = 0
-            async for chunk in self.llm.stream(
-                messages=messages,
-                temperature=0.5,
-                max_tokens=500,
-                top_p=0.95,
-            ):
-                if chunk.is_final:
-                    if chunk.usage is not None:
-                        prompt_tokens = int(chunk.usage.prompt_tokens)
-                        completion_tokens = int(chunk.usage.completion_tokens)
-                    if chunk.latency_ms is not None:
-                        first_token_latency_ms = int(chunk.latency_ms)
-                    continue
-                token = str(chunk.content or "")
-                if token:
-                    answer_parts.append(token)
-                    yield {"type": "token", "content": token}
 
-            if include_debug:
-                generation_debug = {
-                    "model": self.response_generator.config.model,
-                    "temperature": 0.5,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "time_to_first_token_ms": max(first_token_latency_ms, 1),
-                    "total_latency_ms": max(1, int((time.perf_counter() - started) * 1000)),
-                    "estimated_cost_usd": None,
-                }
+                if capture_debug:
+                    generation_debug = {
+                        "model": self.response_generator.config.model,
+                        "temperature": 0.5,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "time_to_first_token_ms": max(first_token_latency_ms, 1),
+                        "total_latency_ms": max(1, int((time.perf_counter() - started) * 1000)),
+                        "estimated_cost_usd": None,
+                    }
 
-        answer = "".join(answer_parts)
-        self._append_memory(query=query, answer=answer, intent=analysis.intent, sources=sources)
-        await self.memory.update_summary_if_needed()
-
-        debug_payload = None
-        if include_debug:
+            answer = "".join(answer_parts)
             total_latency_ms = max(1, int((time.perf_counter() - started) * 1000))
-            debug_payload = self._build_debug(
+            self._append_memory(
+                query=query,
+                answer=answer,
+                intent=analysis.intent,
+                sources=sources,
+                query_log_id=query_log_id,
+                feedback=None,
+            )
+            await self.memory.update_summary_if_needed()
+
+            self._log_query(
+                query_log_id=query_log_id,
+                query=query,
                 analysis=analysis,
                 rewrite=rewrite,
-                history=history,
+                sources=sources,
                 retrieval_debug=retrieval_debug,
                 generation_debug=generation_debug,
                 total_latency_ms=total_latency_ms,
-            ).model_dump(mode="json")
+                answer=answer,
+                success=True,
+                error=None,
+            )
 
-        yield {
-            "type": "done",
-            "answer": answer,
-            "sources": sources,
-            "intent": analysis.intent.value,
-            "needs_rag": analysis.needs_rag,
-            "rewritten_query": rewritten_query,
-            "debug": debug_payload,
-        }
+            debug_payload = None
+            if include_debug:
+                debug_payload = self._build_debug(
+                    analysis=analysis,
+                    rewrite=rewrite,
+                    history=history,
+                    retrieval_debug=retrieval_debug,
+                    generation_debug=generation_debug,
+                    total_latency_ms=total_latency_ms,
+                ).model_dump(mode="json")
+
+            yield {
+                "type": "done",
+                "answer": answer,
+                "sources": sources,
+                "intent": analysis.intent.value,
+                "needs_rag": analysis.needs_rag,
+                "rewritten_query": rewritten_query,
+                "query_log_id": query_log_id,
+                "debug": debug_payload,
+            }
+        except Exception as exc:
+            total_latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+            self._log_query(
+                query_log_id=query_log_id,
+                query=query,
+                analysis=analysis,
+                rewrite=rewrite,
+                sources=sources,
+                retrieval_debug=retrieval_debug,
+                generation_debug=generation_debug,
+                total_latency_ms=total_latency_ms,
+                answer="".join(answer_parts),
+                success=False,
+                error=str(exc),
+            )
+            raise
 
     def new_conversation(self) -> None:
         self.memory.clear()
@@ -254,7 +354,7 @@ class Orchestrator:
         retrieval_latency_ms = 0
         reranking_applied = False
         resolved_search_type = "hybrid"
-        retrieval_debug: dict[str, Any] | None = None
+        total_reranking_latency_ms = 0
 
         debug_by_query: list[dict[str, Any]] = []
         for rewrite_query in queries:
@@ -264,19 +364,26 @@ class Orchestrator:
             merged_results.extend(list(response.results))
             resolved_search_type = str(getattr(response.search_type, "value", response.search_type))
             reranking_applied = reranking_applied or any(bool(item.is_reranked) for item in response.results)
+            raw_response_debug = getattr(response, "debug", None)
+            response_debug = raw_response_debug if isinstance(raw_response_debug, dict) else {}
+            rerank_debug = response_debug.get("rerank")
+            if isinstance(rerank_debug, dict):
+                total_reranking_latency_ms += int(rerank_debug.get("latency_ms") or 0)
             if include_debug:
-                query_debug = response.debug if isinstance(response.debug, dict) else {"debug": response.debug}
+                query_debug = response_debug if response_debug else {"debug": raw_response_debug}
                 debug_by_query.append({"query": rewrite_query, "debug": query_debug})
 
         deduped = self._deduplicate_results(merged_results)
+        retrieval_debug: dict[str, Any] = {
+            "queries": queries,
+            "unique_results": len(deduped),
+            "results_before_dedup": len(merged_results),
+            "search_type": resolved_search_type,
+            "retrieval_latency_ms": retrieval_latency_ms,
+            "reranking_latency_ms": total_reranking_latency_ms,
+        }
         if include_debug:
-            retrieval_debug = {
-                "queries": queries,
-                "unique_results": len(deduped),
-                "results_before_dedup": len(merged_results),
-                "search_type": resolved_search_type,
-                "per_query": debug_by_query,
-            }
+            retrieval_debug["per_query"] = debug_by_query
         return (
             deduped,
             retrieval_latency_ms,
@@ -356,9 +463,76 @@ class Orchestrator:
         answer: str,
         intent: Intent,
         sources: list[dict[str, Any]],
+        query_log_id: str | None,
+        feedback: str | None,
     ) -> None:
         self.memory.add_message("user", query, intent=intent.value)
-        self.memory.add_message("assistant", answer, sources=sources or None)
+        self.memory.add_message(
+            "assistant",
+            answer,
+            sources=sources or None,
+            query_log_id=query_log_id,
+            feedback=feedback,
+        )
+
+    def _log_query(
+        self,
+        *,
+        query_log_id: str,
+        query: str,
+        analysis: AnalysisResult | None,
+        rewrite: RewriteResult,
+        sources: list[dict[str, Any]],
+        retrieval_debug: dict[str, Any] | None,
+        generation_debug: dict[str, Any] | None,
+        total_latency_ms: int,
+        answer: str,
+        success: bool,
+        error: str | None,
+    ) -> None:
+        if self.query_logger is None:
+            return
+
+        generation = generation_debug or {}
+        retrieval = retrieval_debug or {}
+        search_type = str(generation.get("search_type") or retrieval.get("search_type") or "hybrid")
+        chunks_retrieved = int(generation.get("chunks_retrieved") or retrieval.get("unique_results") or len(sources))
+        retrieval_latency_ms = int(generation.get("retrieval_latency_ms") or retrieval.get("retrieval_latency_ms") or 0)
+        reranking_applied = bool(generation.get("reranking_applied") or int(retrieval.get("reranking_latency_ms") or 0) > 0)
+        reranking_latency_ms = int(retrieval.get("reranking_latency_ms") or 0)
+
+        entry = QueryLogEntry(
+            id=query_log_id,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            query=query,
+            intent=(analysis.intent.value if analysis else "unknown"),
+            intent_confidence=(float(analysis.confidence) if analysis else 0.0),
+            needs_rag=(bool(analysis.needs_rag) if analysis else True),
+            rewritten_query=(
+                rewrite.rewritten_queries[0]
+                if rewrite.rewritten_queries and rewrite.rewritten_queries[0] != query
+                else None
+            ),
+            search_type=search_type,
+            chunks_retrieved=chunks_retrieved,
+            sources=sources,
+            retrieval_latency_ms=retrieval_latency_ms,
+            reranking_applied=reranking_applied,
+            reranking_latency_ms=reranking_latency_ms,
+            answer=answer,
+            model=str(generation.get("model") or self.response_generator.config.model),
+            prompt_tokens=int(generation.get("prompt_tokens") or 0),
+            completion_tokens=int(generation.get("completion_tokens") or 0),
+            generation_latency_ms=int(generation.get("total_latency_ms") or 0),
+            estimated_cost_usd=float(generation.get("estimated_cost_usd") or 0.0),
+            analyzer_latency_ms=int(analysis.latency_ms if analysis else 0),
+            rewriting_latency_ms=int(rewrite.latency_ms or 0),
+            total_latency_ms=max(1, int(total_latency_ms)),
+            success=success,
+            error=error,
+            feedback=None,
+        )
+        self.query_logger.log(entry)
 
     def _build_debug(
         self,

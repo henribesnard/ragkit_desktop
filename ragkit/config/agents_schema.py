@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -146,6 +146,7 @@ class OrchestratedChatResponse(BaseModel):
     intent: str
     needs_rag: bool
     rewritten_query: str | None = None
+    query_log_id: str | None = None
     debug: OrchestratorDebugInfo | None = None
 
 
@@ -154,6 +155,8 @@ class ConversationMessageDTO(BaseModel):
     content: str
     intent: str | None = None
     sources: list[ChatSource] | None = None
+    query_log_id: str | None = None
+    feedback: Literal["positive", "negative"] | None = None
     timestamp: str
 
 

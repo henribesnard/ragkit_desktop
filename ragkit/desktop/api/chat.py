@@ -20,6 +20,7 @@ from ragkit.config.retrieval_schema import UnifiedSearchQuery
 from ragkit.desktop.agents_service import get_agents_config
 from ragkit.desktop.api import retrieval as retrieval_api
 from ragkit.desktop.llm_service import get_llm_config, resolve_llm_provider
+from ragkit.desktop.monitoring_service import get_query_logger
 from ragkit.llm.response_generator import ResponseGenerator
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -39,6 +40,7 @@ def _build_chat_response(
         intent=result.intent,
         needs_rag=result.needs_rag,
         rewritten_query=result.rewritten_query,
+        query_log_id=result.query_log_id,
         debug=debug,
     )
 
@@ -61,6 +63,9 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool]:
     agents_config = get_agents_config()
     llm_config = get_llm_config()
     include_debug = bool(payload.include_debug or agents_config.debug_default or llm_config.debug_default)
+    query_logger = get_query_logger()
+    collect_metrics = bool(getattr(query_logger.config, "log_queries", True))
+    include_pipeline_debug = bool(include_debug or collect_metrics)
 
     provider = resolve_llm_provider(llm_config)
     analyzer_provider = resolve_llm_provider(_analyzer_llm_config(llm_config, agents_config.analyzer_model))
@@ -79,7 +84,7 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool]:
             search_type=payload.search_type,
             alpha=payload.alpha,
             filters=payload.filters,
-            include_debug=include_debug,
+            include_debug=include_pipeline_debug,
             page=1,
             page_size=50,
         )
@@ -93,6 +98,7 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool]:
         response_generator=generator,
         llm=provider,
         retrieve_handler=retrieve_handler,
+        query_logger=query_logger,
     )
     return orchestrator, include_debug
 
@@ -126,6 +132,7 @@ async def chat_stream(payload: ChatQuery):
                         intent=str(event.get("intent") or "question"),
                         needs_rag=bool(event.get("needs_rag", True)),
                         rewritten_query=event.get("rewritten_query"),
+                        query_log_id=event.get("query_log_id"),
                         debug=None,
                     )
                     debug_payload = event.get("debug")
@@ -157,18 +164,20 @@ async def chat_history() -> ConversationHistory:
     for message in memory.list_messages():
         sources = None
         if message.sources:
-            sources = []
-            for item in message.sources:
-                try:
-                    sources.append(ChatSource.model_validate(item))
-                except Exception:
-                    continue
+                sources = []
+                for item in message.sources:
+                    try:
+                        sources.append(ChatSource.model_validate(item))
+                    except Exception:
+                        continue
         messages.append(
             ConversationMessageDTO(
                 role=message.role,
                 content=message.content,
                 intent=message.intent,
                 sources=sources,
+                query_log_id=message.query_log_id,
+                feedback=message.feedback,
                 timestamp=message.timestamp,
             )
         )

@@ -29,7 +29,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
-    from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents
+    from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring
     
     app.include_router(wizard.router)
     app.include_router(ingestion.router)
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(llm.router)
     app.include_router(agents.router)
     app.include_router(chat.router)
+    app.include_router(monitoring.router)
 
     @app.get("/health")
     async def health_check():
