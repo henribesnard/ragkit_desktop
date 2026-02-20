@@ -1,5 +1,5 @@
-﻿import { useTranslation } from "react-i18next";
-import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database, Search, Activity } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Settings as SettingsIcon, Layers, FileText, Scissors, Brain, Database, Search, Activity, Shield } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
 import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
@@ -13,12 +13,51 @@ import { RerankSettings } from "@/components/settings/RerankSettings";
 import { LLMSettings } from "@/components/settings/LLMSettings";
 import { AgentsSettings } from "@/components/settings/AgentsSettings";
 import { MonitoringSettings } from "@/components/settings/MonitoringSettings";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { useExpertiseLevel } from "@/hooks/useExpertiseLevel";
+import { isSectionVisible } from "@/lib/visibility";
+
+type Section = "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring" | "security";
+
+const SECTION_VISIBILITY_MAP: Record<string, string> = {
+  ingestion: "ingestion_source",
+  embedding: "embedding_provider",
+  chunking: "chunking_strategy",
+  vector: "vector_db_provider",
+  semantic: "semantic_search",
+  lexical: "lexical_search",
+  hybrid: "hybrid_alpha",
+  rerank: "reranking",
+  llm: "llm_provider",
+  agents: "agents_intents",
+  monitoring: "monitoring",
+  security: "security",
+};
 
 export function Settings() {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<
-    "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring"
-  >("ingestion");
+  const { level } = useExpertiseLevel();
+  const [activeSection, setActiveSection] = useState<Section>("general");
+
+  const isVisible = (section: Section) => {
+    if (section === "general") return true;
+    const visibilityKey = SECTION_VISIBILITY_MAP[section] || section;
+    return isSectionVisible(visibilityKey, level);
+  };
+
+  const navButton = (section: Section, icon: React.ReactNode, label: string) => {
+    if (!isVisible(section)) return null;
+    return (
+      <button
+        key={section}
+        onClick={() => setActiveSection(section)}
+        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === section ? "bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+      >
+        {icon}
+        {label}
+      </button>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -30,19 +69,28 @@ export function Settings() {
       <div className="flex flex-1 gap-6 overflow-hidden">
         <div className="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4">
           <nav className="space-y-1">
-            <button onClick={() => setActiveSection("general")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "general" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Layers className="w-4 h-4" />General</button>
-            <div className="pt-4 pb-2"><span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Avance</span></div>
-            <button onClick={() => setActiveSection("ingestion")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "ingestion" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><FileText className="w-4 h-4" />Ingestion & Preprocessing</button>
-            <button onClick={() => setActiveSection("embedding")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "embedding" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Brain className="w-4 h-4" />Embedding</button>
-            <button onClick={() => setActiveSection("chunking")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "chunking" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Scissors className="w-4 h-4" />Chunking</button>
-            <button onClick={() => setActiveSection("vector")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "vector" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Database className="w-4 h-4" />Base vectorielle</button>
-            <button onClick={() => setActiveSection("semantic")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "semantic" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche semantique</button>
-            <button onClick={() => setActiveSection("lexical")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "lexical" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche lexicale</button>
-            <button onClick={() => setActiveSection("hybrid")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "hybrid" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Recherche hybride</button>
-            <button onClick={() => setActiveSection("rerank")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "rerank" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Reranking</button>
-            <button onClick={() => setActiveSection("llm")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "llm" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />LLM / Generation</button>
-            <button onClick={() => setActiveSection("agents")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "agents" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Search className="w-4 h-4" />Agents</button>
-            <button onClick={() => setActiveSection("monitoring")} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${activeSection === "monitoring" ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}><Activity className="w-4 h-4" />Monitoring</button>
+            {navButton("general", <Layers className="w-4 h-4" />, t("settings.general", "General"))}
+
+            {(isVisible("ingestion") || isVisible("embedding") || isVisible("chunking") || isVisible("vector") || isVisible("semantic") || isVisible("lexical") || isVisible("hybrid") || isVisible("rerank") || isVisible("llm") || isVisible("agents") || isVisible("monitoring") || isVisible("security")) && (
+              <div className="pt-4 pb-2">
+                <span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t("settings.advanced", "Avance")}
+                </span>
+              </div>
+            )}
+
+            {navButton("ingestion", <FileText className="w-4 h-4" />, t("settings.ingestion", "Ingestion & Preprocessing"))}
+            {navButton("embedding", <Brain className="w-4 h-4" />, t("settings.embedding", "Embedding"))}
+            {navButton("chunking", <Scissors className="w-4 h-4" />, t("settings.chunking", "Chunking"))}
+            {navButton("vector", <Database className="w-4 h-4" />, t("settings.vectorStore", "Base vectorielle"))}
+            {navButton("semantic", <Search className="w-4 h-4" />, t("settings.semanticSearch", "Recherche semantique"))}
+            {navButton("lexical", <Search className="w-4 h-4" />, t("settings.lexicalSearch", "Recherche lexicale"))}
+            {navButton("hybrid", <Search className="w-4 h-4" />, t("settings.hybridSearch", "Recherche hybride"))}
+            {navButton("rerank", <Search className="w-4 h-4" />, t("settings.reranking", "Reranking"))}
+            {navButton("llm", <Search className="w-4 h-4" />, t("settings.llm", "LLM / Generation"))}
+            {navButton("agents", <Search className="w-4 h-4" />, t("settings.agents", "Agents"))}
+            {navButton("monitoring", <Activity className="w-4 h-4" />, t("settings.monitoring", "Monitoring"))}
+            {navButton("security", <Shield className="w-4 h-4" />, t("settings.security", "Securite"))}
           </nav>
         </div>
 
@@ -59,6 +107,7 @@ export function Settings() {
           {activeSection === "llm" && <LLMSettings />}
           {activeSection === "agents" && <AgentsSettings />}
           {activeSection === "monitoring" && <MonitoringSettings />}
+          {activeSection === "security" && <SecuritySettings />}
         </div>
       </div>
     </div>

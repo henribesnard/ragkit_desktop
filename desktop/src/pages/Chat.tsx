@@ -7,6 +7,9 @@ import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchModeSelector";
+import { PartialIngestionBanner } from "@/components/chat/PartialIngestionBanner";
+import { TestQuestionPrompt } from "@/components/chat/TestQuestionPrompt";
+import { ConversationExportMenu } from "@/components/chat/ConversationExportMenu";
 import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
 import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
 import { useChatStream } from "@/hooks/useChatStream";
@@ -144,6 +147,8 @@ export function Chat() {
   const [debug, setDebug] = useState<Record<string, any> | null>(null);
   const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
   const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
+  const [ingestionProgress, setIngestionProgress] = useState<{ doc_index: number; doc_total: number; status: string } | null>(null);
+  const [showTestQuestion, setShowTestQuestion] = useState(false);
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
   const [lexicalStemming, setLexicalStemming] = useState(true);
@@ -214,6 +219,15 @@ export function Chat() {
   const refreshChatState = async () => {
     const ready = await invoke<ChatReadyResponse>("get_chat_ready");
     setChatReady(ready);
+
+    // Check ingestion status for partial mode
+    try {
+      const ingStatus = await invoke<{ status: string; doc_index: number; doc_total: number }>("get_ingestion_status");
+      setIngestionProgress(ingStatus);
+      if (ingStatus.status === "completed" && ready.ready && history.messages.length === 0) {
+        setShowTestQuestion(true);
+      }
+    } catch { /* ignore */ }
 
     const [docTypes, languages, categories, docIds, semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
       invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_type" }),
@@ -368,12 +382,32 @@ export function Chat() {
           >
             Nouvelle conversation
           </Button>
+          <ConversationExportMenu />
           <Button variant="outline" onClick={() => setShowOptions((value) => !value)}>
             <Settings2 className="w-4 h-4 mr-2" />
             Options
           </Button>
         </div>
       </div>
+
+      {/* Partial Ingestion Banner */}
+      {ingestionProgress && ingestionProgress.status === "running" && (
+        <PartialIngestionBanner
+          docsIndexed={ingestionProgress.doc_index}
+          docsTotal={ingestionProgress.doc_total}
+        />
+      )}
+
+      {/* Test Question Prompt */}
+      {showTestQuestion && (
+        <TestQuestionPrompt
+          onAsk={(q) => {
+            setShowTestQuestion(false);
+            setQuery(q);
+          }}
+          onDismiss={() => setShowTestQuestion(false)}
+        />
+      )}
 
       {showOptions && (
         <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">

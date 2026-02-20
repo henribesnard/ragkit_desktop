@@ -771,3 +771,69 @@ pub async fn submit_feedback(app: AppHandle, query_id: String, feedback: String)
     let body = serde_json::json!({ "query_id": query_id, "feedback": feedback });
     request(Method::POST, "/api/feedback", Some(body), &app).await
 }
+
+// --- Security commands ---
+
+#[tauri::command]
+pub async fn get_security_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/security/config", None, &app).await
+}
+
+#[tauri::command]
+pub async fn update_security_config(app: AppHandle, config: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::PUT, "/api/security/config", Some(config), &app).await
+}
+
+#[tauri::command]
+pub async fn reset_security_config(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/security/config/reset", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_api_keys_status(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/security/keys", None, &app).await
+}
+
+#[tauri::command]
+pub async fn purge_all_data(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/security/purge-all", None, &app).await
+}
+
+// --- Export/Import commands ---
+
+#[tauri::command]
+pub async fn export_config(app: AppHandle, path: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "path": path });
+    request(Method::POST, "/api/config/export", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn validate_import(app: AppHandle, path: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "path": path });
+    request(Method::POST, "/api/config/import/validate", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn import_config(app: AppHandle, path: String, mode: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "path": path, "mode": mode });
+    request(Method::POST, "/api/config/import", Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn export_conversation(app: AppHandle, format: String, path: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "format": format, "path": path });
+    request(Method::POST, "/api/conversation/export", Some(body), &app).await
+}
+
+// --- UX commands ---
+
+#[tauri::command]
+pub async fn generate_test_question(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/test-question", None, &app).await
+}
+
+#[tauri::command]
+pub async fn set_expertise_level(app: AppHandle, level: String) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "level": level });
+    request(Method::PUT, "/api/general/expertise", Some(body), &app).await
+}

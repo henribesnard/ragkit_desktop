@@ -148,6 +148,17 @@ fn main() {
             commands::export_query_logs,
             commands::purge_logs,
             commands::submit_feedback,
+            commands::get_security_config,
+            commands::update_security_config,
+            commands::reset_security_config,
+            commands::get_api_keys_status,
+            commands::purge_all_data,
+            commands::export_config,
+            commands::validate_import,
+            commands::import_config,
+            commands::export_conversation,
+            commands::generate_test_question,
+            commands::set_expertise_level,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

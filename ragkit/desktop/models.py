@@ -390,6 +390,7 @@ class SettingsPayload(BaseModel):
     llm: dict[str, Any] = Field(default_factory=dict)
     agents: dict[str, Any] = Field(default_factory=dict)
     monitoring: dict[str, Any] = Field(default_factory=dict)
+    security: dict[str, Any] = Field(default_factory=dict)
 
 
 class WizardCompletionRequest(BaseModel):

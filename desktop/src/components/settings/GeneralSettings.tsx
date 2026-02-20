@@ -1,8 +1,12 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 import { useGeneralSettings } from "@/hooks/useGeneralSettings";
+import { ExpertiseLevelSelector } from "@/components/settings/ExpertiseLevelSelector";
+import { ExportImportPanel } from "@/components/settings/ExportImportPanel";
 
 export function GeneralSettings() {
+  const { t } = useTranslation();
   const { settings, loading, error, update } = useGeneralSettings();
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
@@ -30,39 +34,46 @@ export function GeneralSettings() {
     };
   }, []);
 
-  if (loading) return <div>Chargement...</div>;
+  if (loading) return <div>{t("common.loading", "Chargement...")}</div>;
   if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
-      <h3 className="font-semibold">Mode d'ingestion</h3>
-      <select
-        className="border rounded px-2 py-1"
-        value={settings.ingestion_mode}
-        onChange={(e) => void update({ ingestion_mode: e.target.value as "manual" | "automatic" })}
-      >
-        <option value="manual">Manuel</option>
-        <option value="automatic">Automatique</option>
-      </select>
-      <div>
-        <label className="text-sm">Delai auto-ingestion (s)</label>
-        <input
-          type="number"
-          min={5}
-          max={300}
-          className="border rounded px-2 py-1 ml-2 w-24"
-          value={settings.auto_ingestion_delay}
-          onChange={(e) => void update({ auto_ingestion_delay: Number(e.target.value) })}
-        />
-      </div>
-      {settings.ingestion_mode === "automatic" ? (
-        <p className="text-xs text-amber-700">En mode automatique, les changements declenchent une ingestion incrementale apres ce delai.</p>
-      ) : (
-        <p className="text-xs text-gray-500">En mode manuel, l'ingestion est lancee depuis le tableau de bord.</p>
-      )}
+    <div className="space-y-6">
+      {/* Expertise Level */}
+      <ExpertiseLevelSelector />
 
-      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="font-semibold mb-2">Type de recherche</h3>
+      {/* Ingestion Mode */}
+      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+        <h3 className="font-semibold">{t("general.ingestionMode", "Mode d'ingestion")}</h3>
+        <select
+          className="border rounded px-2 py-1"
+          value={settings.ingestion_mode}
+          onChange={(e) => void update({ ingestion_mode: e.target.value as "manual" | "automatic" })}
+        >
+          <option value="manual">{t("general.manual", "Manuel")}</option>
+          <option value="automatic">{t("general.automatic", "Automatique")}</option>
+        </select>
+        <div>
+          <label className="text-sm">{t("general.autoDelay", "Delai auto-ingestion (s)")}</label>
+          <input
+            type="number"
+            min={5}
+            max={300}
+            className="border rounded px-2 py-1 ml-2 w-24"
+            value={settings.auto_ingestion_delay}
+            onChange={(e) => void update({ auto_ingestion_delay: Number(e.target.value) })}
+          />
+        </div>
+        {settings.ingestion_mode === "automatic" ? (
+          <p className="text-xs text-amber-700">{t("general.autoDesc", "En mode automatique, les changements declenchent une ingestion incrementale apres ce delai.")}</p>
+        ) : (
+          <p className="text-xs text-gray-500">{t("general.manualDesc", "En mode manuel, l'ingestion est lancee depuis le tableau de bord.")}</p>
+        )}
+      </section>
+
+      {/* Search Type */}
+      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+        <h3 className="font-semibold">{t("general.searchType", "Type de recherche")}</h3>
         <div className="space-y-2 text-sm">
           <label className={`flex items-center gap-2 ${!semanticEnabled ? "text-gray-400" : ""}`}>
             <input
@@ -72,9 +83,8 @@ export function GeneralSettings() {
               checked={settings.search_type === "semantic"}
               onChange={() => void update({ search_type: "semantic" })}
             />
-            Semantique seule
+            {t("general.semantic", "Semantique seule")}
           </label>
-
           <label className={`flex items-center gap-2 ${!lexicalEnabled ? "text-gray-400" : ""}`}>
             <input
               type="radio"
@@ -83,9 +93,8 @@ export function GeneralSettings() {
               checked={settings.search_type === "lexical"}
               onChange={() => void update({ search_type: "lexical" })}
             />
-            Lexicale seule
+            {t("general.lexical", "Lexicale seule")}
           </label>
-
           <label className={`flex items-center gap-2 ${!semanticEnabled || !lexicalEnabled ? "text-gray-400" : ""}`}>
             <input
               type="radio"
@@ -94,15 +103,16 @@ export function GeneralSettings() {
               checked={settings.search_type === "hybrid"}
               onChange={() => void update({ search_type: "hybrid" })}
             />
-            Hybride
+            {t("general.hybrid", "Hybride")}
           </label>
         </div>
-      </div>
+      </section>
 
-      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
-        <h3 className="font-semibold mb-2">LLM (generation)</h3>
+      {/* LLM */}
+      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+        <h3 className="font-semibold">{t("general.llm", "LLM (generation)")}</h3>
         <div>
-          <label className="text-sm">Modele LLM</label>
+          <label className="text-sm">{t("general.llmModel", "Modele LLM")}</label>
           <input
             className="border rounded px-2 py-1 ml-2 w-72"
             value={settings.llm_model}
@@ -111,7 +121,7 @@ export function GeneralSettings() {
           />
         </div>
         <div>
-          <label className="text-sm">Temperature ({settings.llm_temperature.toFixed(2)})</label>
+          <label className="text-sm">{t("general.temperature", "Temperature")} ({settings.llm_temperature.toFixed(2)})</label>
           <input
             type="range"
             min={0}
@@ -123,7 +133,7 @@ export function GeneralSettings() {
           />
         </div>
         <div>
-          <label className="text-sm">Langue de reponse</label>
+          <label className="text-sm">{t("general.responseLang", "Langue de reponse")}</label>
           <select
             className="border rounded px-2 py-1 ml-2"
             value={settings.response_language}
@@ -134,7 +144,10 @@ export function GeneralSettings() {
             <option value="en">English</option>
           </select>
         </div>
-      </div>
+      </section>
+
+      {/* Export / Import */}
+      <ExportImportPanel />
     </div>
   );
 }

@@ -14,6 +14,8 @@ export const ipc = {
   updateVectorStoreConfig: (config: any) => invoke("update_vector_store_config", { config }),
   startIngestion: (incremental = false) => invoke("start_ingestion", { incremental }),
   getIngestionStatus: () => invoke("get_ingestion_status"),
+  getGeneralSettings: () => invoke("get_general_settings"),
+  updateGeneralSettings: (settings: any) => invoke("update_general_settings", { settings }),
   getSemanticSearchConfig: () => invoke("get_semantic_search_config"),
   updateSemanticSearchConfig: (config: any) => invoke("update_semantic_search_config", { config }),
   resetSemanticSearchConfig: () => invoke("reset_semantic_search_config"),
@@ -65,4 +67,18 @@ export const ipc = {
   purgeLogs: () => invoke("purge_logs"),
   submitFeedback: (queryId: string, feedback: "positive" | "negative") =>
     invoke("submit_feedback", { queryId, feedback }),
+  // Security
+  getSecurityConfig: () => invoke("get_security_config"),
+  updateSecurityConfig: (config: any) => invoke("update_security_config", { config }),
+  resetSecurityConfig: () => invoke("reset_security_config"),
+  getApiKeysStatus: () => invoke("get_api_keys_status"),
+  purgeAllData: () => invoke("purge_all_data"),
+  // Export/Import
+  exportConfig: (path: string) => invoke("export_config", { path }),
+  validateImport: (path: string) => invoke("validate_import", { path }),
+  importConfig: (path: string, mode: string) => invoke("import_config", { path, mode }),
+  exportConversation: (format: string, path: string) => invoke("export_conversation", { format, path }),
+  // UX
+  generateTestQuestion: () => invoke("generate_test_question"),
+  setExpertiseLevel: (level: string) => invoke("set_expertise_level", { level }),
 };
