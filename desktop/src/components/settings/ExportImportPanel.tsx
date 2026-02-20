@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useConfigExport, ImportPreview } from "@/hooks/useConfigExport";
+import { useConfigExport } from "@/hooks/useConfigExport";
 import { save, open } from "@tauri-apps/plugin-dialog";
 
 export function ExportImportPanel() {

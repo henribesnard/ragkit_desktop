@@ -1,5 +1,3 @@
-import { useTranslation } from "react-i18next";
-
 interface Props {
   message: string;
   actionLabel?: string;
@@ -7,7 +5,6 @@ interface Props {
 }
 
 export function EmptyState({ message, actionLabel, onAction }: Props) {
-  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400">
       <p className="mb-4">{message}</p>
