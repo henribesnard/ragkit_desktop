@@ -95,7 +95,6 @@ jobs:
 
   build-other-platforms:
     needs: lint-frontend
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_scope == 'all' }}
     strategy:
       fail-fast: false
       matrix:
