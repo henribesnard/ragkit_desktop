@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 def create_app() -> FastAPI:
@@ -29,7 +29,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
-    from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security
+    from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
 
     app.include_router(wizard.router)
     app.include_router(ingestion.router)
@@ -44,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(monitoring.router)
     app.include_router(security.router)
+    app.include_router(general.router)
 
     @app.get("/health")
     async def health_check():

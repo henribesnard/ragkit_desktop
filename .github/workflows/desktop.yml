@@ -100,11 +100,11 @@ jobs:
       matrix:
         include:
           - platform: 'ubuntu-22.04'
-            args: ''
+            args: '-b deb,appimage'
             target_suffix: 'x86_64-unknown-linux-gnu'
             bundle_files: |
               desktop/src-tauri/target/release/bundle/deb/*.deb
-              desktop/src-tauri/target/release/bundle/rpm/*.rpm
+              desktop/src-tauri/target/release/bundle/appimage/*.AppImage
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             target_suffix: 'x86_64-apple-darwin'

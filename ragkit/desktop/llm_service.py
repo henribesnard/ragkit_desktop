@@ -73,6 +73,34 @@ def save_llm_config(config: LLMConfig) -> LLMConfig:
 
 
 def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
+    if provider == LLMProvider.OLLAMA:
+        import httpx
+        try:
+            # Short timeout so we don't hang if Ollama is not running
+            response = httpx.get("http://127.0.0.1:11434/api/tags", timeout=1.0)
+            response.raise_for_status()
+            data = response.json()
+            models_list = data.get("models", [])
+            local_models = []
+            for m in models_list:
+                m_name = m.get("name")
+                if m_name:
+                    local_models.append(
+                        LLMModelInfo(
+                            id=m_name,
+                            name=f"{m_name} (Ollama)",
+                            provider=LLMProvider.OLLAMA,
+                            context_window=8192,
+                            languages="multilingual",
+                            quality_rating=3,
+                            latency_hint="local inference",
+                            local=True
+                        )
+                    )
+            if local_models:
+                return local_models
+        except Exception:
+            pass # fallback to catalog
     return model_catalog_for_provider(provider)
 
 

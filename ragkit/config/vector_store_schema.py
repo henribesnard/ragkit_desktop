@@ -73,3 +73,4 @@ class GeneralSettings(BaseModel):
     llm_model: str = "openai/gpt-4o-mini"
     llm_temperature: float = Field(default=0.1, ge=0.0, le=2.0)
     response_language: str = Field(default="auto", pattern=r"^(auto|fr|en)$")
+    expertise_level: str = "simple"
