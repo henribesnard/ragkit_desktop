@@ -100,7 +100,8 @@ class EnvironmentInfo(BaseModel):
     gpu_backend: str | None = None
     ollama_available: bool
     ollama_version: str | None = None
-    ollama_models: list[str] = Field(default_factory=list)
+    ollama_llm_models: list[str] = Field(default_factory=list)
+    ollama_embedding_models: list[str] = Field(default_factory=list)
     local_cached_models: list[str] = Field(default_factory=list)
     keyring_available: bool
 

@@ -67,6 +67,7 @@ class SourceConfig(BaseModel):
     excluded_dirs: list[str] = Field(default_factory=list)
     file_types: list[str] = Field(default_factory=lambda: ["pdf", "docx", "md", "txt"])
     exclusion_patterns: list[str] = Field(default_factory=list)
+    metadata_overrides: dict[str, dict[str, str]] = Field(default_factory=dict)
     max_file_size_mb: int = Field(default=50, ge=1, le=500)
 
     @field_validator("file_types")
@@ -127,6 +128,7 @@ class SourceConfigPatch(BaseModel):
     excluded_dirs: list[str] | None = None
     file_types: list[str] | None = None
     exclusion_patterns: list[str] | None = None
+    metadata_overrides: dict[str, dict[str, str]] | None = None
     max_file_size_mb: int | None = Field(default=None, ge=1, le=500)
 
 

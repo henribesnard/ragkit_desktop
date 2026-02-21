@@ -261,6 +261,14 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
             title, description = _derive_title_description(preprocessed, file_path.stem, parsed.title)
             keywords = _extract_keywords(preprocessed)
 
+            # Apply user-defined metadata overrides
+            overrides = config.source.metadata_overrides.get(relative_path.replace("\\", "/"), {})
+            final_title = overrides.get("title", title)
+            final_author = overrides.get("author", parsed.author)
+            final_description = overrides.get("description", description)
+            final_category = overrides.get("category", None)
+            final_domain = overrides.get("domain", None)
+
             parsed_documents.append(
                 DocumentInfo(
                     id=hashlib.sha1(relative_path.encode("utf-8")).hexdigest(),
@@ -275,9 +283,9 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
                     ).isoformat(),
                     encoding=parsed.encoding,
                     word_count=len(re.findall(r"\w+", preprocessed)),
-                    title=title,
-                    author=parsed.author,
-                    description=description,
+                    title=final_title,
+                    author=final_author,
+                    description=final_description,
                     keywords=keywords,
                     creation_date=parsed.creation_date,
                     mime_type=mimetypes.guess_type(file_path)[0],
@@ -289,7 +297,8 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
                     parser_engine=parsed.parser_engine,
                     ocr_applied=parsed.ocr_applied,
                     tags=keywords,
-                    category=None,
+                    category=final_category,
+                    domain=final_domain,
                     text_preview=parsed.text[:500] if parsed.text else None,
                 )
             )
@@ -477,7 +486,8 @@ def _detect_language(text: str) -> str | None:
 
 def _derive_title_description(text: str, fallback_title: str, extracted_title: str | None) -> tuple[str, str | None]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    title = extracted_title or (lines[0] if lines else fallback_title)
+    title = fallback_title  # Default to filename instead of document contents
+
     if len(title) > 160:
         title = title[:157] + "..."
     if not lines:

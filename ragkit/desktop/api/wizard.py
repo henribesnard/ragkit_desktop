@@ -55,6 +55,41 @@ async def scan_folder(params: ScanFolderRequest) -> FolderScanResult:
     # ScanFolderRequest structure matches what documents.scan_folder expects
     return documents.scan_folder(params)
 
+class ListTargetFilesRequest(BaseModel):
+    source: SourceConfig
+
+class TargetFileInfo(BaseModel):
+    path: str
+    name: str
+    extension: str
+
+@router.post("/list-target-files", response_model=list[TargetFileInfo])
+async def list_target_files(req: ListTargetFilesRequest) -> list[TargetFileInfo]:
+    source = req.source
+    root = Path(source.path).expanduser()
+    if not root.exists() or not root.is_dir():
+        return []
+        
+    selected_types = {documents._normalize_extension(ft) for ft in source.file_types}
+    results = []
+    
+    for path in documents._iter_files(
+        root=root,
+        recursive=source.recursive,
+        excluded_dirs=source.excluded_dirs,
+        exclusion_patterns=source.exclusion_patterns,
+        max_file_size_mb=source.max_file_size_mb
+    ):
+        ext = documents._normalize_extension(path.suffix)
+        if ext in selected_types:
+            relative = path.relative_to(root).as_posix()
+            results.append(TargetFileInfo(
+                path=relative,
+                name=path.name,
+                extension=ext
+            ))
+            
+    return results
 
 @router.post("/analyze-profile", response_model=WizardProfileResponse)
 async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
@@ -211,7 +246,8 @@ async def detect_environment() -> EnvironmentInfo:
     import httpx
     
     ollama_path = shutil.which("ollama")
-    local_models = []
+    llm_models = []
+    embedding_models = []
     
     if ollama_path:
         try:
@@ -219,7 +255,26 @@ async def detect_environment() -> EnvironmentInfo:
                 res = client.get("http://127.0.0.1:11434/api/tags")
                 if res.status_code == 200:
                     data = res.json()
-                    local_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+                    
+                    for m in data.get("models", []):
+                        name = m.get("name")
+                        if not name:
+                            continue
+                            
+                        family = m.get("details", {}).get("family", "").lower()
+                        # Typical Embedding families
+                        if family in ["bert", "nomic-bert", "nomic-bert-moe", "gemma3", "qwen3"]:
+                            embedding_models.append(name)
+                        # Typical LLM families
+                        elif family in ["llama", "qwen2", "gemma", "mixtral", "command-r", "phi3"]:
+                            llm_models.append(name)
+                        else:
+                            # Fallback heuristics based on name
+                            if "embed" in name.lower() or "bge" in name.lower() or "minilm" in name.lower():
+                                embedding_models.append(name)
+                            else:
+                                llm_models.append(name)
+                        
         except Exception:
             pass
             
@@ -240,7 +295,8 @@ async def detect_environment() -> EnvironmentInfo:
         gpu_available=gpu_available,
         gpu_backend=gpu_backend,
         ollama_available=ollama_path is not None,
-        local_models=local_models,
+        ollama_llm_models=llm_models,
+        ollama_embedding_models=embedding_models,
         keyring_available=secrets_manager.keyring_available
     )
 

@@ -63,17 +63,17 @@ export function useWizard() {
         const searchType = cfg.retrieval?.search_type || "hybrid";
 
         if (searchType === "semantic") {
-            if (state.step === 8) next = 9;
-            else if (state.step === 9) next = 12;
-            else if (state.step >= 10 && state.step <= 11) next = 12;
+            if (state.step === 9) next = 10;
+            else if (state.step === 10) next = 14;
+            else if (state.step >= 11 && state.step <= 13) next = 14;
         } else if (searchType === "lexical") {
-            if (state.step === 8) next = 10;
-            else if (state.step === 10) next = 13;
-            else if (state.step === 9 || state.step === 11 || state.step === 12) next = 13;
+            if (state.step === 9) next = 11;
+            else if (state.step === 11) next = 14;
+            else if (state.step === 10 || state.step === 12 || state.step === 13) next = 14;
         }
 
-        // Capping at 14 max (0 to 14)
-        next = Math.min(next, 14);
+        // Capping at 15 max (0 to 15)
+        next = Math.min(next, 15);
         await saveProgress(next, cfg);
     };
 
@@ -84,11 +84,11 @@ export function useWizard() {
         let prev = state.step - 1;
 
         if (searchType === "semantic") {
-            if (state.step === 12) prev = 9;
-            else if (state.step === 9) prev = 8;
+            if (state.step === 14) prev = 10;
+            else if (state.step === 10) prev = 9;
         } else if (searchType === "lexical") {
-            if (state.step === 13) prev = 10;
-            else if (state.step === 10) prev = 8;
+            if (state.step === 14) prev = 11;
+            else if (state.step === 11) prev = 9;
         }
 
         prev = Math.max(prev, 0);

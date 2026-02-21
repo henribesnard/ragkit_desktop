@@ -100,18 +100,25 @@ async def get_available_models(provider: EmbeddingProvider):
                 res = client.get("http://127.0.0.1:11434/api/tags")
                 if res.status_code == 200:
                     data = res.json()
-                    ollama_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
                     existing_ids = {m["id"] for m in base_models}
                     
-                    for m_name in ollama_models:
-                        is_embed = any(x in m_name.lower() for x in ["embed", "minilm", "bge", "bert"])
+                    for m in data.get("models", []):
+                        m_name = m.get("name")
+                        if not m_name:
+                            continue
+                            
+                        family = m.get("details", {}).get("family", "").lower()
+                        is_embed = family in ["bert", "nomic-bert", "nomic-bert-moe", "gemma3", "qwen3"]
+                        if not is_embed:
+                            is_embed = any(x in m_name.lower() for x in ["embed", "bge", "minilm"])
+                            
                         if is_embed and m_name not in existing_ids:
                             base_models.append({
                                 "provider": "ollama",
                                 "id": m_name,
                                 "display_name": m_name,
                                 "dimensions_default": 768,
-                                "description": "Modèle local détecté",
+                                "description": f"Modèle d'embedding local ({family or 'inconnu'})",
                                 "local": True
                             })
         except Exception:

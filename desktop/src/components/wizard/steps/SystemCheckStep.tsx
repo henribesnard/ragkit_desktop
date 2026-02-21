@@ -41,15 +41,37 @@ export function SystemCheckStep({ wizard }: { wizard: any }) {
                         {env?.gpu_available ? <CheckCircle2 className="text-green-500 w-6 h-6" /> : <XCircle className="text-gray-400 w-6 h-6" />}
                     </div>
 
-                    {env?.ollama_available && env.local_models && (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles détectés</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {env.local_models.length > 0 ? env.local_models.map((m: string) => (
-                                    <span key={m} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded text-xs">{m}</span>
-                                )) : <span className="text-sm text-gray-500 italic">Aucun modèle n'est téléchargé.</span>}
-                            </div>
+                    {(env?.ollama_llm_models?.length > 0 || env?.ollama_embedding_models?.length > 0) ? (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
+                            {env?.ollama_llm_models?.length > 0 && (
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles de Génération (LLM)</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {env.ollama_llm_models.map((m: string) => (
+                                            <span key={m} className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-md text-xs">{m}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {env?.ollama_embedding_models?.length > 0 && (
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles d'Embedding</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {env.ollama_embedding_models.map((m: string) => (
+                                            <span key={m} className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-md text-xs">{m}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    ) : (
+                        env?.ollama_available && (
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles détectés</h4>
+                                <span className="text-sm text-gray-500 italic">Aucun modèle n'est téléchargé.</span>
+                            </div>
+                        )
                     )}
                 </div>
             )}

@@ -14,3 +14,4 @@ export { HybridStep } from './HybridStep';
 export { RerankingStep } from './RerankingStep';
 export { LLMStep } from './LLMStep';
 export { AgentsStep } from './AgentsStep';
+export { MetadataStep } from './MetadataStep';

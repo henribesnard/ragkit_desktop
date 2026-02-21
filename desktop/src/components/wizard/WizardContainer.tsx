@@ -5,7 +5,7 @@ import {
     SystemCheckStep, ExpertiseStep, ProfileStep, SourceStep,
     IngestionStep, ChunkingStep, EmbeddingStep, VectorStoreStep,
     SearchTypeStep, SemanticStep, LexicalStep, HybridStep,
-    RerankingStep, LLMStep, AgentsStep
+    RerankingStep, LLMStep, AgentsStep, MetadataStep
 } from "./steps";
 
 export function WizardContainer() {
@@ -21,17 +21,18 @@ export function WizardContainer() {
         <ExpertiseStep key="1" wizard={wizard} />,
         <ProfileStep key="2" wizard={wizard} />,
         <SourceStep key="3" wizard={wizard} />,
-        <IngestionStep key="4" wizard={wizard} />,
-        <ChunkingStep key="5" wizard={wizard} />,
-        <EmbeddingStep key="6" wizard={wizard} />,
-        <VectorStoreStep key="7" wizard={wizard} />,
-        <SearchTypeStep key="8" wizard={wizard} />,
-        <SemanticStep key="9" wizard={wizard} />,
-        <LexicalStep key="10" wizard={wizard} />,
-        <HybridStep key="11" wizard={wizard} />,
-        <RerankingStep key="12" wizard={wizard} />,
-        <LLMStep key="13" wizard={wizard} />,
-        <AgentsStep key="14" wizard={wizard} />
+        <MetadataStep key="4" wizard={wizard} />,
+        <IngestionStep key="5" wizard={wizard} />,
+        <ChunkingStep key="6" wizard={wizard} />,
+        <EmbeddingStep key="7" wizard={wizard} />,
+        <VectorStoreStep key="8" wizard={wizard} />,
+        <SearchTypeStep key="9" wizard={wizard} />,
+        <SemanticStep key="10" wizard={wizard} />,
+        <LexicalStep key="11" wizard={wizard} />,
+        <HybridStep key="12" wizard={wizard} />,
+        <RerankingStep key="13" wizard={wizard} />,
+        <LLMStep key="14" wizard={wizard} />,
+        <AgentsStep key="15" wizard={wizard} />
     ];
 
     return (
@@ -41,7 +42,7 @@ export function WizardContainer() {
                     <div className="font-bold text-lg flex items-center gap-2">
                         RAGKIT <span className="text-gray-400 font-normal text-sm">Configuration</span>
                     </div>
-                    <WizardProgress currentStep={state.step} totalSteps={14} />
+                    <WizardProgress currentStep={state.step} totalSteps={15} />
                 </header>
             )}
 
