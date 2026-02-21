@@ -102,9 +102,14 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: ''
             target_suffix: 'x86_64-unknown-linux-gnu'
+            bundle_files: |
+              desktop/src-tauri/target/release/bundle/deb/*.deb
+              desktop/src-tauri/target/release/bundle/rpm/*.rpm
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             target_suffix: 'x86_64-apple-darwin'
+            bundle_files: |
+              desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -151,13 +156,16 @@ jobs:
           cp "dist/ragkit-backend" "desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
 
       - name: Build Tauri
-        uses: tauri-apps/tauri-action@v0
+        shell: bash
+        run: |
+          cd desktop
+          npx tauri build ${{ matrix.args }}
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: ${{ matrix.bundle_files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: 'RAGKIT Desktop v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
