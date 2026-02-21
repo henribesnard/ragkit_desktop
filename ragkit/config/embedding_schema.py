@@ -33,8 +33,8 @@ class QueryModelConfig(BaseModel):
 
 
 class EmbeddingConfig(BaseModel):
-    provider: EmbeddingProvider = EmbeddingProvider.OPENAI
-    model: str = "text-embedding-3-small"
+    provider: EmbeddingProvider = EmbeddingProvider.HUGGINGFACE
+    model: str = "intfloat/multilingual-e5-large"
     api_key_set: bool = False
 
     query_model: QueryModelConfig = Field(default_factory=QueryModelConfig)

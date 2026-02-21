@@ -237,8 +237,27 @@ class EmbeddingEngine:
 
     def _get_st_model(self) -> Any:
         if self._st_model is None:
+            import os
+            from pathlib import Path
             from sentence_transformers import SentenceTransformer
-            self._st_model = SentenceTransformer(self.config.model)
+            
+            # Set HF cache home to a local ragkit directory so large models don't pollute the generic OS cache
+            models_dir = Path.home() / ".ragkit" / "models"
+            models_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["HF_HOME"] = str(models_dir)
+            
+            # Detect hardware
+            device = "cpu"
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    device = "cuda"
+                elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                    device = "mps"
+            except ImportError:
+                pass
+
+            self._st_model = SentenceTransformer(self.config.model, device=device)
         return self._st_model
 
     def _embed_huggingface(self, text: str) -> list[float]:

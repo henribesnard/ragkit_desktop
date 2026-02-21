@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { ipc } from "@/lib/ipc";
 import { invoke } from "@tauri-apps/api/core";
-import { Loader2, CheckCircle, AlertCircle, Key, Cpu } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Download } from "lucide-react";
 
 export function EmbeddingStep({ wizard }: { wizard: any }) {
     const { state, updateConfig } = wizard;
@@ -14,8 +14,8 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [loadingModels, setLoadingModels] = useState(false);
 
-    const provider = embCfg.provider || "openai";
-    const model = embCfg.model || "text-embedding-3-small";
+    const provider = embCfg.provider || "huggingface";
+    const model = embCfg.model || "intfloat/multilingual-e5-large";
 
     const updateEmbedding = (patch: any) => {
         updateConfig((cfg: any) => {
@@ -43,9 +43,10 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     }, [provider]);
 
     useEffect(() => {
-        // If switching to OpenAI, reset to default model if previous was an ollama model
         if (provider === "openai" && model !== "text-embedding-3-small" && model !== "text-embedding-3-large") {
             updateEmbedding({ model: "text-embedding-3-small" });
+        } else if (provider === "huggingface" && model !== "intfloat/multilingual-e5-large") {
+            updateEmbedding({ model: "intfloat/multilingual-e5-large" });
         }
     }, [provider, model]);
 
@@ -79,7 +80,18 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 Les embeddings convertissent vos textes en vecteurs mathématiques pour permettre la recherche sémantique.
             </p>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button
+                    onClick={() => updateEmbedding({ provider: "huggingface" })}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${provider === "huggingface" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700"}`}
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        <Download className={`w-5 h-5 ${provider === "huggingface" ? "text-blue-600" : "text-gray-400"}`} />
+                        <h3 className="font-semibold text-lg">Local (Recommandé)</h3>
+                    </div>
+                    <p className="text-sm text-gray-500">Multilingual E5. Environ 2.2Go seront téléchargés au premier test. Optimisé CPU/GPU.</p>
+                </button>
+
                 <button
                     onClick={() => updateEmbedding({ provider: "openai" })}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${provider === "openai" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700"}`}
@@ -88,7 +100,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                         <Key className={`w-5 h-5 ${provider === "openai" ? "text-blue-600" : "text-gray-400"}`} />
                         <h3 className="font-semibold text-lg">OpenAI API</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Rapide, performant et très précis. Nécessite une clé API OpenAI payante.</p>
+                    <p className="text-sm text-gray-500">Rapide, performant et précis. Nécessite une clé API OpenAI payante.</p>
                 </button>
 
                 <button
@@ -99,12 +111,12 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                         <Cpu className={`w-5 h-5 ${provider === "ollama" ? "text-blue-600" : "text-gray-400"}`} />
                         <h3 className="font-semibold text-lg">Ollama (Local)</h3>
                     </div>
-                    <p className="text-sm text-gray-500">100% privé, gratuit, s'exécute sur votre machine. Requiert un bon PC/Mac.</p>
+                    <p className="text-sm text-gray-500">100% privé, gratuit. Idéal si vous avez déjà téléchargé nomic-embed-text.</p>
                 </button>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-8">
-                {provider === "openai" ? (
+                {provider === "openai" && (
                     <>
                         <div>
                             <label className="block font-medium mb-1 text-sm">Modèle OpenAI</label>
@@ -129,7 +141,9 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                             <p className="text-xs text-gray-500 mt-1">La clé sera stockée de manière sécurisée dans le trousseau de votre OS.</p>
                         </div>
                     </>
-                ) : (
+                )}
+
+                {provider === "ollama" && (
                     <div>
                         <label className="block font-medium mb-1 text-sm">Modèle local Ollama</label>
                         {loadingModels ? (
@@ -151,6 +165,19 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                                 ))}
                             </select>
                         )}
+                    </div>
+                )}
+
+                {provider === "huggingface" && (
+                    <div className="flex flex-col gap-2">
+                        <label className="block font-medium mb-1 text-sm">Modèle SentenceTransformers Local</label>
+                        <input
+                            type="text"
+                            className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700 bg-gray-50 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                            value={model}
+                            readOnly
+                        />
+                        <p className="text-xs text-gray-500">Ce modèle sera téléchargé et exécuté localement indépendamment de Ollama. Cliquez sur "Tester la connexion" pour forcer le téléchargement si ce n'est pas déjà fait. Cette opération peut prendre quelques minutes.</p>
                     </div>
                 )}
 

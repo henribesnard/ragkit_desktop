@@ -207,7 +207,6 @@ async def complete_wizard(request: WizardCompletionRequest):
 
 @router.get("/environment-detection")
 async def detect_environment() -> EnvironmentInfo:
-    # Basic detect logic
     import shutil
     import httpx
     
@@ -224,10 +223,25 @@ async def detect_environment() -> EnvironmentInfo:
         except Exception:
             pass
             
+    gpu_available = False
+    gpu_backend = None
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu_available = True
+            gpu_backend = "CUDA"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            gpu_available = True
+            gpu_backend = "MPS"
+    except ImportError:
+        pass
+            
     return EnvironmentInfo(
-        gpu_available=False, # Mock
+        gpu_available=gpu_available,
+        gpu_backend=gpu_backend,
         ollama_available=ollama_path is not None,
-        local_models=local_models
+        local_models=local_models,
+        keyring_available=secrets_manager.keyring_available
     )
 
 
