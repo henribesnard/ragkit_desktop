@@ -33,6 +33,10 @@ fn main() {
         .manage(BackendState {
             port: Mutex::new(None),
             child: Mutex::new(None),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .expect("Failed to build reqwest client"),
         })
         .setup(|app| {
             let app_handle = app.handle().clone();

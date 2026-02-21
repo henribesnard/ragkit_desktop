@@ -12,6 +12,7 @@ use std::os::windows::process::CommandExt;
 pub struct BackendState {
     pub port: Mutex<Option<u16>>,
     pub child: Mutex<Option<ChildProcess>>,
+    pub client: Client,
 }
 
 pub enum ChildProcess {
@@ -144,8 +145,8 @@ pub async fn request(
 
     if let Some(p) = port {
         let url = format!("http://127.0.0.1:{}{}", p, endpoint);
-        let client = Client::new();
-        let mut builder = client.request(method, &url);
+        let state = app.state::<BackendState>();
+        let mut builder = state.client.request(method, &url);
         
         if let Some(b) = body {
             builder = builder.json(&b);

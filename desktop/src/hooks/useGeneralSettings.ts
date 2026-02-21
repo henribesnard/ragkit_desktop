@@ -39,7 +39,10 @@ export function useGeneralSettings() {
     let cancelled = false;
     void (async () => {
       try {
-        const next = await invoke<GeneralSettings>("get_general_settings");
+        // Diagnostic timeout wrapping invoke
+        const timeoutPromise = new Promise<GeneralSettings>((_, reject) => setTimeout(() => reject(new Error("Timeout after 5s invoking get_general_settings")), 5000));
+        const invokePromise = invoke<GeneralSettings>("get_general_settings");
+        const next = await Promise.race([invokePromise, timeoutPromise]);
         if (!cancelled) {
           setSettings({ ...defaultSettings, ...next });
           setError(null);

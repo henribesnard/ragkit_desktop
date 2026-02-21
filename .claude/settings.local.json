@@ -41,7 +41,17 @@
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
       "Bash(\"/c/Program Files \\(x86\\)/GitHub CLI/gh.exe\" --version)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(if not exist \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\\\\ragkit\\\\export\" mkdir \"c:\\\\Users\\\\henri\\\\Projets\\\\ragkit_desktop\\\\ragkit\\\\export\")",
+      "Bash(gh release list:*)",
+      "Bash(winget install:*)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" release list --repo henribesnard/ragkit_desktop --limit 50)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth status)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth token)",
+      "Bash(git remote:*)",
+      "Bash(git credential:*)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth login:*)",
+      "Bash(xargs git tag -d:*)"
     ]
   }
 }
