@@ -69,6 +69,7 @@ export function RerankSettings() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.provider]);
 
   const modelOptions = useMemo(

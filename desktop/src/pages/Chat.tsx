@@ -267,12 +267,13 @@ export function Chat() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!finalResponse) return;
     void refreshHistory();
-  }, [finalResponse]);
+  }, [finalResponse, refreshHistory]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -334,6 +335,7 @@ export function Chat() {
       void executeSearch(1, false);
     }, 300);
     return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alphaOverride]);
 
   const onSearch = async (event: FormEvent) => {
@@ -555,11 +557,10 @@ export function Chat() {
           {history.messages.slice(-8).map((message, index) => (
             <article
               key={`${message.timestamp}-${index}`}
-              className={`rounded border px-3 py-2 text-sm ${
-                message.role === "user"
-                  ? "border-blue-200 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-900/20"
-                  : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60"
-              }`}
+              className={`rounded border px-3 py-2 text-sm ${message.role === "user"
+                ? "border-blue-200 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-900/20"
+                : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60"
+                }`}
             >
               <div className="text-xs text-gray-500 mb-1">{message.role === "user" ? "Vous" : "Assistant"}</div>
               <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100">{message.content}</div>
@@ -679,13 +680,13 @@ export function Chat() {
             const opened = Boolean(expanded[result.chunk_id]);
             const displayedScore =
               result.is_reranked && result.rerank_score !== null && result.rerank_score !== undefined
-              ? result.rerank_score
-              : result.score;
+                ? result.rerank_score
+                : result.score;
             const rerankToRank =
               result.original_rank !== null &&
-              result.original_rank !== undefined &&
-              result.rank_change !== null &&
-              result.rank_change !== undefined
+                result.original_rank !== undefined &&
+                result.rank_change !== null &&
+                result.rank_change !== undefined
                 ? result.original_rank - result.rank_change
                 : null;
             return (
