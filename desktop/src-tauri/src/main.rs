@@ -3,7 +3,6 @@
 mod backend;
 mod commands;
 
-use tauri::Manager;
 use std::sync::Mutex;
 use backend::BackendState;
 

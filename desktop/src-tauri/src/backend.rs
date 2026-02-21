@@ -15,6 +15,7 @@ pub struct BackendState {
 }
 
 pub enum ChildProcess {
+    #[allow(dead_code)]
     Std(std::process::Child),
     Sidecar(CommandChild),
 }

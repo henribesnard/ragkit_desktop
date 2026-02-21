@@ -94,7 +94,7 @@ jobs:
           args: ''
 
   build-other-platforms:
-    needs: lint-frontend
+    needs: build-windows
     strategy:
       fail-fast: false
       matrix:
