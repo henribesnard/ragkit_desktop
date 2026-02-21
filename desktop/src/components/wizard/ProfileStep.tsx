@@ -1,4 +1,3 @@
-import { WizardState } from "@/hooks/useWizard";
 import { ProfileCard } from "./ProfileCard";
 import { CalibrationQuestion } from "./CalibrationQuestion";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -6,15 +5,30 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 interface ProfileStepProps {
-    state: WizardState;
-    onNext: () => void;
-    onPrev: () => void;
-    setProfile: (p: string) => void;
-    toggleCalibration: (key: string) => void;
+    wizard: any;
 }
 
-export function ProfileStep({ state, onNext, onPrev, setProfile, toggleCalibration }: ProfileStepProps) {
+export function ProfileStep({ wizard }: ProfileStepProps) {
+    const { state, updateConfig, nextStep, prevStep } = wizard;
     const [showCalibration, setShowCalibration] = useState(true);
+
+    const currentProfile = state.config?.profile || null;
+    const getCalibration = (key: string) => !!state.config?.calibration_answers?.[key];
+
+    const setProfile = (id: string) => {
+        updateConfig((cfg: any) => {
+            cfg.profile = id;
+            return cfg;
+        });
+    };
+
+    const toggleCalibration = (key: string) => {
+        updateConfig((cfg: any) => {
+            if (!cfg.calibration_answers) cfg.calibration_answers = {};
+            cfg.calibration_answers[key] = !cfg.calibration_answers[key];
+            return cfg;
+        });
+    };
 
     const profiles = [
         { id: "technical_documentation", name: "Documentation technique", icon: "📘", desc: "Manuels, API docs, guides" },
@@ -46,7 +60,7 @@ export function ProfileStep({ state, onNext, onPrev, setProfile, toggleCalibrati
                             name={p.name}
                             icon={p.icon}
                             description={p.desc}
-                            selected={state.profile === p.id}
+                            selected={currentProfile === p.id}
                             onSelect={setProfile}
                         />
                     ))}
@@ -69,7 +83,7 @@ export function ProfileStep({ state, onNext, onPrev, setProfile, toggleCalibrati
                                     id={q.id}
                                     question={q.q}
                                     tooltip={q.t}
-                                    value={state.calibration[q.id]}
+                                    value={getCalibration(q.id)}
                                     onChange={toggleCalibration}
                                 />
                             ))}
@@ -79,8 +93,8 @@ export function ProfileStep({ state, onNext, onPrev, setProfile, toggleCalibrati
             </div>
 
             <div className="flex justify-between pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                <Button variant="ghost" onClick={onPrev}>← Retour</Button>
-                <Button onClick={onNext} disabled={!state.profile}>Suivant →</Button>
+                <Button variant="ghost" onClick={prevStep}>← Retour</Button>
+                <Button onClick={() => nextStep()} disabled={!currentProfile}>Suivant →</Button>
             </div>
         </div>
     );

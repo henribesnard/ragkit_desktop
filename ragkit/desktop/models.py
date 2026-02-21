@@ -378,6 +378,7 @@ class IngestionLogEntry(BaseModel):
 class SettingsPayload(BaseModel):
     version: str = "1.0.0"
     setup_completed: bool = False
+    wizard_step: int = 0
     profile: str | None = None
     calibration_answers: dict[str, bool] = Field(default_factory=dict)
     ingestion: IngestionConfig | None = None

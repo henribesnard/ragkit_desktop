@@ -66,6 +66,16 @@ pub async fn get_current_profile(app: AppHandle) -> Result<serde_json::Value, St
     request(Method::GET, "/api/wizard/current-profile", None, &app).await
 }
 
+#[tauri::command]
+pub async fn get_wizard_progress(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/wizard/progress", None, &app).await
+}
+
+#[tauri::command]
+pub async fn save_wizard_progress(app: AppHandle, data: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/wizard/progress", Some(data), &app).await
+}
+
 // --- Setup Status ---
 
 #[tauri::command]

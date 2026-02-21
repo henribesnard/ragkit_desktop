@@ -22,6 +22,7 @@ from ragkit.desktop.models import (
     SettingsPayload,
     EnvironmentInfo,
 )
+from pydantic import BaseModel
 from ragkit.config.manager import config_manager
 from ragkit.desktop import documents
 
@@ -29,14 +30,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/wizard", tags=["wizard"])
 
+class WizardProgressData(BaseModel):
+    wizard_step: int
+    config: SettingsPayload
 
-# --- Endpoints ---
+@router.get("/progress", response_model=WizardProgressData)
+async def get_wizard_progress() -> WizardProgressData:
+    settings = config_manager.load_config() or SettingsPayload()
+    return WizardProgressData(wizard_step=settings.wizard_step, config=settings)
+
+@router.post("/progress")
+async def save_wizard_progress(data: WizardProgressData):
+    data.config.wizard_step = data.wizard_step
+    config_manager.save_config(data.config)
+    return {"success": True}
 
 @router.post("/validate-folder", response_model=FolderValidationResult)
 async def validate_folder(request: FolderValidationRequest) -> FolderValidationResult:
     # recursive defaults to True in model now
     return documents.validate_folder(request.folder_path, recursive=request.recursive)
-
 
 @router.post("/scan-folder", response_model=FolderScanResult)
 async def scan_folder(params: ScanFolderRequest) -> FolderScanResult:
