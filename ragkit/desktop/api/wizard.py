@@ -208,15 +208,26 @@ async def complete_wizard(request: WizardCompletionRequest):
 @router.get("/environment-detection")
 async def detect_environment() -> EnvironmentInfo:
     # Basic detect logic
-    # In real world, check for CUDA/MPS and Ollama process
     import shutil
+    import httpx
     
     ollama_path = shutil.which("ollama")
+    local_models = []
     
+    if ollama_path:
+        try:
+            with httpx.Client(timeout=1.0) as client:
+                res = client.get("http://127.0.0.1:11434/api/tags")
+                if res.status_code == 200:
+                    data = res.json()
+                    local_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+        except Exception:
+            pass
+            
     return EnvironmentInfo(
         gpu_available=False, # Mock
         ollama_available=ollama_path is not None,
-        local_models=["llama3", "mistral"] if ollama_path else []
+        local_models=local_models
     )
 
 

@@ -91,7 +91,33 @@ async def reset_embedding_config() -> EmbeddingConfig:
 
 @router.get("/models")
 async def get_available_models(provider: EmbeddingProvider):
-    return [m.model_dump(mode="json") for m in MODEL_CATALOG.get(provider, [])]
+    base_models = [m.model_dump(mode="json") for m in MODEL_CATALOG.get(provider, [])]
+    
+    if provider == EmbeddingProvider.OLLAMA:
+        import httpx
+        try:
+            with httpx.Client(timeout=1.0) as client:
+                res = client.get("http://127.0.0.1:11434/api/tags")
+                if res.status_code == 200:
+                    data = res.json()
+                    ollama_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+                    existing_ids = {m["id"] for m in base_models}
+                    
+                    for m_name in ollama_models:
+                        is_embed = any(x in m_name.lower() for x in ["embed", "minilm", "bge", "bert"])
+                        if is_embed and m_name not in existing_ids:
+                            base_models.append({
+                                "provider": "ollama",
+                                "id": m_name,
+                                "display_name": m_name,
+                                "dimensions_default": 768,
+                                "description": "Modèle local détecté",
+                                "local": True
+                            })
+        except Exception:
+            pass
+            
+    return base_models
 
 
 @router.get("/environment")

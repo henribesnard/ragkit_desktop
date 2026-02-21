@@ -85,18 +85,20 @@ def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
             for m in models_list:
                 m_name = m.get("name")
                 if m_name:
-                    local_models.append(
-                        LLMModelInfo(
-                            id=m_name,
-                            name=f"{m_name} (Ollama)",
-                            provider=LLMProvider.OLLAMA,
-                            context_window=8192,
-                            languages="multilingual",
-                            quality_rating=3,
-                            latency_hint="local inference",
-                            local=True
+                    is_embed = any(x in m_name.lower() for x in ["embed", "minilm", "bge", "bert"])
+                    if not is_embed:
+                        local_models.append(
+                            LLMModelInfo(
+                                id=m_name,
+                                name=f"{m_name} (Ollama)",
+                                provider=LLMProvider.OLLAMA,
+                                context_window=8192,
+                                languages="multilingual",
+                                quality_rating=3,
+                                latency_hint="local inference",
+                                local=True
+                            )
                         )
-                    )
             if local_models:
                 return local_models
         except Exception:
