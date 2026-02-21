@@ -72,6 +72,7 @@ jobs:
       - name: Build Python Backend
         shell: bash
         run: |
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[desktop]"
           pyinstaller ragkit-backend.spec
 
@@ -146,6 +147,7 @@ jobs:
       - name: Build Python Backend
         shell: bash
         run: |
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[desktop]"
           pyinstaller ragkit-backend.spec
 
