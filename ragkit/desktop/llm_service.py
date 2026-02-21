@@ -111,6 +111,18 @@ def resolve_llm_provider(config: LLMConfig) -> BaseLLMProvider:
     api_key: str | None = None
     if secret_name:
         api_key = secrets_manager.retrieve(secret_name)
+        
+    if not api_key:
+        import os
+        if config.provider == LLMProvider.OPENAI:
+            api_key = os.getenv("OPENAI_API_KEY")
+        elif config.provider == LLMProvider.ANTHROPIC:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+        elif config.provider == LLMProvider.COHERE:
+            api_key = os.getenv("COHERE_API_KEY")
+        elif config.provider == LLMProvider.MISTRAL:
+            api_key = os.getenv("MISTRAL_API_KEY")
+            
     return create_llm_provider(config, api_key=api_key)
 
 

@@ -133,6 +133,19 @@ async def test_embedding_connection(provider: EmbeddingProvider | None = None, m
     if model:
         cfg.model = model
     api_key = secrets_manager.retrieve(_api_key_name(cfg.provider))
+    
+    # Fallback to standard environment variables if not found in the secret manager
+    import os
+    if not api_key:
+        if cfg.provider == EmbeddingProvider.OPENAI:
+            api_key = os.getenv("OPENAI_API_KEY")
+        elif cfg.provider == EmbeddingProvider.COHERE:
+            api_key = os.getenv("COHERE_API_KEY")
+        elif cfg.provider == EmbeddingProvider.VOYAGEAI:
+            api_key = os.getenv("VOYAGE_API_KEY")
+        elif cfg.provider == EmbeddingProvider.MISTRAL:
+            api_key = os.getenv("MISTRAL_API_KEY")
+            
     engine = EmbeddingEngine(cfg, api_key=api_key)
     return engine.test_connection()
 

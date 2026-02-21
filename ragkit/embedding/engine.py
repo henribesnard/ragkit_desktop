@@ -299,6 +299,26 @@ class EmbeddingEngine:
                 success=False, status="auth_error",
                 message="Clé API invalide ou manquante",
             )
+            
+        if self.config.provider == EmbeddingProvider.OLLAMA:
+            # For Ollama, do a direct ping to check if it's running before embedding
+            try:
+                import urllib.request
+                req = urllib.request.Request("http://127.0.0.1:11434/api/tags", method="GET")
+                with urllib.request.urlopen(req, timeout=self.config.timeout) as resp:
+                    data = json.loads(resp.read())
+                    models = [m.get("name") for m in data.get("models", [])]
+                    
+                    if self.config.model not in models:
+                        return ConnectionTestResult(
+                            success=False, status="model_error",
+                            message=f"Modèle '{self.config.model}' non installé dans Ollama.",
+                        )
+            except Exception as e:
+                return ConnectionTestResult(
+                    success=False, status="network_error",
+                    message="Impossible de joindre Ollama (assurez-vous qu'il est lancé en arrière-plan).",
+                )
 
         # Try to actually produce an embedding as the definitive test
         try:

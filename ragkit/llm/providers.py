@@ -501,11 +501,23 @@ class OllamaProvider(BaseLLMProvider):
             async with httpx.AsyncClient(timeout=httpx.Timeout(min(float(self.config.timeout), 15.0))) as client:
                 response = await client.get(self.API_TAGS_URL)
                 response.raise_for_status()
+                data = response.json()
+                
+            models = [m.get("name") for m in data.get("models", [])]
+            if self.config.model not in models:
+                return LLMTestResult(
+                    success=False,
+                    model=self.config.model,
+                    response_text="",
+                    latency_ms=0,
+                    error=f"Modèle '{self.config.model}' non installé dans Ollama.",
+                )
+                
             latency_ms = max(1, int((time.perf_counter() - started) * 1000))
             return LLMTestResult(
                 success=True,
                 model=self.config.model,
-                response_text="Ollama reachable",
+                response_text="Connexion réussie",
                 latency_ms=latency_ms,
             )
         except Exception as exc:
@@ -514,5 +526,5 @@ class OllamaProvider(BaseLLMProvider):
                 model=self.config.model,
                 response_text="",
                 latency_ms=0,
-                error=str(exc),
+                error=f"Impossible de joindre Ollama: {str(exc)}",
             )

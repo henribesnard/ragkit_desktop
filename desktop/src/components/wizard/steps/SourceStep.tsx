@@ -86,8 +86,8 @@ export function SourceStep({ wizard }: { wizard: any }) {
                 });
                 setScanResult(res);
 
-                // Auto-include all supported types if this is the first real scan
-                if (sourceCfg.file_types.length === 5 && res.supported_types?.length > 0) {
+                // Auto-include all supported types from the scan by default
+                if (res.supported_types?.length > 0) {
                     const allSupported = res.supported_types.map((t: any) => t.extension.replace(".", ""));
                     updateSource({ file_types: allSupported });
                 }
