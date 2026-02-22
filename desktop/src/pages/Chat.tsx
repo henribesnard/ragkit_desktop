@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
-import { ChatSearchMode, SearchModeSelector } from "@/components/chat/SearchModeSelector";
+import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
 import { PartialIngestionBanner } from "@/components/chat/PartialIngestionBanner";
 import { TestQuestionPrompt } from "@/components/chat/TestQuestionPrompt";
 import { ConversationExportMenu } from "@/components/chat/ConversationExportMenu";
@@ -515,21 +515,6 @@ export function Chat() {
       )}
 
       <form onSubmit={onSearch} className="flex gap-2">
-        <SearchModeSelector
-          mode={searchMode}
-          onModeChange={(mode) => {
-            setSearchMode(mode);
-            setResults([]);
-            setDebug(null);
-            setPage(1);
-            setHasMore(false);
-            setTotalResults(0);
-            setExpanded({});
-          }}
-          lexicalEnabled={lexicalEnabled}
-          semanticEnabled={semanticEnabled}
-        />
-
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

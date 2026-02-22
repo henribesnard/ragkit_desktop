@@ -230,7 +230,11 @@ async def complete_wizard(request: WizardCompletionRequest):
 
         # Invalidate the in-memory cache so ingestion endpoints pick up new config
         from ragkit.desktop.api import ingestion
-        ingestion._CURRENT_CONFIG = request.config.ingestion
+        from ragkit.desktop.models import IngestionConfig
+        if request.config.ingestion:
+            ingestion._CURRENT_CONFIG = IngestionConfig.model_validate(request.config.ingestion)
+        else:
+            ingestion._CURRENT_CONFIG = None
 
         # Analysis is NOT done here - it would block for minutes on large corpora.
         # The Settings page triggers analysis via POST /api/ingestion/analyze.
