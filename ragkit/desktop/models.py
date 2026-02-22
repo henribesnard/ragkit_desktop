@@ -238,8 +238,11 @@ class SetupStatusResponse(BaseModel):
 
 class EnvironmentInfo(BaseModel):
     gpu_available: bool
+    gpu_backend: str | None = None
     ollama_available: bool
-    local_models: list[str] = Field(default_factory=list)
+    ollama_llm_models: list[str] = Field(default_factory=list)
+    ollama_embedding_models: list[str] = Field(default_factory=list)
+    keyring_available: bool = False
 
 
 class DocumentInfo(BaseModel):
@@ -270,6 +273,7 @@ class DocumentInfo(BaseModel):
     ocr_applied: bool = False
     text_preview: str | None = None
     # Hierarchie organisationnelle (metadata.md)
+    tenant: str | None = None
     domain: str | None = None
     subdomain: str | None = None
     # Classification etendue (metadata.md)
@@ -293,6 +297,7 @@ class DocumentMetadataUpdate(BaseModel):
     category: str | None = None
     language: str | None = None
     creation_date: str | None = None
+    tenant: str | None = None
     domain: str | None = None
     subdomain: str | None = None
     confidentiality: str | None = None
@@ -300,7 +305,7 @@ class DocumentMetadataUpdate(BaseModel):
     source_url: str | None = None
     version: str | None = None
 
-    @field_validator("title", "author", "description", "category", "language", "domain", "subdomain", "confidentiality", "status", "source_url", "version")
+    @field_validator("title", "author", "description", "category", "language", "tenant", "domain", "subdomain", "confidentiality", "status", "source_url", "version")
     @classmethod
     def strip_text_fields(cls, value: str | None) -> str | None:
         if value is None:

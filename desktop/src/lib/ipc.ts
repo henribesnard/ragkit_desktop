@@ -8,6 +8,7 @@ interface HealthCheckResponse {
 export const ipc = {
   healthCheck: () => invoke<HealthCheckResponse>("health_check"),
   detectEnvironment: () => invoke("detect_environment"),
+  listTargetFiles: (source: any) => invoke<any>("list_target_files", { source }),
   getEmbeddingConfig: () => invoke("get_embedding_config"),
   updateEmbeddingConfig: (config: any) => invoke("update_embedding_config", { config }),
   testEmbeddingConnection: (provider?: string, model?: string) => invoke("test_embedding_connection", { provider, model }),

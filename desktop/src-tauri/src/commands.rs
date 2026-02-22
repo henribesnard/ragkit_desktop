@@ -83,6 +83,12 @@ pub async fn get_setup_status(app: AppHandle) -> Result<serde_json::Value, Strin
     request(Method::GET, "/api/ingestion/setup-status", None, &app).await
 }
 
+#[tauri::command]
+pub async fn list_target_files(app: AppHandle, source: serde_json::Value) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "source": source });
+    request(Method::POST, "/api/wizard/list-target-files", Some(body), &app).await
+}
+
 // --- Ingestion Commands ---
 
 #[tauri::command]

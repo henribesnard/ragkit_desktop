@@ -51,6 +51,7 @@ fn main() {
             commands::health_check,
             commands::validate_folder,
             commands::scan_folder,
+            commands::list_target_files,
             commands::analyze_wizard_profile,
             commands::complete_wizard,
             commands::detect_environment,

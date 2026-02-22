@@ -1,6 +1,7 @@
 # ragkit/desktop/api/wizard.py
 from __future__ import annotations
 
+from ragkit.security.secrets import secrets_manager
 import logging
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
