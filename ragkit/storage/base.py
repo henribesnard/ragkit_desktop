@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import uuid
@@ -245,6 +246,25 @@ class QdrantVectorStore(BaseVectorStore):
         }
         return mapping[self.config.distance_metric.value]
 
+    @staticmethod
+    def _patch_qdrant_meta(root: Path) -> None:
+        """Remove stale fields from Qdrant meta.json that newer versions reject."""
+        meta = root / "meta.json"
+        if not meta.exists():
+            return
+        try:
+            import json as _json
+            raw = _json.loads(meta.read_text(encoding="utf-8"))
+            changed = False
+            for _coll in (raw.get("collections") or {}).values():
+                if isinstance(_coll, dict) and "metadata" in _coll:
+                    del _coll["metadata"]
+                    changed = True
+            if changed:
+                meta.write_text(_json.dumps(raw, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
     def _ensure_client(self):
         if self._client is not None:
             return self._client
@@ -260,6 +280,7 @@ class QdrantVectorStore(BaseVectorStore):
 
         if self.config.mode.value == "persistent":
             self._root.mkdir(parents=True, exist_ok=True)
+            self._patch_qdrant_meta(self._root)
             self._client = QdrantClient(path=str(self._root))
         else:
             self._client = QdrantClient(path=":memory:")
@@ -286,10 +307,7 @@ class QdrantVectorStore(BaseVectorStore):
             return int(first.size)
         raise ValueError("Unable to infer vector dimensions from Qdrant collection.")
 
-    async def initialize(self, dimensions: int) -> None:
-        if dimensions < 0:
-            raise ValueError("Vector dimensions must be >= 0.")
-
+    def _sync_initialize(self, dimensions: int) -> None:
         client = self._ensure_client()
         name = self.config.collection_name
         if client.collection_exists(name):
@@ -314,12 +332,12 @@ class QdrantVectorStore(BaseVectorStore):
             vectors_config=VectorParams(size=dimensions, distance=self._distance_metric()),
         )
 
-    async def upsert(self, points: list[VectorPoint]) -> int:
-        if not points:
-            return 0
-        if self._dimensions == 0:
-            await self.initialize(len(points[0].vector))
+    async def initialize(self, dimensions: int) -> None:
+        if dimensions < 0:
+            raise ValueError("Vector dimensions must be >= 0.")
+        await asyncio.to_thread(self._sync_initialize, dimensions)
 
+    def _sync_upsert(self, points: list[VectorPoint]) -> int:
         from qdrant_client.models import PointStruct
 
         qdrant_points: list[PointStruct] = []
@@ -340,6 +358,13 @@ class QdrantVectorStore(BaseVectorStore):
 
         self._ensure_client().upsert(collection_name=self.config.collection_name, points=qdrant_points, wait=True)
         return len(points)
+
+    async def upsert(self, points: list[VectorPoint]) -> int:
+        if not points:
+            return 0
+        if self._dimensions == 0:
+            await self.initialize(len(points[0].vector))
+        return await asyncio.to_thread(self._sync_upsert, points)
 
     def _scroll(self, query_filter=None, with_vectors: bool = False):
         from qdrant_client.models import Filter
@@ -367,7 +392,7 @@ class QdrantVectorStore(BaseVectorStore):
             offset = next_offset
         return all_points
 
-    async def delete_by_doc_id(self, doc_id: str) -> int:
+    def _sync_delete_by_doc_id(self, doc_id: str) -> int:
         from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         query_filter = Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))])
@@ -381,13 +406,19 @@ class QdrantVectorStore(BaseVectorStore):
             )
         return count
 
-    async def delete_collection(self) -> None:
+    async def delete_by_doc_id(self, doc_id: str) -> int:
+        return await asyncio.to_thread(self._sync_delete_by_doc_id, doc_id)
+
+    def _sync_delete_collection(self) -> None:
         client = self._ensure_client()
         if client.collection_exists(self.config.collection_name):
             client.delete_collection(self.config.collection_name)
         self._dimensions = 0
 
-    async def collection_stats(self) -> CollectionStats:
+    async def delete_collection(self) -> None:
+        await asyncio.to_thread(self._sync_delete_collection)
+
+    def _sync_collection_stats(self) -> CollectionStats:
         client = self._ensure_client()
         name = self.config.collection_name
         if not client.collection_exists(name):
@@ -410,6 +441,9 @@ class QdrantVectorStore(BaseVectorStore):
             size_bytes=size_bytes,
             status="ready",
         )
+
+    async def collection_stats(self) -> CollectionStats:
+        return await asyncio.to_thread(self._sync_collection_stats)
 
     async def test_connection(self) -> ConnectionTestResult:
         try:
@@ -453,15 +487,7 @@ class QdrantVectorStore(BaseVectorStore):
         await self.initialize(init_dimensions)
         await self.upsert(points)
 
-    async def search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]:
-        if not vector:
-            raise ValueError("Query vector must not be empty.")
-        if self._dimensions and len(vector) != self._dimensions:
-            raise ValueError(
-                f"Query vector dimensions mismatch: expected {self._dimensions}, got {len(vector)}. "
-                "Verify document/query embedding models and dimensions."
-            )
-
+    def _sync_search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]:
         client = self._ensure_client()
         if not client.collection_exists(self.config.collection_name):
             return []
@@ -486,7 +512,17 @@ class QdrantVectorStore(BaseVectorStore):
             hits.append((VectorPoint(id=point_id, vector=point_vector, payload=payload), score))
         return hits
 
-    async def all_points(self) -> list[VectorPoint]:
+    async def search(self, vector: list[float], top_k: int) -> list[tuple[VectorPoint, float]]:
+        if not vector:
+            raise ValueError("Query vector must not be empty.")
+        if self._dimensions and len(vector) != self._dimensions:
+            raise ValueError(
+                f"Query vector dimensions mismatch: expected {self._dimensions}, got {len(vector)}. "
+                "Verify document/query embedding models and dimensions."
+            )
+        return await asyncio.to_thread(self._sync_search, vector, top_k)
+
+    def _sync_all_points(self) -> list[VectorPoint]:
         points = self._scroll(with_vectors=True)
         result: list[VectorPoint] = []
         for point in points:
@@ -497,6 +533,9 @@ class QdrantVectorStore(BaseVectorStore):
                 self._dimensions = len(point_vector)
             result.append(VectorPoint(id=point_id, vector=point_vector, payload=payload))
         return result
+
+    async def all_points(self) -> list[VectorPoint]:
+        return await asyncio.to_thread(self._sync_all_points)
 
 
 class ChromaVectorStore(BaseVectorStore):

@@ -61,12 +61,17 @@ class EmbeddingEngine:
         return f"{self.config.provider}:{self.config.model}:{self.config.dimensions or 'default'}"
 
     def resolve_dimensions(self) -> int:
-        model = get_model_info(self.config.provider, self.config.model)
         if self.config.dimensions:
             return self.config.dimensions
+        model = get_model_info(self.config.provider, self.config.model)
         if model:
             return model.dimensions_default
-        return 768
+        # Unknown model: probe by embedding a short text
+        try:
+            output = self.embed_text("dimension probe")
+            return len(output.vector)
+        except Exception:
+            return 768
 
     # ------------------------------------------------------------------ #
     #  Provider dispatch                                                   #
@@ -113,9 +118,23 @@ class EmbeddingEngine:
         needs_api_key = provider in CLOUD_PROVIDERS
         use_fallback = needs_api_key and not self.api_key
 
-        if use_fallback or provider == EmbeddingProvider.OLLAMA:
-            # No batch API for Ollama or fallback — sequential
+        if use_fallback:
             return [self.embed_text(text) for text in texts]
+
+        if provider == EmbeddingProvider.OLLAMA:
+            results: list[EmbedOutput] = []
+            batch_size = self.config.batch_size or 100
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                start = time.perf_counter()
+                vectors = self._batch_ollama(batch)
+                latency = int((time.perf_counter() - start) * 1000)
+                per_item = max(1, latency // len(batch))
+                for vec in vectors:
+                    if self.config.normalize:
+                        vec = _l2_normalize(vec)
+                    results.append(EmbedOutput(vector=vec, latency_ms=per_item))
+            return results
 
         start = time.perf_counter()
 
@@ -170,19 +189,23 @@ class EmbeddingEngine:
     # ------------------------------------------------------------------ #
 
     def _embed_ollama(self, text: str) -> list[float]:
-        payload = json.dumps({"model": self.config.model, "input": text}).encode()
+        return self._batch_ollama([text])[0]
+
+    def _batch_ollama(self, texts: list[str]) -> list[list[float]]:
+        timeout = max(self.config.timeout, 300)
+        payload = json.dumps({"model": self.config.model, "input": texts}).encode()
         req = urllib.request.Request(
             "http://127.0.0.1:11434/api/embed",
             data=payload,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=self.config.timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
         embeddings = data.get("embeddings", [])
-        if not embeddings:
-            raise RuntimeError(f"Ollama returned no embeddings for model {self.config.model}")
-        return embeddings[0]
+        if len(embeddings) != len(texts):
+            raise RuntimeError(f"Ollama returned {len(embeddings)} embeddings for {len(texts)} texts")
+        return embeddings
 
     # ------------------------------------------------------------------ #
     #  Cohere                                                              #

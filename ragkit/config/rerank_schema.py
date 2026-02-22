@@ -70,6 +70,12 @@ class RerankConfig(BaseModel):
         if isinstance(model, str):
             normalized["model"] = model.strip() or None
 
+        if normalized["provider"] != RerankProvider.NONE.value and not normalized.get("model"):
+            try:
+                normalized["model"] = default_model_for_provider(RerankProvider(normalized["provider"]))
+            except ValueError:
+                pass
+
         return normalized
 
     @model_validator(mode="after")

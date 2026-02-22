@@ -303,7 +303,7 @@ class IngestionRuntime:
         docs_modified = sum(1 for change in changes.changes if change.type == "modified")
         docs_removed = len(removed_paths)
         docs_skipped = 0
-        docs, _ = documents.analyze_documents(settings.ingestion)
+        docs, _ = await asyncio.to_thread(documents.analyze_documents, settings.ingestion)
 
         to_process = docs
         if incremental:
@@ -311,7 +311,7 @@ class IngestionRuntime:
             to_process = [d for d in docs if d.file_path in impacted]
             docs_skipped = max(len(docs) - len(to_process), 0)
 
-        dims = embedder.resolve_dimensions()
+        dims = await asyncio.to_thread(embedder.resolve_dimensions)
         await store.create_snapshot(version)
         try:
             await store.initialize(dims)
@@ -365,11 +365,11 @@ class IngestionRuntime:
             self.progress.doc_index = idx
             self.progress.current_doc = doc.filename
             self.progress.phase = "parsing"
-            text = documents.get_document_text(settings.ingestion, doc)
+            text = await asyncio.to_thread(documents.get_document_text, settings.ingestion, doc)
             self.progress.phase = "chunking"
-            chunks = chunker.chunk(text, {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename})
+            chunks = await asyncio.to_thread(chunker.chunk, text, {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename})
             self.progress.phase = "embedding"
-            outputs = embedder.embed_texts([c.content for c in chunks])
+            outputs = await asyncio.to_thread(embedder.embed_texts, [c.content for c in chunks])
             self.progress.phase = "storing"
 
             # For modified documents (or full re-index runs), remove all previous

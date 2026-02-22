@@ -418,7 +418,9 @@ class OllamaProvider(BaseLLMProvider):
                 "num_predict": max_tokens,
             },
         }
-        async with httpx.AsyncClient(timeout=httpx.Timeout(float(self.config.timeout))) as client:
+        read_timeout = max(float(self.config.timeout) * 3, 180.0)
+        timeout = httpx.Timeout(connect=10.0, read=read_timeout, write=30.0, pool=10.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(self.API_CHAT_URL, json=payload)
             response.raise_for_status()
             data = response.json()
@@ -457,7 +459,9 @@ class OllamaProvider(BaseLLMProvider):
         prompt_tokens = 0
         completion_tokens = 0
         full_text_parts: list[str] = []
-        async with httpx.AsyncClient(timeout=httpx.Timeout(float(self.config.timeout))) as client:
+        read_timeout = max(float(self.config.timeout) * 3, 180.0)
+        timeout = httpx.Timeout(connect=10.0, read=read_timeout, write=30.0, pool=10.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", self.API_CHAT_URL, json=payload) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():

@@ -109,7 +109,10 @@ async def chat(payload: ChatQuery) -> OrchestratedChatResponse:
         orchestrator, include_debug = _build_orchestrator(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    result = await orchestrator.process(payload.query, include_debug=include_debug)
+    try:
+        result = await orchestrator.process(payload.query, include_debug=include_debug)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Pipeline error: {exc}") from exc
     return _build_chat_response(payload=payload, result=result)
 
 

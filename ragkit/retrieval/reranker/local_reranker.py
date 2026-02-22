@@ -14,6 +14,9 @@ from ragkit.config.rerank_schema import (
 from ragkit.retrieval.reranker.base import BaseReranker, RerankCandidate, RerankResult
 
 
+_LOCAL_RERANKER_MODEL_CACHE: dict[str, Any] = {}
+
+
 class LocalReranker(BaseReranker):
     """Local HuggingFace cross-encoder reranker."""
 
@@ -37,17 +40,22 @@ class LocalReranker(BaseReranker):
 
     def _load_model(self) -> Any:
         if self._model is None:
-            try:
-                from sentence_transformers import CrossEncoder  # type: ignore
-            except Exception as exc:  # pragma: no cover - environment dependent
-                raise RuntimeError("sentence-transformers is required for local reranking") from exc
+            cache_key = self.config.model or "default"
+            if cache_key in _LOCAL_RERANKER_MODEL_CACHE:
+                self._model = _LOCAL_RERANKER_MODEL_CACHE[cache_key]
+            else:
+                try:
+                    from sentence_transformers import CrossEncoder  # type: ignore
+                except Exception as exc:  # pragma: no cover - environment dependent
+                    raise RuntimeError("sentence-transformers is required for local reranking") from exc
 
-            self._model = CrossEncoder(
-                self.config.model,
-                max_length=512,
-                device=self._resolve_device(),
-                cache_folder=str(self.MODELS_DIR),
-            )
+                self._model = CrossEncoder(
+                    self.config.model,
+                    max_length=512,
+                    device=self._resolve_device(),
+                    cache_folder=str(self.MODELS_DIR),
+                )
+                _LOCAL_RERANKER_MODEL_CACHE[cache_key] = self._model
         return self._model
 
     async def rerank(

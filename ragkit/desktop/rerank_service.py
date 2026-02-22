@@ -16,7 +16,7 @@ from ragkit.desktop.settings_store import load_settings, save_settings
 from ragkit.retrieval.reranker import BaseReranker, create_reranker
 from ragkit.security.secrets import secrets_manager
 
-COHERE_API_KEY_SECRET = "cohere_api_key"
+COHERE_API_KEY_SECRET = "ragkit.rerank.cohere.api_key"
 
 
 def _profile_rerank_payload() -> dict[str, Any]:

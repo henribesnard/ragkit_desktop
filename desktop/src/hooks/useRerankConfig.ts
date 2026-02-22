@@ -46,7 +46,7 @@ function normalizeConfig(config: Partial<RerankConfig> | undefined): RerankConfi
   return normalized;
 }
 
-const COHERE_SECRET_KEY = "cohere_api_key";
+const COHERE_SECRET_KEY = "ragkit.rerank.cohere.api_key";
 
 export function useRerankConfig() {
   const [config, setConfig] = useState<RerankConfig>(defaultConfig);

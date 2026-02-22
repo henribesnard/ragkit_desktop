@@ -124,8 +124,6 @@ def resolve_llm_provider(config: LLMConfig) -> BaseLLMProvider:
             api_key = os.getenv("OPENAI_API_KEY")
         elif config.provider == LLMProvider.ANTHROPIC:
             api_key = os.getenv("ANTHROPIC_API_KEY")
-        elif config.provider == LLMProvider.COHERE:
-            api_key = os.getenv("COHERE_API_KEY")
         elif config.provider == LLMProvider.MISTRAL:
             api_key = os.getenv("MISTRAL_API_KEY")
             

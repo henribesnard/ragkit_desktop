@@ -65,7 +65,7 @@ class SearchQuery(BaseModel):
     mmr_lambda: float | None = Field(default=None, ge=0.0, le=1.0)
     include_debug: bool = False
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=5, ge=1, le=50)
+    page_size: int = Field(default=5, ge=1, le=100)
 
     @field_validator("query")
     @classmethod
@@ -216,7 +216,7 @@ class LexicalSearchQuery(BaseModel):
     filters: SearchFilters | None = None
     include_debug: bool = False
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=5, ge=1, le=50)
+    page_size: int = Field(default=5, ge=1, le=100)
 
     @field_validator("query")
     @classmethod
@@ -365,7 +365,7 @@ class UnifiedSearchQuery(BaseModel):
     filters: SearchFilters | None = None
     include_debug: bool = False
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=5, ge=1, le=50)
+    page_size: int = Field(default=5, ge=1, le=100)
 
     @field_validator("query")
     @classmethod
