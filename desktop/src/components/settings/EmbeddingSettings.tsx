@@ -185,7 +185,7 @@ export function EmbeddingSettings() {
 
         {selectedModel && (
           <div className="rounded border p-3 text-sm bg-gray-50 dark:bg-gray-900/40">
-            <p><b>Dimensions:</b> {selectedModel.dimensions_default} (supportées: {selectedModel.dimensions_supported.join(", ") || "fixes"})</p>
+            <p><b>Dimensions:</b> {selectedModel.dimensions_default} (supportées: {(selectedModel.dimensions_supported || []).join(", ") || "fixes"})</p>
             <p><b>Max tokens:</b> {selectedModel.max_input_tokens ?? "n/a"}</p>
             <p><b>Coût:</b> {selectedModel.pricing_hint || "n/a"}</p>
             <p><b>Langues:</b> {selectedModel.languages || "n/a"}</p>

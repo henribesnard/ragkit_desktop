@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 APP_NAME = "RAGKIT"
-VERSION = "1.0.13"
+VERSION = "1.0.14"
 
 
 def create_app() -> FastAPI:

@@ -47,11 +47,30 @@ export function SecuritySettings() {
         <h3 className="font-semibold text-lg">{t("security.apiKeys", "Cles API")}</h3>
         <div className="space-y-2">
           {apiKeys.map((key) => (
-            <div key={key.provider} className="flex items-center justify-between py-1">
+            <div key={key.provider} className="flex items-center justify-between py-1 border-b last:border-0">
               <span className="capitalize font-medium">{key.provider}</span>
-              <span className={key.configured ? "text-green-600 font-medium text-sm" : "text-gray-500 text-sm"}>
-                {key.configured ? "✓ Clé système trouvée" : "X Absente"}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className={key.configured ? "text-green-600 font-medium text-sm" : "text-gray-500 text-sm"}>
+                  {key.configured ? "✓ Clé système trouvée" : "X Absente"}
+                </span>
+                {key.configured && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Supprimer les clés système pour ${key.provider} ?`)) return;
+                      await import("@tauri-apps/api/core").then(async ({ invoke }) => {
+                        await invoke("delete_secret", { keyName: `ragkit.embedding.${key.provider}.api_key` }).catch(() => { });
+                        await invoke("delete_secret", { keyName: `ragkit.llm.${key.provider}.api_key` }).catch(() => { });
+                        await invoke("delete_secret", { keyName: `ragkit.rerank.${key.provider}.api_key` }).catch(() => { });
+                      });
+                      // Refresh the status automatically
+                      window.location.reload();
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 underline"
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

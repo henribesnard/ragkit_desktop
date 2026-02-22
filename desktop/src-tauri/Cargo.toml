@@ -1,6 +1,6 @@
 [package]
 name = "ragkit-desktop"
-version = "1.0.13"
+version = "1.0.14"
 description = "Une application RAG de bureau"
 authors = ["RAGKIT Contributors"]
 edition = "2021"

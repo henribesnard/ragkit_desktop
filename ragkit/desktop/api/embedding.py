@@ -118,6 +118,7 @@ async def get_available_models(provider: EmbeddingProvider):
                                 "id": m_name,
                                 "display_name": m_name,
                                 "dimensions_default": 768,
+                                "dimensions_supported": [],
                                 "description": f"Modèle d'embedding local ({family or 'inconnu'})",
                                 "local": True
                             })

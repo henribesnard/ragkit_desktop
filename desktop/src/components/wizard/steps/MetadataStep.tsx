@@ -19,6 +19,9 @@ export function MetadataStep({ wizard }: { wizard: any }) {
     const [isLoading, setIsLoading] = useState(true);
     const [files, setFiles] = useState<TargetFileInfo[]>([]);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+    const [searchFilter, setSearchFilter] = useState("");
+
+    const filteredFiles = files.filter(f => searchFilter ? f.name.toLowerCase().includes(searchFilter.toLowerCase()) : true);
 
     // Bulk edit fields state
     const [bulkForm, setBulkForm] = useState({
@@ -50,11 +53,14 @@ export function MetadataStep({ wizard }: { wizard: any }) {
     }, [sourceCfg.path, sourceCfg.recursive, sourceCfg.excluded_dirs, sourceCfg.file_types]);
 
     const handleSelectAll = () => {
-        if (selectedPaths.size === files.length) {
-            setSelectedPaths(new Set());
+        const allSelected = filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path));
+        const next = new Set(selectedPaths);
+        if (allSelected) {
+            filteredFiles.forEach(f => next.delete(f.path));
         } else {
-            setSelectedPaths(new Set(files.map(f => f.path)));
+            filteredFiles.forEach(f => next.add(f.path));
         }
+        setSelectedPaths(next);
     };
 
     const handleToggleSelection = (path: string) => {
@@ -137,11 +143,20 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
                 {/* Left side: Table */}
                 <div className={`flex-1 flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${selectedPaths.size > 0 ? 'lg:w-2/3' : 'w-full'}`}>
+                    <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                        <input
+                            type="text"
+                            placeholder="Filtrer par nom de fichier..."
+                            value={searchFilter}
+                            onChange={e => setSearchFilter(e.target.value)}
+                            className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                        />
+                    </div>
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center text-gray-500 gap-3">
                             <Loader2 className="w-5 h-5 animate-spin" /> Analyse des documents...
                         </div>
-                    ) : files.length === 0 ? (
+                    ) : filteredFiles.length === 0 ? (
                         <div className="flex-1 flex items-center justify-center text-gray-500">Aucun fichier trouvé avec ces critères.</div>
                     ) : (
                         <div className="flex-1 overflow-y-auto">
@@ -150,7 +165,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                     <tr>
                                         <th className="p-3 w-10">
                                             <button onClick={handleSelectAll} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors" title="Tout sélectionner">
-                                                <CheckSquare className={`w-4 h-4 ${selectedPaths.size === files.length ? 'text-blue-500' : 'text-gray-400'}`} />
+                                                <CheckSquare className={`w-4 h-4 ${filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? 'text-blue-500' : 'text-gray-400'}`} />
                                             </button>
                                         </th>
                                         <th className="p-3 font-semibold">Fichier</th>
@@ -160,7 +175,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                    {files.map(f => {
+                                    {filteredFiles.map(f => {
                                         const fileOverrides = overrides[f.path] || {};
                                         const isSelected = selectedPaths.has(f.path);
 
@@ -185,8 +200,8 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                     </div>
                                                     <div className="text-xs text-gray-400 truncate mt-0.5 max-w-[200px]" title={f.path}>{f.path}</div>
                                                 </td>
-                                                <td className="p-3 truncate max-w-[150px] text-gray-600 dark:text-gray-300" title={fileOverrides.title || f.name}>
-                                                    {fileOverrides.title || <span className="text-gray-400 italic">Par défaut</span>}
+                                                <td className="p-3 truncate max-w-[150px] text-gray-600 dark:text-gray-300" title={fileOverrides.title || f.name.replace(/\.[^/.]+$/, "")}>
+                                                    {fileOverrides.title || <span className="text-gray-500 italic">{f.name.replace(/\.[^/.]+$/, "")}</span>}
                                                 </td>
                                                 <td className="p-3 truncate max-w-[120px] text-gray-600 dark:text-gray-300">
                                                     {fileOverrides.author || '-'}
