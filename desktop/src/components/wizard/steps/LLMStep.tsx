@@ -26,6 +26,12 @@ export function LLMStep({ wizard }: { wizard: any }) {
     };
 
     useEffect(() => {
+        if (!llmCfg.provider || !llmCfg.model) {
+            updateLLM({ provider, model });
+        }
+    }, [llmCfg.provider, llmCfg.model, provider, model]);
+
+    useEffect(() => {
         if (provider === "ollama") {
             setLoadingModels(true);
             invoke("get_llm_models", { provider: "ollama" })

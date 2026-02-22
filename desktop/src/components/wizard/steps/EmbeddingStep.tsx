@@ -27,6 +27,12 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     };
 
     useEffect(() => {
+        if (!embCfg.provider || !embCfg.model) {
+            updateEmbedding({ provider, model });
+        }
+    }, [embCfg.provider, embCfg.model, provider, model]);
+
+    useEffect(() => {
         if (provider === "ollama") {
             setLoadingModels(true);
             invoke("get_available_models", { provider: "ollama" })

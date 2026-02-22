@@ -15,7 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VERSION = "1.0.12"
+APP_NAME = "RAGKIT"
+VERSION = "1.0.13"
 
 
 def create_app() -> FastAPI:

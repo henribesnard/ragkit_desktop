@@ -136,7 +136,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
             <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-6">
 
                 {/* Left side: Table */}
-                <div className={`flex - 1 flex flex - col bg - white dark: bg - gray - 900 border border - gray - 200 dark: border - gray - 800 rounded - xl overflow - hidden shadow - sm transition - all duration - 300 ${selectedPaths.size > 0 ? 'lg:w-2/3' : 'w-full'} `}>
+                <div className={`flex-1 flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${selectedPaths.size > 0 ? 'lg:w-2/3' : 'w-full'}`}>
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center text-gray-500 gap-3">
                             <Loader2 className="w-5 h-5 animate-spin" /> Analyse des documents...
@@ -150,7 +150,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                     <tr>
                                         <th className="p-3 w-10">
                                             <button onClick={handleSelectAll} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors" title="Tout sélectionner">
-                                                <CheckSquare className={`w - 4 h - 4 ${selectedPaths.size === files.length ? 'text-blue-500' : 'text-gray-400'} `} />
+                                                <CheckSquare className={`w-4 h-4 ${selectedPaths.size === files.length ? 'text-blue-500' : 'text-gray-400'}`} />
                                             </button>
                                         </th>
                                         <th className="p-3 font-semibold">Fichier</th>
@@ -168,7 +168,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             <tr
                                                 key={f.path}
                                                 onClick={() => handleToggleSelection(f.path)}
-                                                className={`cursor - pointer hover: bg - gray - 50 dark: hover: bg - gray - 800 / 50 transition - colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''} `}
+                                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
                                             >
                                                 <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                                                     <input
