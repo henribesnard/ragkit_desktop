@@ -42,8 +42,9 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
     full_config = build_full_config(profile_name, settings.calibration_answers)
     retrieval_payload = full_config.get("retrieval", {})
     retrieval_payload = retrieval_payload if isinstance(retrieval_payload, dict) else {}
-    llm_payload = full_config.get("llm", {})
-    llm_payload = llm_payload if isinstance(llm_payload, dict) else {}
+    profile_llm = full_config.get("llm", {})
+    profile_llm = profile_llm if isinstance(profile_llm, dict) else {}
+    user_llm = settings.llm if isinstance(settings.llm, dict) else {}
 
     architecture = str(retrieval_payload.get("architecture") or "").strip().lower()
     semantic_payload = retrieval_payload.get("semantic", {})
@@ -67,10 +68,10 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
         search_type = SearchType.HYBRID
 
     defaults = GeneralSettings()
-    llm_provider = str(llm_payload.get("provider") or "openai").strip().lower() or "openai"
-    llm_model = str(llm_payload.get("model") or "gpt-4o-mini").strip() or "gpt-4o-mini"
-    llm_temperature = float(llm_payload.get("temperature", defaults.llm_temperature))
-    response_language = str(llm_payload.get("response_language") or defaults.response_language).strip().lower()
+    llm_provider = str(user_llm.get("provider") or profile_llm.get("provider") or "openai").strip().lower() or "openai"
+    llm_model = str(user_llm.get("model") or profile_llm.get("model") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    llm_temperature = float(user_llm.get("temperature", profile_llm.get("temperature", defaults.llm_temperature)))
+    response_language = str(user_llm.get("response_language") or defaults.response_language).strip().lower()
     if response_language not in {"auto", "fr", "en"}:
         response_language = "auto"
     return GeneralSettings(

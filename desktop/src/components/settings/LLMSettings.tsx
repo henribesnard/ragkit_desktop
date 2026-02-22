@@ -140,7 +140,7 @@ export function LLMSettings() {
                 type="password"
                 value={apiKeyInput}
                 onChange={(event) => setApiKeyInput(event.target.value)}
-                placeholder={config.api_key_set ? "Cle configuree" : "Collez votre cle API"}
+                placeholder={config.api_key_set ? "•••••••••••••••• (Clé trouvée dans votre système)" : "Collez votre cle API"}
                 className="flex-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
               />
               <Button

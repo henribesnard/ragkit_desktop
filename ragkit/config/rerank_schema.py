@@ -48,6 +48,9 @@ class RerankConfig(BaseModel):
         }
         normalized["provider"] = aliases.get(raw_provider, raw_provider)
 
+        if normalized["provider"] == RerankProvider.NONE.value:
+            normalized["enabled"] = False
+
         if normalized.get("candidates") is None:
             normalized["candidates"] = 40
         if normalized.get("top_n") is None:

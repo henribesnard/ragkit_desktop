@@ -63,6 +63,8 @@ class TargetFileInfo(BaseModel):
     path: str
     name: str
     extension: str
+    default_title: str | None = None
+    default_author: str | None = None
 
 @router.post("/list-target-files", response_model=list[TargetFileInfo])
 async def list_target_files(req: ListTargetFilesRequest) -> list[TargetFileInfo]:
@@ -87,7 +89,9 @@ async def list_target_files(req: ListTargetFilesRequest) -> list[TargetFileInfo]
             results.append(TargetFileInfo(
                 path=relative,
                 name=path.name,
-                extension=ext
+                extension=ext,
+                default_title=path.stem,
+                default_author="Auteur inconnu"
             ))
             
     return results

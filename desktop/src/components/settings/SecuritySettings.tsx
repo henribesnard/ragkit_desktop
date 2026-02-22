@@ -49,8 +49,8 @@ export function SecuritySettings() {
           {apiKeys.map((key) => (
             <div key={key.provider} className="flex items-center justify-between py-1">
               <span className="capitalize font-medium">{key.provider}</span>
-              <span className={key.configured ? "text-green-600" : "text-red-500"}>
-                {key.configured ? t("security.configured", "Configuree") : t("security.notConfigured", "Non configuree")}
+              <span className={key.configured ? "text-green-600 font-medium text-sm" : "text-gray-500 text-sm"}>
+                {key.configured ? "✓ Clé système trouvée" : "X Absente"}
               </span>
             </div>
           ))}
