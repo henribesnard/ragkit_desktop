@@ -34,7 +34,7 @@ fn main() {
             port: Mutex::new(None),
             child: Mutex::new(None),
             client: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(10))
+                .timeout(std::time::Duration::from_secs(300))
                 .build()
                 .expect("Failed to build reqwest client"),
         })

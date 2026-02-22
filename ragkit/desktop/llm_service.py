@@ -90,7 +90,7 @@ def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
                 family = m.get("details", {}).get("family", "").lower()
                 is_llm = family in ["llama", "qwen2", "gemma", "mixtral", "command-r", "phi3"]
                 if not is_llm:
-                    is_llm = not any(x in m_name.lower() for x in ["embed", "bge", "minilm"])
+                    is_llm = not any(x in m_name.lower() for x in ["embed", "bge", "minilm", "e5"])
                     
                 if is_llm:
                         local_models.append(

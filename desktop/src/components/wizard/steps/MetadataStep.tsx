@@ -203,7 +203,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
                 {/* Right side: Dynamic Edit Panel */}
                 {selectedPaths.size > 0 && (
-                    <div className="w-full lg:w-1/3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300">
+                    <div className="w-full lg:w-1/3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300 lg:sticky lg:top-6 self-start max-h-[calc(100vh-12rem)]">
                         <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-3">
                             <Settings2 className="w-5 h-5 text-blue-500" />
                             <div>

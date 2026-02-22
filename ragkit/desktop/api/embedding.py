@@ -110,7 +110,7 @@ async def get_available_models(provider: EmbeddingProvider):
                         family = m.get("details", {}).get("family", "").lower()
                         is_embed = family in ["bert", "nomic-bert", "nomic-bert-moe", "gemma3", "qwen3"]
                         if not is_embed:
-                            is_embed = any(x in m_name.lower() for x in ["embed", "bge", "minilm"])
+                            is_embed = any(x in m_name.lower() for x in ["embed", "bge", "minilm", "e5"])
                             
                         if is_embed and m_name not in existing_ids:
                             base_models.append({
