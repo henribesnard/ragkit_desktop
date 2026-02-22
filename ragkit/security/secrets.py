@@ -94,10 +94,10 @@ class SecretsManager:
                 self._keyring.delete_password(SERVICE_NAME, key_name)
             except Exception:
                 pass
-            return
         data = self._load_file_store()
-        data.pop(key_name, None)
-        self._save_file_store(data)
+        if key_name in data:
+            data.pop(key_name)
+            self._save_file_store(data)
 
     def exists(self, key_name: str) -> bool:
         return self.retrieve(key_name) is not None

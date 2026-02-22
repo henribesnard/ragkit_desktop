@@ -24,17 +24,34 @@ def detect_environment() -> EnvironmentInfo:
         except Exception:
             pass
 
-    ollama_available = shutil.which("ollama") is not None
+    ollama_path = shutil.which("ollama")
+    ollama_available = ollama_path is not None
     ollama_version = None
-    ollama_models: list[str] = []
+    ollama_llm_models: list[str] = []
+    ollama_embedding_models: list[str] = []
+    
     if ollama_available:
         try:
             ollama_version = subprocess.check_output(["ollama", "--version"], text=True, timeout=2).strip()
-            model_out = subprocess.check_output(["ollama", "list"], text=True, timeout=2)
-            for line in model_out.splitlines()[1:]:
-                parts = line.split()
-                if parts:
-                    ollama_models.append(parts[0])
+            import httpx
+            with httpx.Client(timeout=1.0) as client:
+                res = client.get("http://127.0.0.1:11434/api/tags")
+                if res.status_code == 200:
+                    data = res.json()
+                    for m in data.get("models", []):
+                        name = m.get("name")
+                        if not name:
+                            continue
+                        family = m.get("details", {}).get("family", "").lower()
+                        if family in ["bert", "nomic-bert", "nomic-bert-moe", "gemma3", "qwen3"]:
+                            ollama_embedding_models.append(name)
+                        elif family in ["llama", "qwen2", "gemma", "mixtral", "command-r", "phi3"]:
+                            ollama_llm_models.append(name)
+                        else:
+                            if "embed" in name.lower() or "bge" in name.lower() or "minilm" in name.lower():
+                                ollama_embedding_models.append(name)
+                            else:
+                                ollama_llm_models.append(name)
         except Exception:
             pass
 
@@ -49,7 +66,8 @@ def detect_environment() -> EnvironmentInfo:
         gpu_backend=gpu_backend,
         ollama_available=ollama_available,
         ollama_version=ollama_version,
-        ollama_models=ollama_models,
+        ollama_llm_models=ollama_llm_models,
+        ollama_embedding_models=ollama_embedding_models,
         local_cached_models=local_cached_models,
         keyring_available=secrets_manager.keyring_available,
     )

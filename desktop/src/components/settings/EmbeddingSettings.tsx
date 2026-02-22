@@ -150,7 +150,7 @@ export function EmbeddingSettings() {
         </div>
         <p>GPU: {environment?.gpu_available ? `${environment?.gpu_name || "détecté"} (${environment?.gpu_backend || "auto"})` : "non détecté"}</p>
         <p>Ollama: {environment?.ollama_available ? `installé (${environment?.ollama_version || "ok"})` : "non détecté"}</p>
-        <p>Modèles Ollama: {(environment?.ollama_models || []).join(", ") || "—"}</p>
+        <p>Modèles Ollama: {(environment?.ollama_embedding_models || []).join(", ") || "—"}</p>
       </section>
 
       <section className="rounded-lg border p-4 space-y-3">

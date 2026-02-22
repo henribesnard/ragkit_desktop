@@ -1,7 +1,7 @@
 ﻿import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, MessageSquare, Search, Settings2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquare, Send, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
@@ -514,231 +514,250 @@ export function Chat() {
         </section>
       )}
 
-      <form onSubmit={onSearch} className="flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("chat.searchPlaceholder")}
-          className="flex-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-        />
+      <div className="flex-1 overflow-y-auto space-y-4 pb-4 px-1 pr-3">
+        {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
+        {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
+        {feedbackError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{feedbackError}</div>}
 
-        <button
-          type="submit"
-          disabled={loading || !query.trim() || !chatReady.ready || !selectedModeEnabled}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-60"
-        >
-          <Search size={16} />
-          {loading ? t("chat.searching") : t("chat.search")}
-        </button>
-      </form>
+        {history.messages.length > 0 ? (
+          <div className="flex flex-col space-y-4">
+            {history.messages.map((message, index) => (
+              <div key={`${message.timestamp}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${message.role === "user" ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm border border-gray-200 dark:border-gray-700 shadow-sm"}`}>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.intent ? <div className="mt-1 text-xs opacity-80">Intent: {message.intent}</div> : null}
+                  {message.role === "assistant" && message.query_log_id ? (
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      <FeedbackButtons
+                        queryId={message.query_log_id}
+                        value={valueByQueryId[message.query_log_id] || message.feedback || null}
+                        loading={Boolean(pendingByQueryId[message.query_log_id])}
+                        onSubmit={onSubmitFeedback}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
-      {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
-      {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
-      {feedbackError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{feedbackError}</div>}
+        {debugMode && debug && (
+          <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
+            {Object.entries(debug).map(([key, value]) => (
+              <div key={key} className="break-words">
+                <span className="font-semibold">{key}: </span>
+                <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+              </div>
+            ))}
+          </section>
+        )}
 
-      {history.messages.length > 0 ? (
-        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Conversation</h3>
-          {history.messages.slice(-8).map((message, index) => (
-            <article
-              key={`${message.timestamp}-${index}`}
-              className={`rounded border px-3 py-2 text-sm ${message.role === "user"
-                ? "border-blue-200 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-900/20"
-                : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60"
-                }`}
-            >
-              <div className="text-xs text-gray-500 mb-1">{message.role === "user" ? "Vous" : "Assistant"}</div>
-              <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100">{message.content}</div>
-              {message.intent ? <div className="mt-1 text-xs text-indigo-600">Intent: {message.intent}</div> : null}
-              {message.role === "assistant" && message.query_log_id ? (
-                <div className="mt-2">
+        {(streamedAnswer || isStreaming || finalResponse) && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-blue-100 dark:border-blue-800/50">
+                <span className="font-semibold text-blue-900 dark:text-blue-200">
+                  {isStreaming ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-pulse h-2 w-2 bg-blue-600 rounded-full"></span>
+                      Génération en cours...
+                    </span>
+                  ) : "Réponse"}
+                </span>
+                {isStreaming && (
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => void stopStream()}>
+                    Arrêter
+                  </Button>
+                )}
+              </div>
+
+              <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
+
+              {finalResponse?.query_log_id ? (
+                <div className="mt-4 pt-3 border-t border-blue-100 dark:border-blue-800/50">
                   <FeedbackButtons
-                    queryId={message.query_log_id}
-                    value={valueByQueryId[message.query_log_id] || message.feedback || null}
-                    loading={Boolean(pendingByQueryId[message.query_log_id])}
+                    queryId={finalResponse.query_log_id}
+                    value={valueByQueryId[finalResponse.query_log_id] || null}
+                    loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
                     onSubmit={onSubmitFeedback}
                   />
                 </div>
               ) : null}
-            </article>
-          ))}
-        </section>
-      ) : null}
 
-      {debugMode && debug && (
-        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
-          {Object.entries(debug).map(([key, value]) => (
-            <div key={key} className="break-words">
-              <span className="font-semibold">{key}: </span>
-              <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {(streamedAnswer || isStreaming || finalResponse) && (
-        <section className="rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Reponse LLM</h3>
-            {isStreaming ? (
-              <Button variant="outline" size="sm" onClick={() => void stopStream()}>
-                Arreter
-              </Button>
-            ) : null}
-          </div>
-
-          {isStreaming ? <p className="text-xs text-blue-700 dark:text-blue-300">Generation en cours...</p> : null}
-          <div className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{streamedAnswer}</div>
-          {finalResponse?.query_log_id ? (
-            <FeedbackButtons
-              queryId={finalResponse.query_log_id}
-              value={valueByQueryId[finalResponse.query_log_id] || null}
-              loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
-              onSubmit={onSubmitFeedback}
-            />
-          ) : null}
-
-          {finalResponse?.intent ? (
-            <div className="text-xs text-indigo-700 dark:text-indigo-300">
-              Intent: <b>{finalResponse.intent}</b> | RAG: <b>{String(finalResponse.needs_rag)}</b>
-              {finalResponse.rewritten_query ? <> | Reformulee: <b>{finalResponse.rewritten_query}</b></> : null}
-            </div>
-          ) : null}
-
-          {finalResponse?.sources?.length ? (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sources</h4>
-              {finalResponse.sources.map((source) => (
-                <article
-                  key={`${source.id}-${source.chunk_id}`}
-                  className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-xs"
-                >
-                  <div className="font-medium">
-                    [{source.id}] {source.title} {source.page ? `p.${source.page}` : ""}
-                  </div>
-                  <div className="text-gray-600 dark:text-gray-300 mt-1">{source.text_preview}</div>
-                </article>
-              ))}
-            </div>
-          ) : null}
-
-          {debugMode && finalResponse?.debug ? (
-            <section className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20 p-2 text-xs space-y-1">
-              {Object.entries(finalResponse.debug).map(([key, value]) => (
-                <div key={key} className="break-words">
-                  <span className="font-semibold">{key}: </span>
-                  <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+              {finalResponse?.intent ? (
+                <div className="mt-3 text-xs text-blue-700 dark:text-blue-400">
+                  Intent: <b>{finalResponse.intent}</b> | RAG: <b>{String(finalResponse.needs_rag)}</b>
+                  {finalResponse.rewritten_query ? <> | Reformulée: <b>{finalResponse.rewritten_query}</b></> : null}
                 </div>
-              ))}
-            </section>
-          ) : null}
-        </section>
-      )}
+              ) : null}
 
-      <div className="flex-1 overflow-y-auto space-y-3">
-        {!results.length && !loading && !error && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <MessageSquare size={28} className="text-gray-400 dark:text-gray-500" />
+              {finalResponse?.sources?.length ? (
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sources utilisées</h4>
+                  {finalResponse.sources.map((source) => (
+                    <article
+                      key={`${source.id}-${source.chunk_id}`}
+                      className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 text-xs"
+                    >
+                      <div className="font-medium text-blue-800 dark:text-blue-300">
+                        [{source.id}] {source.title} {source.page ? `p.${source.page}` : ""}
+                      </div>
+                      <div className="text-gray-600 dark:text-gray-400 mt-1 line-clamp-2" title={source.text_preview}>
+                        {source.text_preview}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
+              {debugMode && finalResponse?.debug ? (
+                <section className="mt-3 rounded border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/20 p-2 text-xs space-y-1">
+                  {Object.entries(finalResponse.debug).map(([key, value]) => (
+                    <div key={key} className="break-words">
+                      <span className="font-semibold">{key}: </span>
+                      <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+                    </div>
+                  ))}
+                </section>
+              ) : null}
             </div>
-            <p className="text-gray-500 dark:text-gray-400 max-w-md">
-              {chatReady.ready ? t("chat.emptyResults") : "Base de connaissances vide. Lancez une ingestion depuis le tableau de bord."}
+          </div>
+        )}
+
+        {/* Results grid */}
+        {results.length > 0 && (
+          <div className="space-y-3 mt-6">
+            <h4 className="text-sm font-medium text-gray-500 px-1 border-b pb-2">Documents trouvés</h4>
+            {searchMode === "lexical" &&
+              results.map((result) => (
+                <LexicalResultCard
+                  key={result.chunk_id}
+                  result={toLexicalResult(result)}
+                  expanded={Boolean(expanded[result.chunk_id])}
+                  onToggle={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !prev[result.chunk_id] }))}
+                  showScores={showScores}
+                  showMetadata={showMetadata}
+                  stemming={lexicalStemming}
+                />
+              ))}
+
+            {searchMode !== "lexical" &&
+              results.map((result) => {
+                const opened = Boolean(expanded[result.chunk_id]);
+                const displayedScore =
+                  result.is_reranked && result.rerank_score !== null && result.rerank_score !== undefined
+                    ? result.rerank_score
+                    : result.score;
+                const rerankToRank =
+                  result.original_rank !== null &&
+                    result.original_rank !== undefined &&
+                    result.rank_change !== null &&
+                    result.rank_change !== undefined
+                    ? result.original_rank - result.rank_change
+                    : null;
+                return (
+                  <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
+                        {result.page_number ? <span> | p.{result.page_number}</span> : null}
+                        {result.is_reranked ? (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 bg-indigo-100 text-indigo-700">
+                            {rankChangeLabel(result.rank_change)}
+                          </span>
+                        ) : null}
+                      </div>
+                      {showScores ? (
+                        <span className={`text-xs px-2 py-1 rounded ${scoreClass(displayedScore)}`}>
+                          {result.is_reranked ? "Score rerank" : t("chat.score")}: {displayedScore.toFixed(4)}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                      {renderHighlighted(opened ? result.text : result.text_preview, query)}
+                    </p>
+
+                    {searchMode === "hybrid" && showProvenance && (
+                      <div className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                        Sémantique: #{result.semantic_rank ?? "-"} ({result.semantic_score?.toFixed(4) ?? "n/a"})
+                        {" | "}
+                        Lexicale: #{result.lexical_rank ?? "-"} ({result.lexical_score?.toFixed(4) ?? "n/a"})
+                        {result.is_reranked ? (
+                          <>
+                            {" | "}
+                            Rerank: #{result.original_rank ?? "-"}{" -> "}#{rerankToRank ?? "-"}
+                            {" "}({result.rerank_score?.toFixed(4) ?? "n/a"})
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {showMetadata && (
+                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 grid md:grid-cols-2 gap-2">
+                        <div>Type: <b>{result.doc_type || "n/a"}</b></div>
+                        <div>Langue: <b>{result.doc_language || "n/a"}</b></div>
+                        <div>Catégorie: <b>{result.category || "n/a"}</b></div>
+                        <div>Chunk: <b>{result.chunk_index ?? "n/a"}/{result.chunk_total ?? "n/a"}</b></div>
+                      </div>
+                    )}
+
+                    <div className="mt-3">
+                      <Button variant="outline" size="sm" onClick={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !opened }))} className="text-xs h-7">
+                        {opened ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                        {opened ? "Réduire" : "Voir le texte complet"}
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+
+            <div className="flex items-center justify-between mt-4 pt-4">
+              <span className="text-xs text-gray-500">{totalResults} résultat(s)</span>
+              {hasMore && (
+                <Button variant="outline" disabled={loading} onClick={() => { void executeSearch(page + 1, true); }}>
+                  Voir plus de résultats
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!results.length && !loading && !error && history.messages.length === 0 && !streamedAnswer && !isStreaming && (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8 mt-12">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+              <MessageSquare size={32} className="text-blue-500 dark:text-blue-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Comment puis-je vous aider ?</h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-sm text-sm">
+              {chatReady.ready ? "Posez une question sur vos documents ou utilisez la barre de recherche ci-dessous." : "Base de connaissances vide. Lancez une ingestion depuis le tableau de bord pour commencer."}
             </p>
           </div>
         )}
-
-        {searchMode === "lexical" &&
-          results.map((result) => (
-            <LexicalResultCard
-              key={result.chunk_id}
-              result={toLexicalResult(result)}
-              expanded={Boolean(expanded[result.chunk_id])}
-              onToggle={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !prev[result.chunk_id] }))}
-              showScores={showScores}
-              showMetadata={showMetadata}
-              stemming={lexicalStemming}
-            />
-          ))}
-
-        {searchMode !== "lexical" &&
-          results.map((result) => {
-            const opened = Boolean(expanded[result.chunk_id]);
-            const displayedScore =
-              result.is_reranked && result.rerank_score !== null && result.rerank_score !== undefined
-                ? result.rerank_score
-                : result.score;
-            const rerankToRank =
-              result.original_rank !== null &&
-                result.original_rank !== undefined &&
-                result.rank_change !== null &&
-                result.rank_change !== undefined
-                ? result.original_rank - result.rank_change
-                : null;
-            return (
-              <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                    <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
-                    {result.page_number ? <span> | p.{result.page_number}</span> : null}
-                    {result.is_reranked ? (
-                      <span className="inline-flex items-center rounded px-1.5 py-0.5 bg-indigo-100 text-indigo-700">
-                        {rankChangeLabel(result.rank_change)}
-                      </span>
-                    ) : null}
-                  </div>
-                  {showScores ? (
-                    <span className={`text-xs px-2 py-1 rounded ${scoreClass(displayedScore)}`}>
-                      {result.is_reranked ? "Score rerank" : t("chat.score")}: {displayedScore.toFixed(4)}
-                    </span>
-                  ) : null}
-                </div>
-
-                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                  {renderHighlighted(opened ? result.text : result.text_preview, query)}
-                </p>
-
-                {searchMode === "hybrid" && showProvenance && (
-                  <div className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
-                    Semantique: #{result.semantic_rank ?? "-"} ({result.semantic_score?.toFixed(4) ?? "n/a"})
-                    {" | "}
-                    Lexicale: #{result.lexical_rank ?? "-"} ({result.lexical_score?.toFixed(4) ?? "n/a"})
-                    {result.is_reranked ? (
-                      <>
-                        {" | "}
-                        Rerank: #{result.original_rank ?? "-"}{" -> "}#{rerankToRank ?? "-"}
-                        {" "}({result.rerank_score?.toFixed(4) ?? "n/a"})
-                      </>
-                    ) : null}
-                  </div>
-                )}
-
-                {showMetadata && (
-                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 grid md:grid-cols-2 gap-2">
-                    <div>Type: <b>{result.doc_type || "n/a"}</b></div>
-                    <div>Langue: <b>{result.doc_language || "n/a"}</b></div>
-                    <div>Categorie: <b>{result.category || "n/a"}</b></div>
-                    <div>Chunk: <b>{result.chunk_index ?? "n/a"}/{result.chunk_total ?? "n/a"}</b></div>
-                  </div>
-                )}
-
-                <div className="mt-3">
-                  <Button variant="ghost" size="sm" onClick={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !opened }))}>
-                    {opened ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-                    {opened ? "Reduire" : "Voir le texte complet"}
-                  </Button>
-                </div>
-              </article>
-            );
-          })}
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">{totalResults} resultat(s)</span>
-        {hasMore && (
-          <Button variant="outline" disabled={loading} onClick={() => { void executeSearch(page + 1, true); }}>
-            Voir plus de resultats
-          </Button>
-        )}
+      <div className="pt-2">
+        <form onSubmit={onSearch} className="relative flex items-center shadow-sm">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={chatReady.ready ? "Posez votre question..." : "Base vide. Lancez une ingestion."}
+            disabled={loading || !chatReady.ready || !selectedModeEnabled}
+            className="w-full rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pr-14 pl-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-900 transition-all text-sm"
+          />
+          <button
+            type="submit"
+            disabled={loading || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors shadow-sm"
+          >
+            <Send size={16} className={loading && (isStreaming || !results.length) ? "opacity-0" : ""} />
+            {loading && (isStreaming || !results.length) && <div className="absolute inset-0 flex items-center justify-center"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>}
+          </button>
+        </form>
+        <div className="text-center mt-2 text-[10px] text-gray-400">
+          L'IA peut faire des erreurs. Vérifiez toujours les sources fournies.
+        </div>
       </div>
     </div>
   );

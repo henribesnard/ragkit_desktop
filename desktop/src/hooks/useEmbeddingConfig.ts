@@ -44,7 +44,8 @@ export interface EnvironmentInfo {
   gpu_backend?: string | null;
   ollama_available: boolean;
   ollama_version?: string | null;
-  ollama_models: string[];
+  ollama_llm_models: string[];
+  ollama_embedding_models: string[];
   local_cached_models: string[];
   keyring_available: boolean;
 }
