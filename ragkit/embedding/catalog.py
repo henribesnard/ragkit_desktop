@@ -11,6 +11,7 @@ MODEL_CATALOG: dict[EmbeddingProvider, list[ModelInfo]] = {
         ModelInfo(provider=EmbeddingProvider.OLLAMA, id="nomic-embed-text", display_name="nomic-embed-text", dimensions_default=768, description="Embedding local via Ollama", local=True),
     ],
     EmbeddingProvider.HUGGINGFACE: [
+        ModelInfo(provider=EmbeddingProvider.HUGGINGFACE, id="intfloat/multilingual-e5-large", display_name="Multilingual E5 Large (Recommandé)", dimensions_default=1024, description="Excellent modèle multilingue pour la recherche sémantique", local=True),
         ModelInfo(provider=EmbeddingProvider.HUGGINGFACE, id="sentence-transformers/all-MiniLM-L6-v2", display_name="all-MiniLM-L6-v2", dimensions_default=384, description="Modèle local léger", local=True),
         ModelInfo(provider=EmbeddingProvider.HUGGINGFACE, id="intfloat/multilingual-e5-base", display_name="multilingual-e5-base", dimensions_default=768, description="Bon multilingue", local=True),
     ],

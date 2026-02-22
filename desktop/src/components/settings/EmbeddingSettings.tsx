@@ -159,15 +159,16 @@ export function EmbeddingSettings() {
           <div>
             <label className="block text-sm font-medium mb-1">Provider</label>
             <select
-              className="block w-full rounded-md border p-2"
+              className="block w-full rounded-md border p-2 bg-white dark:bg-gray-800"
               value={config.provider}
               onChange={(event) => void setProvider(event.target.value as EmbeddingProvider)}
             >
               {(["openai", "ollama", "huggingface", "cohere", "voyageai", "mistral"] as EmbeddingProvider[]).map((provider) => {
                 const disabled = provider === "ollama" && !environment?.ollama_available;
+                const label = provider === "huggingface" ? "HuggingFace (Local)" : provider === "ollama" ? "Ollama (Local)" : `${provider.charAt(0).toUpperCase() + provider.slice(1)} (API)`;
                 return (
                   <option key={provider} value={provider} disabled={disabled}>
-                    {provider}{disabled ? " (non détecté)" : ""}
+                    {label}{disabled ? " - Non détecté" : ""}
                   </option>
                 );
               })}
@@ -220,13 +221,21 @@ export function EmbeddingSettings() {
         )}
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => void runConnection()}>Tester la connexion</Button>
-          {connection && (
-            <span className={connection.success ? "text-green-600 text-sm" : "text-red-600 text-sm"}>
-              {connection.success
-                ? `${connection.message} · ${connection.dimensions} dims · ${connection.latency_ms} ms`
-                : connection.message}
-            </span>
+          {dirtyKeys.includes("provider") || dirtyKeys.includes("model") || dirtyKeys.includes("api_key_set") || connection ? (
+            <>
+              <Button onClick={() => void runConnection()}>Tester la connexion</Button>
+              {connection && (
+                <span className={connection.success ? "text-green-600 text-sm" : "text-red-600 text-sm"}>
+                  {connection.success
+                    ? `${connection.message} · ${connection.dimensions} dims · ${connection.latency_ms} ms`
+                    : connection.message}
+                </span>
+              )}
+            </>
+          ) : (
+            <div className="text-sm px-3 py-1.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 font-medium">
+              ✓ Modèle configuré et vérifié
+            </div>
           )}
         </div>
       </section>
@@ -248,7 +257,8 @@ export function EmbeddingSettings() {
               onChange={(event) => void updateConfig({ query_model: { ...config.query_model, provider: event.target.value as EmbeddingProvider } })}
               options={(["openai", "ollama", "huggingface", "cohere", "voyageai", "mistral"] as EmbeddingProvider[]).map((provider) => ({
                 value: provider,
-                label: provider,
+                label: provider === "huggingface" ? "HuggingFace (Local)" : provider === "ollama" ? "Ollama (Local)" : `${provider.charAt(0).toUpperCase() + provider.slice(1)} (API)`,
+                disabled: provider === "ollama" && !environment?.ollama_available
               }))}
             />
             <Select
