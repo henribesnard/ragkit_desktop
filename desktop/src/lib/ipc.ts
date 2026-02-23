@@ -82,5 +82,6 @@ export const ipc = {
   exportConversation: (format: string, path: string) => invoke("export_conversation", { format, path }),
   // UX
   generateTestQuestion: () => invoke("generate_test_question"),
+  getExpertiseLevel: () => invoke("get_expertise_level"),
   setExpertiseLevel: (level: string) => invoke("set_expertise_level", { level }),
 };

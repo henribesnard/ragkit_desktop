@@ -164,6 +164,7 @@ fn main() {
             commands::import_config,
             commands::export_conversation,
             commands::generate_test_question,
+            commands::get_expertise_level,
             commands::set_expertise_level,
         ])
         .build(tauri::generate_context!())

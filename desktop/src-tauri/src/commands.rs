@@ -849,6 +849,11 @@ pub async fn generate_test_question(app: AppHandle) -> Result<serde_json::Value,
 }
 
 #[tauri::command]
+pub async fn get_expertise_level(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/general/expertise", None, &app).await
+}
+
+#[tauri::command]
 pub async fn set_expertise_level(app: AppHandle, level: String) -> Result<serde_json::Value, String> {
     let body = serde_json::json!({ "level": level });
     request(Method::PUT, "/api/general/expertise", Some(body), &app).await

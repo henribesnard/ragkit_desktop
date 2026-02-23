@@ -145,7 +145,8 @@ class IngestionRuntime:
     async def _auto_ingestion_loop(self) -> None:
         while True:
             try:
-                settings = load_settings()
+                # Run settings load in thread to avoid any I/O blocking
+                settings = await asyncio.to_thread(load_settings)
                 general_settings = GeneralSettings.model_validate(settings.general or {})
 
                 if general_settings.ingestion_mode != IngestionMode.AUTOMATIC:
@@ -158,7 +159,9 @@ class IngestionRuntime:
                     await asyncio.sleep(2)
                     continue
 
-                changes = self.detect_changes(settings)
+                # detect_changes reads ALL document bytes + computes SHA-256.
+                # Running it in a thread prevents blocking the event loop.
+                changes = await asyncio.to_thread(self.detect_changes, settings)
                 signature = "|".join(sorted(f"{change.type}:{change.path}" for change in changes.changes))
                 now = time.monotonic()
 

@@ -9,6 +9,15 @@ from ragkit.desktop.ingestion_runtime import runtime
 
 router = APIRouter(prefix="/api/general", tags=["general"])
 
+
+@router.get("/expertise")
+async def get_expertise():
+    """Lightweight endpoint — does NOT trigger background tasks."""
+    settings = settings_store.load_settings()
+    general_payload = settings.general if isinstance(settings.general, dict) else {}
+    return {"expertise_level": general_payload.get("expertise_level", "simple")}
+
+
 @router.put("/expertise")
 async def set_expertise(payload: dict[str, Any]):
     runtime.ensure_background_tasks()
@@ -21,3 +30,4 @@ async def set_expertise(payload: dict[str, Any]):
     
     settings_store.save_settings(settings)
     return {"expertise_level": level}
+

@@ -11,7 +11,9 @@ export function useExpertiseLevel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = await ipc.getGeneralSettings() as any;
+      // Uses the lightweight GET /api/general/expertise endpoint
+      // which does NOT trigger runtime.ensure_background_tasks()
+      const payload = await ipc.getExpertiseLevel() as any;
       const l = payload?.expertise_level || "simple";
       setLevel(l as ExpertiseLevel);
       setError(null);
