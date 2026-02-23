@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+
+const RERANK_DEFAULTS = { provider: "huggingface", top_n: 3 };
 
 export function RerankingStep({ wizard }: { wizard: any }) {
     const { state, updateConfig } = wizard;
@@ -12,12 +14,26 @@ export function RerankingStep({ wizard }: { wizard: any }) {
     const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
 
     const enabled = rerankCfg.enabled ?? false;
-    const provider = rerankCfg.provider || "huggingface";
-    const topN = rerankCfg.top_n || 3;
+    const provider = rerankCfg.provider || RERANK_DEFAULTS.provider;
+    const topN = rerankCfg.top_n || RERANK_DEFAULTS.top_n;
+
+    // Si le reranking est activé (ex: via analyze_profile) mais que
+    // le provider n'est pas encore défini, écrire les valeurs par défaut.
+    useEffect(() => {
+        if (enabled && !rerankCfg.provider) {
+            updateRerank({ ...RERANK_DEFAULTS });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const updateRerank = (patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.rerank) cfg.rerank = {};
+            // Quand on active le reranking, écrire les defaults s'ils sont absents
+            if (patch.enabled === true) {
+                if (!cfg.rerank.provider) cfg.rerank.provider = RERANK_DEFAULTS.provider;
+                if (!cfg.rerank.top_n) cfg.rerank.top_n = RERANK_DEFAULTS.top_n;
+            }
             cfg.rerank = { ...cfg.rerank, ...patch };
             return cfg;
         });

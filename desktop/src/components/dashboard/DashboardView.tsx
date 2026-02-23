@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { QueryLogView } from "@/components/dashboard/QueryLogView";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useMonitoringConfig } from "@/hooks/useMonitoringConfig";
+import { useIngestionControl } from "@/hooks/useIngestionControl";
 import {
   MessageSquare,
   FileText,
@@ -19,7 +20,12 @@ import {
   ShieldAlert,
   BarChart3,
   Clock,
-  MessageCircle
+  MessageCircle,
+  Play,
+  RefreshCw,
+  Pause,
+  Loader2,
+  HardDriveDownload
 } from "lucide-react";
 
 function formatLatency(ms: number): string {
@@ -48,6 +54,21 @@ function feedbackShort(value: "positive" | "negative" | null | undefined): strin
   return "—";
 }
 
+function ingestionStatusLabel(status: string): { label: string; color: string; icon: React.ReactNode } {
+  switch (status) {
+    case "running":
+      return { label: "Ingestion en cours", color: "text-blue-600 dark:text-blue-400", icon: <Loader2 className="w-4 h-4 animate-spin" /> };
+    case "paused":
+      return { label: "Ingestion en pause", color: "text-amber-600 dark:text-amber-400", icon: <Pause className="w-4 h-4" /> };
+    case "completed":
+      return { label: "Ingestion terminée", color: "text-emerald-600 dark:text-emerald-400", icon: <CheckCircle2 className="w-4 h-4" /> };
+    case "error":
+      return { label: "Erreur d'ingestion", color: "text-red-600 dark:text-red-400", icon: <XCircle className="w-4 h-4" /> };
+    default:
+      return { label: "Prête", color: "text-gray-500 dark:text-gray-400", icon: <Database className="w-4 h-4" /> };
+  }
+}
+
 export function DashboardView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -57,6 +78,7 @@ export function DashboardView() {
     config.service_check_interval || 60,
   );
   const [showLogs, setShowLogs] = useState(false);
+  const ingestion = useIngestionControl();
 
   const intentMax = useMemo(() => Math.max(...state.intents.intents.map((item) => item.count), 1), [state.intents.intents]);
   const activityMax = useMemo(() => Math.max(...state.activity.map((item) => item.total), 1), [state.activity]);
@@ -136,24 +158,130 @@ export function DashboardView() {
         </div>
       </div>
 
+      {/* INGESTION STATUS PANEL */}
+      {(() => {
+        const s = ingestion.status;
+        const statusInfo = ingestionStatusLabel(s?.status ?? "idle");
+        const isRunning = s?.status === "running";
+        const isPaused = s?.status === "paused";
+        const progressRatio = s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0;
+
+        return (
+          <section className="rounded-2xl border border-gray-200 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <HardDriveDownload className="w-4 h-4 text-indigo-500" />
+                Base de connaissances
+              </h3>
+              <div className={`flex items-center gap-1.5 text-xs font-medium ${statusInfo.color}`}>
+                {statusInfo.icon}
+                {statusInfo.label}
+              </div>
+            </div>
+
+            {/* Progress bar (visible when running or paused) */}
+            {(isRunning || isPaused) && (
+              <div className="mb-3">
+                <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${isPaused
+                        ? "bg-amber-400"
+                        : "bg-gradient-to-r from-blue-500 to-indigo-500"
+                      }`}
+                    style={{ width: `${progressRatio}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
+                  <span>
+                    {s?.doc_index ?? 0}/{s?.doc_total ?? 0} documents · {progressRatio}%
+                  </span>
+                  {s?.current_doc && (
+                    <span className="truncate max-w-[200px]" title={s.current_doc}>
+                      {s.current_doc}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isRunning && !isPaused && (
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+                    onClick={() => void ingestion.start(false)}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Lancer l'ingestion
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5"
+                    onClick={() => void ingestion.start(true)}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Incrémentale
+                  </Button>
+                </>
+              )}
+              {isRunning && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  onClick={() => void ingestion.pause()}
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                  Pause
+                </Button>
+              )}
+              {isPaused && (
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+                  onClick={() => void ingestion.resume()}
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Reprendre
+                </Button>
+              )}
+              {(isRunning || isPaused) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-red-500 hover:text-red-600"
+                  onClick={() => {
+                    if (confirm("Annuler l'ingestion en cours ?")) {
+                      void ingestion.cancel();
+                    }
+                  }}
+                >
+                  Annuler
+                </Button>
+              )}
+
+              {/* Stats summary inline */}
+              <div className="ml-auto flex items-center gap-4 text-xs text-gray-500">
+                <span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{state.ingestion.total_documents}</span> docs
+                </span>
+                <span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">{state.ingestion.total_chunks}</span> chunks
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  {state.ingestion.coverage_percent.toFixed(1)}% couv.
+                </span>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* MAIN STATS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Ingestion Card */}
-        <div className="bg-white dark:bg-gray-800/80 border border-gray-100 dark:border-gray-800/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("monitoring.dashboard.documents")}</p>
-              <h4 className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">{state.ingestion.total_documents}</h4>
-            </div>
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400">
-              <Database className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400"><span className="font-semibold text-blue-600 dark:text-blue-400">{state.ingestion.total_chunks}</span> chunks</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">{state.ingestion.coverage_percent.toFixed(1)}% couv.</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {/* Queries Card */}
         <div className="bg-white dark:bg-gray-800/80 border border-gray-100 dark:border-gray-800/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -171,6 +299,7 @@ export function DashboardView() {
             <span className="text-gray-500 text-xs">Sur 24h</span>
           </div>
         </div>
+
 
         {/* Latency Card */}
         <div className="bg-white dark:bg-gray-800/80 border border-gray-100 dark:border-gray-800/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
