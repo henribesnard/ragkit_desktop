@@ -351,7 +351,20 @@ class EmbeddingEngine:
                     data = json.loads(resp.read())
                     models = [m.get("name") for m in data.get("models", [])]
                     
-                    if self.config.model not in models:
+                    # Normalize model names: Ollama returns "name:tag" but config
+                    # may just say "name" (without :latest tag)
+                    config_model = self.config.model
+                    if ":" not in config_model:
+                        config_model_with_tag = f"{config_model}:latest"
+                    else:
+                        config_model_with_tag = config_model
+                    
+                    model_found = (
+                        config_model in models
+                        or config_model_with_tag in models
+                    )
+                    
+                    if not model_found:
                         return ConnectionTestResult(
                             success=False, status="model_error",
                             message=f"Modèle '{self.config.model}' non installé dans Ollama.",

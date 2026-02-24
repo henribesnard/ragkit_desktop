@@ -82,8 +82,8 @@ PROFILE_REFERENTIAL: dict[str, dict[str, Any]] = {
                 "header_levels": [1, 2, 3],
             },
             "embedding": {
-                "provider": "openai",
-                "model": "text-embedding-3-small",
+                "provider": "ollama",
+                "model": "nomic-embed-text",
                 "batch_size": 100,
                 "cache_enabled": True,
                 "normalize": True,
@@ -174,8 +174,8 @@ PROFILE_REFERENTIAL: dict[str, dict[str, Any]] = {
                 "header_levels": [1, 2],
             },
             "embedding": {
-                "provider": "openai",
-                "model": "text-embedding-3-small",
+                "provider": "ollama",
+                "model": "nomic-embed-text",
                 "batch_size": 100,
                 "cache_enabled": True,
                 "normalize": True,
@@ -358,8 +358,8 @@ PROFILE_REFERENTIAL: dict[str, dict[str, Any]] = {
                 "header_levels": [1, 2, 3],
             },
             "embedding": {
-                "provider": "openai",
-                "model": "text-embedding-3-small",
+                "provider": "ollama",
+                "model": "nomic-embed-text",
                 "batch_size": 100,
                 "cache_enabled": True,
                 "normalize": True,
@@ -450,8 +450,8 @@ PROFILE_REFERENTIAL: dict[str, dict[str, Any]] = {
                 "header_levels": [1, 2, 3],
             },
             "embedding": {
-                "provider": "openai",
-                "model": "text-embedding-3-small",
+                "provider": "ollama",
+                "model": "nomic-embed-text",
                 "batch_size": 100,
                 "cache_enabled": True,
                 "normalize": True,
