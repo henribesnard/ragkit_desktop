@@ -152,11 +152,11 @@ class IngestionRuntime:
                 if general_settings.ingestion_mode != IngestionMode.AUTOMATIC:
                     self._pending_auto_trigger_at = None
                     self._last_auto_signature = None
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(30)
                     continue
 
                 if self._task and not self._task.done():
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(30)
                     continue
 
                 # detect_changes reads ALL document bytes + computes SHA-256.
@@ -168,13 +168,13 @@ class IngestionRuntime:
                 if not signature:
                     self._pending_auto_trigger_at = None
                     self._last_auto_signature = None
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(30)
                     continue
 
                 if signature != self._last_auto_signature:
                     self._last_auto_signature = signature
                     self._pending_auto_trigger_at = now + max(general_settings.auto_ingestion_delay, 5)
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(30)
                     continue
 
                 if self._pending_auto_trigger_at and now >= self._pending_auto_trigger_at:
@@ -190,10 +190,10 @@ class IngestionRuntime:
                     self._last_auto_signature = None
             except Exception:
                 # Keep watcher loop resilient and try again.
-                await asyncio.sleep(2)
+                await asyncio.sleep(30)
                 continue
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(30)
 
     def detect_changes(self, settings: SettingsPayload | None = None) -> ChangeDetectionResult:
         settings = settings or load_settings()

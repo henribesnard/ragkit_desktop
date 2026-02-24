@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -205,14 +206,15 @@ async def cancel_ingestion():
 
 @router.get("/status")
 async def ingestion_status():
-    runtime.ensure_background_tasks()
+    # Pure in-memory read — no need to spawn background tasks
     return runtime.progress
 
 
 @router.get("/changes", response_model=ChangeDetectionResult)
 async def ingestion_changes():
-    runtime.ensure_background_tasks()
-    return runtime.detect_changes()
+    # detect_changes does heavy I/O (reads all files + SHA-256).
+    # MUST run in thread to avoid blocking the event loop.
+    return await asyncio.to_thread(runtime.detect_changes)
 
 
 @router.get("/history")
@@ -259,14 +261,17 @@ async def progress_stream():
 
 @router.get("/settings/general")
 async def get_general_settings():
-    runtime.ensure_background_tasks()
-    settings = settings_store.load_settings()
-    payload = settings.general if isinstance(settings.general, dict) else {}
-    defaults = _default_general_settings_from_profile(settings).model_dump(mode="json")
-    if payload:
-        merged = {**defaults, **payload}
-        return GeneralSettings.model_validate(merged).model_dump(mode="json")
-    return defaults
+    # Do NOT call runtime.ensure_background_tasks() here — this is a
+    # read-only endpoint and should never block due to background I/O.
+    def _build():
+        settings = settings_store.load_settings()
+        payload = settings.general if isinstance(settings.general, dict) else {}
+        defaults = _default_general_settings_from_profile(settings).model_dump(mode="json")
+        if payload:
+            merged = {**defaults, **payload}
+            return GeneralSettings.model_validate(merged).model_dump(mode="json")
+        return defaults
+    return await asyncio.to_thread(_build)
 
 
 @router.put("/settings/general")
