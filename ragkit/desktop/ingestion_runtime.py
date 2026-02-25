@@ -501,6 +501,19 @@ class IngestionRuntime:
                             message=f"{doc.filename} — échec: {exc}",
                         )
                     )
+                    # Register failed docs with chunk_count=0 so they are not
+                    # detected as "added" on the next change-detection scan,
+                    # which would cause an infinite auto-ingestion loop.
+                    try:
+                        file_abs = source_root / doc.file_path
+                        file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
+                        with sqlite3.connect(self._registry) as con:
+                            con.execute(
+                                "INSERT OR REPLACE INTO ingestion_registry(doc_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?)",
+                                (doc.id, doc.file_path, file_hash, doc.file_size_bytes, doc.last_modified, 0, version, self._now()),
+                            )
+                    except Exception:
+                        pass
                 finally:
                     elapsed = time.perf_counter() - started
                     dt = max(elapsed - last_elapsed, 0.0)

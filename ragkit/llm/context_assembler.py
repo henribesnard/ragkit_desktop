@@ -49,7 +49,10 @@ class ContextAssembler:
         try:
             return tiktoken.encoding_for_model(self.config.model)
         except Exception:
-            return tiktoken.get_encoding("cl100k_base")
+            try:
+                return tiktoken.get_encoding("cl100k_base")
+            except Exception:
+                return None
 
     def _count_tokens(self, text: str) -> int:
         if self._encoder is not None:

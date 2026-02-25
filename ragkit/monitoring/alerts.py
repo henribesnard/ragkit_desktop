@@ -34,8 +34,9 @@ class AlertEvaluator:
                 )
             )
 
+        total_queries = int(metrics.get("total_queries", 0) or 0)
         success_rate = float(metrics.get("success_rate", 1.0) or 0.0)
-        if success_rate < float(self.config.alert_success_rate):
+        if total_queries > 0 and success_rate < float(self.config.alert_success_rate):
             severity = "critical" if success_rate < 0.7 else "warning"
             alerts.append(
                 AlertModel(
