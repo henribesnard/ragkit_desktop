@@ -14,8 +14,8 @@ function ModifiedBadge({ dirty }: { dirty: boolean }) {
   return dirty ? <Badge className="ml-2">Modifie</Badge> : null;
 }
 
-function apiKeyProvider(provider: string): "openai" | "anthropic" | "mistral" | null {
-  if (provider === "openai" || provider === "anthropic" || provider === "mistral") return provider;
+function apiKeyProvider(provider: string): "openai" | "anthropic" | "mistral" | "deepseek" | null {
+  if (provider === "openai" || provider === "anthropic" || provider === "mistral" || provider === "deepseek") return provider;
   return null;
 }
 
@@ -71,6 +71,7 @@ export function LLMSettings() {
   const providerOptions = [
     { value: "openai", label: "OpenAI" },
     { value: "anthropic", label: "Anthropic" },
+    { value: "deepseek", label: "DeepSeek" },
     { value: "ollama", label: ollamaAvailable ? "Ollama (local)" : "Ollama (indisponible)", disabled: !ollamaAvailable },
     { value: "mistral", label: "Mistral AI" },
   ];

@@ -212,6 +212,10 @@ class MistralProvider(OpenAIProvider):
     API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 
+class DeepSeekProvider(OpenAIProvider):
+    API_URL = "https://api.deepseek.com/chat/completions"
+
+
 class AnthropicProvider(BaseLLMProvider):
     API_URL = "https://api.anthropic.com/v1/messages"
     API_VERSION = "2023-06-01"

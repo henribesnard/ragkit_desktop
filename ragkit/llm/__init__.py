@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ragkit.config.llm_schema import LLMConfig, LLMProvider
 from ragkit.llm.base import BaseLLMProvider
-from ragkit.llm.providers import AnthropicProvider, MistralProvider, OllamaProvider, OpenAIProvider
+from ragkit.llm.providers import AnthropicProvider, DeepSeekProvider, MistralProvider, OllamaProvider, OpenAIProvider
 
 
 def create_llm_provider(config: LLMConfig, api_key: str | None = None) -> BaseLLMProvider:
@@ -20,6 +20,10 @@ def create_llm_provider(config: LLMConfig, api_key: str | None = None) -> BaseLL
         if not api_key:
             raise ValueError("Mistral API key is required.")
         return MistralProvider(config, api_key)
+    if config.provider == LLMProvider.DEEPSEEK:
+        if not api_key:
+            raise ValueError("DeepSeek API key is required.")
+        return DeepSeekProvider(config, api_key)
     if config.provider == LLMProvider.OLLAMA:
         return OllamaProvider(config)
     raise ValueError(f"Unsupported LLM provider: {config.provider}")
@@ -28,6 +32,7 @@ def create_llm_provider(config: LLMConfig, api_key: str | None = None) -> BaseLL
 __all__ = [
     "AnthropicProvider",
     "BaseLLMProvider",
+    "DeepSeekProvider",
     "MistralProvider",
     "OllamaProvider",
     "OpenAIProvider",

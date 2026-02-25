@@ -12,7 +12,7 @@ export interface LLMTestResult {
 export interface LLMModelInfo {
   id: string;
   name: string;
-  provider: "openai" | "anthropic" | "ollama" | "mistral";
+  provider: "openai" | "anthropic" | "ollama" | "mistral" | "deepseek";
   context_window: number;
   cost_input?: string | null;
   cost_output?: string | null;
@@ -20,6 +20,8 @@ export interface LLMModelInfo {
   quality_rating: number;
   latency_hint?: string | null;
   local?: boolean;
+  ram_required_gb?: number | null;
+  compatible?: boolean;
 }
 
 export function useLLMTest() {
@@ -40,7 +42,7 @@ export function useLLMTest() {
     }
   };
 
-  const getModels = async (provider: "openai" | "anthropic" | "ollama" | "mistral"): Promise<LLMModelInfo[]> => {
+  const getModels = async (provider: "openai" | "anthropic" | "ollama" | "mistral" | "deepseek"): Promise<LLMModelInfo[]> => {
     return await invoke<LLMModelInfo[]>("get_llm_models", { provider });
   };
 

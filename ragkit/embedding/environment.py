@@ -13,6 +13,17 @@ def detect_environment() -> EnvironmentInfo:
     gpu_name = None
     gpu_backend = None
 
+    # --- RAM detection ---
+    total_ram_gb = 0.0
+    available_ram_gb = 0.0
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        total_ram_gb = round(mem.total / (1024 ** 3), 1)
+        available_ram_gb = round(mem.available / (1024 ** 3), 1)
+    except ImportError:
+        pass
+
     if shutil.which("nvidia-smi"):
         try:
             out = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True, timeout=2)
@@ -64,6 +75,8 @@ def detect_environment() -> EnvironmentInfo:
         gpu_available=gpu_available,
         gpu_name=gpu_name,
         gpu_backend=gpu_backend,
+        total_ram_gb=total_ram_gb,
+        available_ram_gb=available_ram_gb,
         ollama_available=ollama_available,
         ollama_version=ollama_version,
         ollama_llm_models=ollama_llm_models,

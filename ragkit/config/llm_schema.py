@@ -15,6 +15,7 @@ class LLMProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
     MISTRAL = "mistral"
+    DEEPSEEK = "deepseek"
 
 
 class CitationFormat(str, Enum):
@@ -86,6 +87,7 @@ class LLMConfig(BaseModel):
             "ollama": LLMProvider.OLLAMA.value,
             "mistral": LLMProvider.MISTRAL.value,
             "mistralai": LLMProvider.MISTRAL.value,
+            "deepseek": LLMProvider.DEEPSEEK.value,
         }
         normalized["provider"] = provider_aliases.get(provider, provider)
 
@@ -145,6 +147,8 @@ class LLMModelInfo(BaseModel):
     quality_rating: int = Field(ge=1, le=5)
     latency_hint: str | None = None
     local: bool = False
+    ram_required_gb: float | None = None
+    compatible: bool = True
 
 
 class LLMTestResult(BaseModel):
@@ -322,6 +326,31 @@ MISTRAL_MODELS: list[LLMModelInfo] = [
     ),
 ]
 
+DEEPSEEK_MODELS: list[LLMModelInfo] = [
+    LLMModelInfo(
+        id="deepseek-chat",
+        name="DeepSeek Chat (V3)",
+        provider=LLMProvider.DEEPSEEK,
+        context_window=64_000,
+        cost_input="$0.27 / 1M",
+        cost_output="$1.10 / 1M",
+        languages="multilingual",
+        quality_rating=5,
+        latency_hint="~500-1500 ms first token",
+    ),
+    LLMModelInfo(
+        id="deepseek-reasoner",
+        name="DeepSeek Reasoner (R1)",
+        provider=LLMProvider.DEEPSEEK,
+        context_window=64_000,
+        cost_input="$0.55 / 1M",
+        cost_output="$2.19 / 1M",
+        languages="multilingual",
+        quality_rating=5,
+        latency_hint="~1000-3000 ms first token",
+    ),
+]
+
 
 def model_catalog_for_provider(provider: LLMProvider) -> list[LLMModelInfo]:
     if provider == LLMProvider.OPENAI:
@@ -332,6 +361,8 @@ def model_catalog_for_provider(provider: LLMProvider) -> list[LLMModelInfo]:
         return OLLAMA_MODELS
     if provider == LLMProvider.MISTRAL:
         return MISTRAL_MODELS
+    if provider == LLMProvider.DEEPSEEK:
+        return DEEPSEEK_MODELS
     return []
 
 
@@ -339,5 +370,5 @@ def default_model_for_provider(provider: LLMProvider) -> str:
     catalog = model_catalog_for_provider(provider)
     if catalog:
         return catalog[0].id
-    return "gpt-4o-mini"
+    return "llama3.2"
 

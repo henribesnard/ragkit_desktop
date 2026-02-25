@@ -20,7 +20,7 @@ from ragkit.security.secrets import secrets_manager
 
 
 def api_key_secret_name(provider: LLMProvider) -> str | None:
-    if provider in {LLMProvider.OPENAI, LLMProvider.ANTHROPIC, LLMProvider.MISTRAL}:
+    if provider in {LLMProvider.OPENAI, LLMProvider.ANTHROPIC, LLMProvider.MISTRAL, LLMProvider.DEEPSEEK}:
         return f"ragkit.llm.{provider.value}.api_key"
     return None
 
@@ -76,8 +76,16 @@ def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
     if provider == LLMProvider.OLLAMA:
         import httpx
         try:
+            # Detect available RAM
+            available_ram_gb = 0.0
+            try:
+                import psutil
+                available_ram_gb = psutil.virtual_memory().available / (1024 ** 3)
+            except ImportError:
+                available_ram_gb = 999.0  # assume unlimited if psutil unavailable
+
             # Short timeout so we don't hang if Ollama is not running
-            response = httpx.get("http://127.0.0.1:11434/api/tags", timeout=1.0)
+            response = httpx.get("http://127.0.0.1:11434/api/tags", timeout=2.0)
             response.raise_for_status()
             data = response.json()
             models_list = data.get("models", [])
@@ -86,29 +94,62 @@ def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
                 m_name = m.get("name")
                 if not m_name:
                     continue
-                    
+
                 family = m.get("details", {}).get("family", "").lower()
-                is_llm = family in ["llama", "qwen2", "gemma", "mixtral", "command-r", "phi3"]
+                is_llm = family in ["llama", "qwen2", "qwen3", "gemma", "gemma2", "mixtral", "command-r", "phi3", "phi4", "mistral", "deepseek", "deepseek2"]
                 if not is_llm:
                     is_llm = not any(x in m_name.lower() for x in ["embed", "bge", "minilm", "e5"])
-                    
-                if is_llm:
-                        local_models.append(
-                            LLMModelInfo(
-                                id=m_name,
-                                name=f"{m_name} (Ollama)",
-                                provider=LLMProvider.OLLAMA,
-                                context_window=8192,
-                                languages="multilingual",
-                                quality_rating=3,
-                                latency_hint="local inference",
-                                local=True
-                            )
-                        )
+
+                if not is_llm:
+                    continue
+
+                # Model file size from Ollama API (bytes)
+                model_size_bytes = m.get("size", 0)
+                # RAM required ≈ model file size × 1.2 (overhead for KV cache, etc.)
+                ram_required_gb = round((model_size_bytes / (1024 ** 3)) * 1.2, 1) if model_size_bytes else None
+                # A model is compatible if it fits in available RAM
+                compatible = (ram_required_gb or 0) < available_ram_gb if ram_required_gb else True
+
+                # Extract parameter size for quality estimate
+                params = m.get("details", {}).get("parameter_size", "")
+                quality = 3
+                if params:
+                    try:
+                        param_num = float(params.lower().replace("b", ""))
+                        if param_num >= 30:
+                            quality = 5
+                        elif param_num >= 7:
+                            quality = 4
+                        elif param_num >= 3:
+                            quality = 3
+                        else:
+                            quality = 2
+                    except (ValueError, AttributeError):
+                        pass
+
+                size_label = f" ({ram_required_gb:.1f} GB)" if ram_required_gb else ""
+                compat_label = "" if compatible else " ⚠️ RAM insuffisante"
+
+                local_models.append(
+                    LLMModelInfo(
+                        id=m_name,
+                        name=f"{m_name}{size_label}{compat_label}",
+                        provider=LLMProvider.OLLAMA,
+                        context_window=int(m.get("details", {}).get("context_length", 8192) or 8192),
+                        languages="multilingual",
+                        quality_rating=quality,
+                        latency_hint="local inference",
+                        local=True,
+                        ram_required_gb=ram_required_gb,
+                        compatible=compatible,
+                    )
+                )
             if local_models:
+                # Sort: compatible first, then by size ascending
+                local_models.sort(key=lambda x: (not x.compatible, x.ram_required_gb or 0))
                 return local_models
         except Exception:
-            pass # fallback to catalog
+            pass  # fallback to catalog
     return model_catalog_for_provider(provider)
 
 
@@ -126,6 +167,8 @@ def resolve_llm_provider(config: LLMConfig) -> BaseLLMProvider:
             api_key = os.getenv("ANTHROPIC_API_KEY")
         elif config.provider == LLMProvider.MISTRAL:
             api_key = os.getenv("MISTRAL_API_KEY")
+        elif config.provider == LLMProvider.DEEPSEEK:
+            api_key = os.getenv("DEEPSEEK_API_KEY")
             
     return create_llm_provider(config, api_key=api_key)
 

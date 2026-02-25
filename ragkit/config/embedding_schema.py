@@ -98,6 +98,8 @@ class EnvironmentInfo(BaseModel):
     gpu_available: bool
     gpu_name: str | None = None
     gpu_backend: str | None = None
+    total_ram_gb: float = 0.0
+    available_ram_gb: float = 0.0
     ollama_available: bool
     ollama_version: str | None = None
     ollama_llm_models: list[str] = Field(default_factory=list)

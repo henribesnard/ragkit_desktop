@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-export type LLMProvider = "openai" | "anthropic" | "ollama" | "mistral";
+export type LLMProvider = "openai" | "anthropic" | "ollama" | "mistral" | "deepseek";
 export type CitationFormat = "inline" | "footnote";
 export type ResponseLanguage = "auto" | "fr" | "en";
 
@@ -37,8 +37,8 @@ export interface LLMConfig {
 }
 
 const defaultConfig: LLMConfig = {
-  provider: "openai",
-  model: "gpt-4o-mini",
+  provider: "ollama",
+  model: "llama3.2",
   api_key_set: false,
   temperature: 0.1,
   max_tokens: 2000,
@@ -67,7 +67,7 @@ function normalizeConfig(config: Partial<LLMConfig> | undefined): LLMConfig {
 }
 
 function apiKeyName(provider: LLMProvider): string | null {
-  if (provider === "openai" || provider === "anthropic" || provider === "mistral") {
+  if (provider === "openai" || provider === "anthropic" || provider === "mistral" || provider === "deepseek") {
     return `ragkit.llm.${provider}.api_key`;
   }
   return null;
