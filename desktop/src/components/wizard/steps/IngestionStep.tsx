@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/Button";
+
 import { Eye, Hand } from "lucide-react";
 
 export function IngestionStep({ wizard }: { wizard: any }) {
@@ -225,10 +225,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()}>Retour</Button>
-                <Button onClick={() => wizard.nextStep()}>Continuer</Button>
-            </div>
+
         </div>
     );
 }

@@ -209,12 +209,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                 )}
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                <Button variant="ghost" onClick={() => wizard.prevStep()}>← Retour</Button>
-                <Button onClick={() => wizard.nextStep()} disabled={!sourceCfg.path || !!error || isValidating || isScanning}>
-                    Suivant →
-                </Button>
-            </div>
+
         </div>
     );
 }

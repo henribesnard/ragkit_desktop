@@ -96,9 +96,15 @@ def list_llm_models(provider: LLMProvider) -> list[LLMModelInfo]:
                     continue
 
                 family = m.get("details", {}).get("family", "").lower()
+                # Families known to be embedding-only (never LLMs)
+                embedding_families = {"bert", "nomic-bert", "nomic-bert-moe"}
+                if family in embedding_families:
+                    continue
                 is_llm = family in ["llama", "qwen2", "qwen3", "gemma", "gemma2", "mixtral", "command-r", "phi3", "phi4", "mistral", "deepseek", "deepseek2"]
                 if not is_llm:
-                    is_llm = not any(x in m_name.lower() for x in ["embed", "bge", "minilm", "e5"])
+                    # Exclude names that indicate embedding/sentence-transformer models
+                    embedding_indicators = ["embed", "bge", "minilm", "e5", "paraphrase", "sentence-transformer", "gte-", "jina-embeddings"]
+                    is_llm = not any(x in m_name.lower() for x in embedding_indicators)
 
                 if not is_llm:
                     continue

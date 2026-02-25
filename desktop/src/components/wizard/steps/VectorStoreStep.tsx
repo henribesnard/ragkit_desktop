@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/Button";
+
 import { Database } from "lucide-react";
 
 export function VectorStoreStep({ wizard }: { wizard: any }) {
@@ -45,12 +45,7 @@ export function VectorStoreStep({ wizard }: { wizard: any }) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()}>Retour</Button>
-                <Button onClick={() => wizard.nextStep()} disabled={!collectionName.trim()}>
-                    Continuer
-                </Button>
-            </div>
+
         </div>
     );
 }

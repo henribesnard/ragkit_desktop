@@ -2,14 +2,13 @@ import { ProfileCard } from "./ProfileCard";
 import { CalibrationQuestion } from "./CalibrationQuestion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
 
 interface ProfileStepProps {
     wizard: any;
 }
 
 export function ProfileStep({ wizard }: ProfileStepProps) {
-    const { state, updateConfig, nextStep, prevStep } = wizard;
+    const { state, updateConfig } = wizard;
     const [showCalibration, setShowCalibration] = useState(true);
 
     const currentProfile = state.config?.profile || null;
@@ -92,10 +91,7 @@ export function ProfileStep({ wizard }: ProfileStepProps) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                <Button variant="ghost" onClick={prevStep}>← Retour</Button>
-                <Button onClick={() => nextStep()} disabled={!currentProfile}>Suivant →</Button>
-            </div>
+
         </div>
     );
 }

@@ -7,7 +7,6 @@ import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
-import { PartialIngestionBanner } from "@/components/chat/PartialIngestionBanner";
 import { TestQuestionPrompt } from "@/components/chat/TestQuestionPrompt";
 import { ConversationExportMenu } from "@/components/chat/ConversationExportMenu";
 import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
@@ -257,15 +256,40 @@ export function Chat() {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    let pollTimer: number | null = null;
+
+    const refresh = async () => {
       try {
         await refreshChatState();
       } catch (err: any) {
         if (!cancelled) setError(String(err));
       }
-    })();
+    };
+
+    const pollIngestion = async () => {
+      try {
+        const ingStatus = await invoke<{ status: string; doc_index: number; doc_total: number }>("get_ingestion_status");
+        if (!cancelled) {
+          setIngestionProgress(ingStatus);
+
+          // If status is running, poll again in 2 seconds
+          if (ingStatus.status === "running") {
+            pollTimer = window.setTimeout(pollIngestion, 2000);
+          } else if (ingStatus.status === "completed") {
+            // Once completed, refresh chat ready state
+            const ready = await invoke<ChatReadyResponse>("get_chat_ready");
+            setChatReady(ready);
+          }
+        }
+      } catch { /* ignore */ }
+    };
+
+    refresh();
+    pollIngestion();
+
     return () => {
       cancelled = true;
+      if (pollTimer) window.clearTimeout(pollTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -392,12 +416,27 @@ export function Chat() {
         </div>
       </div>
 
-      {/* Partial Ingestion Banner */}
+      {/* Compact Ingestion Indicator */}
       {ingestionProgress && ingestionProgress.status === "running" && (
-        <PartialIngestionBanner
-          docsIndexed={ingestionProgress.doc_index}
-          docsTotal={ingestionProgress.doc_total}
-        />
+        <div className="flex items-center gap-3 px-4 py-2 bg-gray-50/50 dark:bg-gray-800/20 rounded-xl border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex-1">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                Ingestion en cours...
+              </span>
+              <span className="text-[10px] font-mono text-gray-400">
+                {ingestionProgress.doc_index} / {ingestionProgress.doc_total}
+              </span>
+            </div>
+            <div className="h-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                style={{ width: `${(ingestionProgress.doc_index / Math.max(1, ingestionProgress.doc_total)) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Test Question Prompt */}

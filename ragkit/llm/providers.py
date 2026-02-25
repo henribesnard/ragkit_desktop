@@ -426,7 +426,11 @@ class OllamaProvider(BaseLLMProvider):
         timeout = httpx.Timeout(connect=10.0, read=read_timeout, write=30.0, pool=10.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(self.API_CHAT_URL, json=payload)
-            response.raise_for_status()
+            if not response.is_success:
+                body = response.text
+                raise RuntimeError(
+                    f"Ollama /api/chat error {response.status_code} for model '{self.config.model}': {body}"
+                )
             data = response.json()
         message = data.get("message", {}) if isinstance(data, dict) else {}
         content = str(message.get("content", "") if isinstance(message, dict) else "")
@@ -467,7 +471,11 @@ class OllamaProvider(BaseLLMProvider):
         timeout = httpx.Timeout(connect=10.0, read=read_timeout, write=30.0, pool=10.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", self.API_CHAT_URL, json=payload) as response:
-                response.raise_for_status()
+                if not response.is_success:
+                    body = await response.aread()
+                    raise RuntimeError(
+                        f"Ollama /api/chat error {response.status_code} for model '{self.config.model}': {body.decode(errors='replace')}"
+                    )
                 async for line in response.aiter_lines():
                     if not line:
                         continue

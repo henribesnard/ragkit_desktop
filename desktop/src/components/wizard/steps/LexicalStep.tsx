@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/Button";
+
 
 export function LexicalStep({ wizard }: { wizard: any }) {
     const { state, updateConfig } = wizard;
@@ -43,10 +43,7 @@ export function LexicalStep({ wizard }: { wizard: any }) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()}>Retour</Button>
-                <Button onClick={() => wizard.nextStep()}>Continuer</Button>
-            </div>
+
         </div>
     );
 }

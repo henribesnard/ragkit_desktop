@@ -141,10 +141,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 )}
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()}>Retour</Button>
-                <Button onClick={() => wizard.nextStep()} disabled={enabled && !testResult?.success}>Continuer</Button>
-            </div>
+
         </div>
     );
 }

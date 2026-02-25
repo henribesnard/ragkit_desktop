@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { ipc } from "@/lib/ipc";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
-export function SystemCheckStep({ wizard }: { wizard: any }) {
+export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
     const [env, setEnv] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -76,11 +75,7 @@ export function SystemCheckStep({ wizard }: { wizard: any }) {
                 </div>
             )}
 
-            <div className="flex justify-end pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button onClick={() => wizard.nextStep()} disabled={loading}>
-                    Continuer
-                </Button>
-            </div>
+
         </div>
     );
 }

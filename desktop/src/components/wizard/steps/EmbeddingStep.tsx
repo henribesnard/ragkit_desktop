@@ -201,15 +201,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()}>Retour</Button>
-                <Button onClick={() => wizard.nextStep()} disabled={!testResult?.success}>
-                    Continuer
-                </Button>
-            </div>
-            {!testResult?.success && (
-                <p className="text-center text-xs text-gray-500 mt-2">Vous devez réussir le test de connexion pour continuer.</p>
-            )}
+
         </div>
     );
 }

@@ -310,7 +310,8 @@ async def detect_environment() -> EnvironmentInfo:
                             llm_models.append(name)
                         else:
                             # Fallback heuristics based on name
-                            if "embed" in name.lower() or "bge" in name.lower() or "minilm" in name.lower():
+                            embedding_indicators = ["embed", "bge", "minilm", "e5", "paraphrase", "sentence-transformer", "gte-", "jina-embeddings"]
+                            if any(x in name.lower() for x in embedding_indicators):
                                 embedding_models.append(name)
                             else:
                                 llm_models.append(name)

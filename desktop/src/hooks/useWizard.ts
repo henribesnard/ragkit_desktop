@@ -99,7 +99,13 @@ export function useWizard() {
         try {
             if (!state.config) return false;
             await invoke("complete_wizard", { params: { config: state.config } });
-            window.location.href = "/dashboard";
+            // Auto-start ingestion after completion
+            try {
+                await invoke("start_ingestion", { incremental: false });
+            } catch (e) {
+                console.error("Auto-ingestion failed", e);
+            }
+            window.location.href = "/chat";
             return true;
         } catch (e) {
             console.error("Wizard completion failed", e);

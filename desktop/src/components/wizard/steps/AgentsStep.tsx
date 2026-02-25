@@ -1,8 +1,7 @@
-import { Button } from "@/components/ui/Button";
-import { Loader2, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 
 export function AgentsStep({ wizard }: { wizard: any }) {
-    const { state, updateConfig, completeWizard } = wizard;
+    const { state, updateConfig } = wizard;
     const agentCfg = state.config?.agents || {};
     const enabled = agentCfg.enabled ?? false;
 
@@ -49,12 +48,7 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                 )}
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="outline" onClick={() => wizard.prevStep()} disabled={state.isLoading}>Retour</Button>
-                <Button onClick={() => completeWizard()} disabled={state.isLoading} className="bg-green-600 hover:bg-green-700 text-white">
-                    {state.isLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Enregistrement...</> : "Terminer la Configuration"}
-                </Button>
-            </div>
+
         </div>
     );
 }

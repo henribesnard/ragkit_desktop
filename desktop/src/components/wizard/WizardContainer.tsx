@@ -1,6 +1,7 @@
 import { useWizard } from "@/hooks/useWizard";
 import { WizardProgress } from "./WizardProgress";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import {
     SystemCheckStep, ExpertiseStep, ProfileStep, SourceStep,
     IngestionStep, ChunkingStep, EmbeddingStep, VectorStoreStep,
@@ -35,22 +36,62 @@ export function WizardContainer() {
         <AgentsStep key="15" wizard={wizard} />
     ];
 
+    const isLastStep = state.step === steps.length - 1;
+
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col">
+        <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans">
             {state.step > 0 && (
-                <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white dark:bg-gray-900/50 backdrop-blur">
-                    <div className="font-bold text-lg flex items-center gap-2">
-                        RAGKIT <span className="text-gray-400 font-normal text-sm">Configuration</span>
+                <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
+                    <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
+                        RAGKIT <span className="text-gray-400 font-normal text-sm">| Configuration</span>
                     </div>
                     <WizardProgress currentStep={state.step} totalSteps={15} />
                 </header>
             )}
 
-            <main className="flex-1 overflow-hidden relative p-6">
-                <div className="h-full animate-in fade-in duration-300 slide-in-from-bottom-4">
+            <main className="flex-1 overflow-y-auto relative p-6 pt-10">
+                <div className="max-w-5xl mx-auto h-full animate-in fade-in duration-500 slide-in-from-bottom-4">
                     {steps[state.step]}
                 </div>
             </main>
+
+            {/* Sticky Navigation Footer */}
+            {state.step >= 0 && (
+                <footer className="h-20 border-t border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-8 flex items-center justify-center z-50">
+                    <div className="max-w-5xl w-full flex justify-between items-center">
+                        <Button
+                            variant="outline"
+                            onClick={() => wizard.prevStep()}
+                            disabled={state.step === 0 || state.isLoading}
+                            className="px-8 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-all"
+                        >
+                            Retour
+                        </Button>
+
+                        <div className="flex-1 text-center text-xs text-gray-400 px-4">
+                            Toutes vos modifications sont sauvegardées automatiquement.
+                        </div>
+
+                        {isLastStep ? (
+                            <Button
+                                onClick={() => wizard.completeWizard()}
+                                disabled={state.isLoading}
+                                className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
+                            >
+                                {state.isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Terminer la Configuration"}
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => wizard.nextStep()}
+                                disabled={state.isLoading}
+                                className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
+                            >
+                                Continuer
+                            </Button>
+                        )}
+                    </div>
+                </footer>
+            )}
         </div>
     );
 }
