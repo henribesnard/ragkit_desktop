@@ -1,7 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { invoke } from "@tauri-apps/api/core";
-import { Loader2, CheckCircle, AlertCircle, Key, Cpu } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Cloud } from "lucide-react";
+
+interface ModelInfo {
+    id: string;
+    name: string;
+    context_window?: number;
+    quality_rating?: number;
+    cost_input?: string;
+    latency_hint?: string;
+}
+
+const API_PROVIDERS = [
+    { value: "openai", label: "OpenAI" },
+    { value: "anthropic", label: "Anthropic" },
+    { value: "mistral", label: "Mistral AI" },
+    { value: "deepseek", label: "DeepSeek" },
+];
 
 export function LLMStep({ wizard }: { wizard: any }) {
     const { state, updateConfig } = wizard;
@@ -10,15 +26,17 @@ export function LLMStep({ wizard }: { wizard: any }) {
     const [apiKey, setApiKey] = useState("");
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
-    const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+    const [models, setModels] = useState<ModelInfo[]>([]);
     const [loadingModels, setLoadingModels] = useState(false);
 
-    const provider = llmCfg.provider || "openai";
-    const model = llmCfg.model || "gpt-4o-mini";
+    const provider = llmCfg.provider || "ollama";
+    const model = llmCfg.model || "llama3.2";
 
-    // Ref to track the current model value for async callbacks
     const modelRef = useRef(model);
     modelRef.current = model;
+
+    const isOllama = provider === "ollama";
+    const isApiProvider = !isOllama;
 
     const updateLLM = (patch: any) => {
         updateConfig((cfg: any) => {
@@ -26,61 +44,72 @@ export function LLMStep({ wizard }: { wizard: any }) {
             cfg.llm = { ...cfg.llm, ...patch };
             return cfg;
         });
-        setTestResult(null); // reset testing whenever config changes
+        setTestResult(null);
     };
 
+    // Initialize defaults
     useEffect(() => {
         if (!llmCfg.provider || !llmCfg.model) {
             updateLLM({ provider, model });
         }
     }, [llmCfg.provider, llmCfg.model, provider, model]);
 
+    // Load models when provider changes
     useEffect(() => {
-        if (provider === "ollama") {
-            setLoadingModels(true);
-            invoke("get_llm_models", { provider: "ollama" })
-                .then((res: any) => {
-                    const models = res?.map((m: any) => m.id) || [];
-                    setOllamaModels(models);
-                    // Use ref to get the CURRENT model, not the stale closure value
-                    const currentModel = modelRef.current;
-                    if (models.length > 0 && !models.includes(currentModel)) {
-                        updateLLM({ model: models[0] });
-                    }
-                })
-                .catch(console.error)
-                .finally(() => setLoadingModels(false));
-        }
+        setLoadingModels(true);
+        setModels([]);
+        invoke("get_llm_models", { provider })
+            .then((res: any) => {
+                const fetched: ModelInfo[] = res || [];
+                setModels(fetched);
+                const currentModel = modelRef.current;
+                if (fetched.length > 0 && !fetched.some(m => m.id === currentModel)) {
+                    updateLLM({ model: fetched[0].id });
+                }
+            })
+            .catch(console.error)
+            .finally(() => setLoadingModels(false));
     }, [provider]);
 
-    useEffect(() => {
-        // If switching to OpenAI, reset to default model if previous was an ollama model
-        if (provider === "openai" && model !== "gpt-4o-mini" && model !== "gpt-4o" && model !== "o1-mini") {
-            updateLLM({ model: "gpt-4o-mini" });
+    const handleSwitchToOllama = () => {
+        updateLLM({ provider: "ollama" });
+    };
+
+    const handleSwitchToApi = (apiProvider?: string) => {
+        const target = apiProvider || (isApiProvider ? provider : "openai");
+        updateLLM({ provider: target });
+    };
+
+    const secretKeyName = isApiProvider ? `ragkit.llm.${provider}.api_key` : null;
+
+    const handleSaveKey = async () => {
+        if (!secretKeyName || !apiKey.trim()) return;
+        try {
+            await invoke("store_secret", { keyName: secretKeyName, value: apiKey.trim() });
+            setTestResult({ success: true, msg: "Clé API enregistrée !" });
+            setApiKey("");
+        } catch (e: any) {
+            setTestResult({ success: false, msg: e.toString() });
         }
-    }, [provider, model]);
+    };
 
     const handleTest = async () => {
         setIsTesting(true);
         setTestResult(null);
         try {
-            if (provider === "openai" && apiKey) {
-                // Save the key first
-                await invoke("store_secret", { keyName: "ragkit.llm.openai.api_key", value: apiKey });
+            if (secretKeyName && apiKey.trim()) {
+                await invoke("store_secret", { keyName: secretKeyName, value: apiKey.trim() });
+                setApiKey("");
             }
-            // For testing the LLM layer directly without throwing connection, we can save the temporary config 
-            // and use the standard `test_llm_connection` if it relies on saved state, but normally wizard state isn't saved to backend yet!
-            // Wait, standard test_embedding_connection took (provider, model). 
-            // If test_llm_connection takes no args, it tests the backend config.
-            // Since this is a setup wizard, we can assume the final config is saved at completion. 
-            // We'll mock a success for now if openai key is present, or just let them continue.
-            setTestResult({ success: true, msg: "Prêt à être sauvegardé !" });
+            setTestResult({ success: true, msg: "Configuration prête !" });
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
         } finally {
             setIsTesting(false);
         }
     };
+
+    const selectedModel = models.find(m => m.id === model);
 
     return (
         <div className="max-w-2xl mx-auto py-8">
@@ -89,84 +118,127 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 C'est le "cerveau" qui va lire les documents trouvés et rédiger la réponse finale pour vous.
             </p>
 
+            {/* Provider Category Selection */}
             <div className="grid grid-cols-2 gap-4 mb-6">
                 <button
-                    onClick={() => updateLLM({ provider: "openai" })}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${provider === "openai" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    onClick={handleSwitchToOllama}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${isOllama ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                 >
                     <div className="flex items-center gap-3 mb-2">
-                        <Key className={`w-5 h-5 ${provider === "openai" ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">OpenAI API</h3>
+                        <Cpu className={`w-5 h-5 ${isOllama ? "text-blue-600" : "text-gray-400"}`} />
+                        <h3 className="font-semibold text-lg">Ollama (Local)</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Très intelligent, comprend les requêtes complexes. Nécessite une clé API.</p>
+                    <p className="text-sm text-gray-500">100% privé et gratuit. Idéal avec Llama 3, Qwen 3, Mistral.</p>
                 </button>
 
                 <button
-                    onClick={() => updateLLM({ provider: "ollama" })}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${provider === "ollama" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    onClick={() => handleSwitchToApi()}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${isApiProvider ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                 >
                     <div className="flex items-center gap-3 mb-2">
-                        <Cpu className={`w-5 h-5 ${provider === "ollama" ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">Ollama (Local)</h3>
+                        <Cloud className={`w-5 h-5 ${isApiProvider ? "text-blue-600" : "text-gray-400"}`} />
+                        <h3 className="font-semibold text-lg">Fournisseur API</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Privé et gratuit. Plus lent, idéal avec des modèles comme Llama 3 ou Mistral.</p>
+                    <p className="text-sm text-gray-500">Très intelligent et rapide. Nécessite une clé API payante.</p>
                 </button>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-8">
-                {provider === "openai" ? (
+                {isApiProvider && (
                     <>
+                        {/* API Provider Selector */}
                         <div>
-                            <label className="block font-medium mb-1 text-sm">Modèle OpenAI</label>
-                            <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
-                                value={model}
-                                onChange={(e) => updateLLM({ model: e.target.value })}
-                            >
-                                <option value="gpt-4o-mini">GPT-4o Mini (Rapide, pas cher, recommandé)</option>
-                                <option value="gpt-4o">GPT-4o (Très capable, modérément cher)</option>
-                                <option value="o1-mini">o1-mini (Excellent pour le code et raisonnement)</option>
-                            </select>
+                            <label className="block font-medium mb-1 text-sm">Fournisseur</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {API_PROVIDERS.map(p => (
+                                    <button
+                                        key={p.value}
+                                        onClick={() => handleSwitchToApi(p.value)}
+                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                                            provider === p.value
+                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                                        }`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {/* API Key */}
                         <div>
-                            <label className="block font-medium mb-1 text-sm">Clé API OpenAI (OPENAI_API_KEY)</label>
-                            <input
-                                type="password"
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
-                                placeholder="sk-..."
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Si vous en avez déjà saisi une à l'étape Embedding, elle sera réutilisée.</p>
+                            <label className="block font-medium mb-1 text-sm">
+                                Clé API {API_PROVIDERS.find(p => p.value === provider)?.label}
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="password"
+                                    className="flex-1 rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                    placeholder="Collez votre clé API..."
+                                    value={apiKey}
+                                    onChange={(e) => setApiKey(e.target.value)}
+                                />
+                                <Button
+                                    variant="outline"
+                                    onClick={handleSaveKey}
+                                    disabled={!apiKey.trim()}
+                                    className="shrink-0"
+                                >
+                                    <Key className="w-4 h-4" />
+                                </Button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">La clé sera stockée de manière sécurisée dans le trousseau de votre OS.</p>
                         </div>
                     </>
-                ) : (
-                    <div>
-                        <label className="block font-medium mb-1 text-sm">Modèle local Ollama</label>
-                        {loadingModels ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Chargement des modèles...
-                            </div>
-                        ) : ollamaModels.length === 0 ? (
-                            <div className="text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
-                                Aucun modèle Ollama détecté. Veuillez télécharger un modèle (ex: llama3).
-                            </div>
-                        ) : (
-                            <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
-                                value={model}
-                                onChange={(e) => updateLLM({ model: e.target.value })}
-                            >
-                                {ollamaModels.map(m => (
-                                    <option key={m} value={m}>{m}</option>
-                                ))}
-                            </select>
-                        )}
+                )}
+
+                {/* Model Selector */}
+                <div>
+                    <label className="block font-medium mb-1 text-sm">
+                        {isOllama ? "Modèle local Ollama" : "Modèle"}
+                    </label>
+                    {loadingModels ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Chargement des modèles...
+                        </div>
+                    ) : models.length === 0 ? (
+                        <div className="text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
+                            {isOllama
+                                ? "Aucun modèle LLM Ollama détecté. Téléchargez un modèle (ex: ollama pull llama3.2)."
+                                : "Aucun modèle disponible pour ce fournisseur."}
+                        </div>
+                    ) : (
+                        <select
+                            className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                            value={model}
+                            onChange={(e) => updateLLM({ model: e.target.value })}
+                        >
+                            {models.map(m => (
+                                <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+
+                {/* Model Details */}
+                {selectedModel && (selectedModel.context_window || selectedModel.quality_rating || selectedModel.cost_input) && (
+                    <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg space-y-1">
+                        {selectedModel.context_window ? <div>Contexte : {selectedModel.context_window.toLocaleString()} tokens</div> : null}
+                        {selectedModel.quality_rating ? <div>Qualité : {"★".repeat(selectedModel.quality_rating)}{"☆".repeat(5 - selectedModel.quality_rating)}</div> : null}
+                        {selectedModel.cost_input ? <div>Coût : {selectedModel.cost_input}</div> : null}
+                        {selectedModel.latency_hint ? <div>Latence : {selectedModel.latency_hint}</div> : null}
                     </div>
                 )}
 
+                {/* Validate */}
                 <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3">
-                    <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (provider === "openai" && !apiKey)}>
+                    <Button
+                        onClick={handleTest}
+                        variant="outline"
+                        className="w-full sm:w-auto self-start"
+                        disabled={isTesting || (isApiProvider && !apiKey && models.length === 0)}
+                    >
                         {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Validation...</> : "Valider le choix"}
                     </Button>
 
@@ -178,8 +250,6 @@ export function LLMStep({ wizard }: { wizard: any }) {
                     )}
                 </div>
             </div>
-
-
         </div>
     );
 }

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Chat } from "./pages/Chat";
+import { Dashboard } from "./pages/Dashboard";
 import { Settings } from "./pages/Settings";
 import { Onboarding } from "./pages/Onboarding";
 import { useTheme } from "./hooks/useTheme";
@@ -36,6 +37,7 @@ export default function App() {
                 <main className="flex-1 overflow-hidden">
                     <Routes>
                         <Route path="/chat" element={<Chat />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/chat" replace />} />
                     </Routes>

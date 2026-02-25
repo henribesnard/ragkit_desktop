@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { MessageSquare, Settings, Moon, Sun, Languages } from "lucide-react";
+import { MessageSquare, LayoutDashboard, Settings, Moon, Sun, Languages } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { clsx, type ClassValue } from "clsx";
@@ -24,6 +24,7 @@ export function Sidebar() {
 
     const navItems = [
         { path: "/chat", label: t("navigation.chat"), icon: MessageSquare },
+        { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard },
         { path: "/settings", label: t("navigation.settings"), icon: Settings },
     ];
 

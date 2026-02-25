@@ -354,16 +354,26 @@ def _iter_files(
     max_file_size_mb: int | None,
 ):
     root_resolved = root.resolve()
+    norm_root = root.as_posix().lower().rstrip("/")
     excluded: set[str] = set()
     for value in excluded_dirs:
         if not value.strip():
             continue
         p = Path(value)
         if p.is_absolute():
+            rel_str: str | None = None
             try:
-                excluded.add(p.relative_to(root).as_posix().lower())
+                rel_str = p.relative_to(root).as_posix().lower()
             except ValueError:
-                excluded.add(_normalize_relative_path(value))
+                try:
+                    rel_str = p.resolve().relative_to(root_resolved).as_posix().lower()
+                except ValueError:
+                    # Manual case-insensitive prefix removal (Windows safety)
+                    norm_val = p.as_posix().lower().rstrip("/")
+                    if norm_val.startswith(norm_root + "/"):
+                        rel_str = norm_val[len(norm_root) + 1 :]
+            if rel_str:
+                excluded.add(rel_str)
         else:
             excluded.add(_normalize_relative_path(value))
     max_size_bytes = max_file_size_mb * 1024 * 1024 if max_file_size_mb else None

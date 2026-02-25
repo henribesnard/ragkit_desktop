@@ -231,7 +231,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             </div>
                         </div>
 
-                        <div className="p-5 overflow-y-auto flex-1 space-y-4">
+                        <div className="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
 
                             {/* Title (Only for single edit) */}
                             {selectedPaths.size === 1 && singleFile && (
@@ -335,17 +335,19 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             </div>
                         </div>
 
-                        {/* Bulk Apply Button - Form Action */}
-                        {selectedPaths.size > 1 && (
-                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20">
+                        {/* Apply / Save Button */}
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20 shrink-0">
+                            {selectedPaths.size === 1 ? (
+                                <p className="text-xs text-center text-gray-400">Les modifications sont enregistrées automatiquement.</p>
+                            ) : (
                                 <Button
                                     onClick={handleApplyBulk}
                                     className="w-full flex items-center justify-center gap-2 font-medium"
                                 >
                                     <Save className="w-4 h-4" /> Appliquer à {selectedPaths.size} fichiers
                                 </Button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
