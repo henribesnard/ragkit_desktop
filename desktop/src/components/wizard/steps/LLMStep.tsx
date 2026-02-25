@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu } from "lucide-react";
@@ -15,6 +15,10 @@ export function LLMStep({ wizard }: { wizard: any }) {
 
     const provider = llmCfg.provider || "openai";
     const model = llmCfg.model || "gpt-4o-mini";
+
+    // Ref to track the current model value for async callbacks
+    const modelRef = useRef(model);
+    modelRef.current = model;
 
     const updateLLM = (patch: any) => {
         updateConfig((cfg: any) => {
@@ -38,7 +42,9 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 .then((res: any) => {
                     const models = res?.map((m: any) => m.id) || [];
                     setOllamaModels(models);
-                    if (models.length > 0 && !models.includes(model)) {
+                    // Use ref to get the CURRENT model, not the stale closure value
+                    const currentModel = modelRef.current;
+                    if (models.length > 0 && !models.includes(currentModel)) {
                         updateLLM({ model: models[0] });
                     }
                 })

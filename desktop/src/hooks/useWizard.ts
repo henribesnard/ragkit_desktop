@@ -50,9 +50,11 @@ export function useWizard() {
     }, []);
 
     const updateConfig = (updater: (cfg: any) => any) => {
-        if (!state.config) return;
-        const updated = updater({ ...state.config });
-        setState(s => ({ ...s, config: updated }));
+        setState(s => {
+            if (!s.config) return s;
+            const updated = updater({ ...s.config });
+            return { ...s, config: updated };
+        });
     };
 
     const nextStep = async (updatedConfig?: any) => {
