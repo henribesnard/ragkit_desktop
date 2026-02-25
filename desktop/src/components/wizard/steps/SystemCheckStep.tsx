@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
     const [env, setEnv] = useState<any>(null);
     const [loading, setLoading] = useState(true);
