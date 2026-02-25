@@ -42,8 +42,8 @@ Regles :
 class LLMConfig(BaseModel):
     """LLM generation configuration."""
 
-    provider: LLMProvider = LLMProvider.OPENAI
-    model: str = "gpt-4o-mini"
+    provider: LLMProvider = LLMProvider.OLLAMA
+    model: str = "llama3.2"
     api_key_set: bool = False
 
     # Generation.
