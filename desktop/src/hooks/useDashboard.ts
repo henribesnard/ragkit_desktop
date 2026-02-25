@@ -99,7 +99,7 @@ const defaultState: DashboardState = {
   },
   metrics: {
     total_queries: 0,
-    success_rate: 1,
+    success_rate: 0,
     avg_latency_ms: 0,
     p95_latency_ms: 0,
     total_cost_usd: 0,

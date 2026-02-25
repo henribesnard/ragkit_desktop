@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import inspect
 from typing import Any
 
 from ragkit.config.monitoring_schema import ServiceHealth, ServiceStatus
@@ -37,6 +38,13 @@ def _result_error(result: Any) -> str | None:
         return None
     text = str(error).strip()
     return text or None
+
+
+async def _call_test_connection(provider: Any) -> Any:
+    result = provider.test_connection()
+    if inspect.isawaitable(result):
+        return await result
+    return result
 
 
 class HealthChecker:
@@ -89,7 +97,7 @@ class HealthChecker:
             )
 
         try:
-            result = await self.embedding_provider.test_connection()
+            result = await _call_test_connection(self.embedding_provider)
             if _is_success(result):
                 model = _result_model(result) or self.embedding_model
                 return ServiceHealth(
@@ -128,7 +136,7 @@ class HealthChecker:
             )
 
         try:
-            result = await self.llm_provider.test_connection()
+            result = await _call_test_connection(self.llm_provider)
             if _is_success(result):
                 model = _result_model(result) or self.llm_model
                 return ServiceHealth(
@@ -165,7 +173,7 @@ class HealthChecker:
                 last_check=_now_iso(),
             )
         try:
-            test = await self.vector_store.test_connection()
+            test = await _call_test_connection(self.vector_store)
             if not _is_success(test):
                 return ServiceHealth(
                     name="Vector DB",
@@ -204,7 +212,7 @@ class HealthChecker:
             )
 
         try:
-            result = await self.reranker.test_connection()
+            result = await _call_test_connection(self.reranker)
             if _is_success(result):
                 model = _result_model(result) or self.reranker_model
                 return ServiceHealth(

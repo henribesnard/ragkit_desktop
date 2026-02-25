@@ -99,7 +99,7 @@ export function useWizard() {
         try {
             if (!state.config) return false;
             await invoke("complete_wizard", { params: { config: state.config } });
-            window.location.href = "/settings";
+            window.location.href = "/dashboard";
             return true;
         } catch (e) {
             console.error("Wizard completion failed", e);

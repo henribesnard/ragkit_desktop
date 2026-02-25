@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -166,11 +168,7 @@ async def _resolve_ingestion_stats() -> IngestionStats:
 
     source_documents_count = 0
     if settings.ingestion:
-        try:
-            docs, _errors = documents.analyze_documents(settings.ingestion)
-            source_documents_count = len(docs)
-        except Exception:
-            source_documents_count = 0
+        source_documents_count = await asyncio.to_thread(_count_source_documents_fast, settings)
 
     coverage_percent = 0.0
     if source_documents_count > 0:
@@ -190,6 +188,29 @@ async def _resolve_ingestion_stats() -> IngestionStats:
         last_updated=last_updated,
         coverage_percent=coverage_percent,
     )
+
+
+def _count_source_documents_fast(settings) -> int:
+    ingestion = getattr(settings, "ingestion", None)
+    if ingestion is None or not ingestion.source.path:
+        return 0
+
+    root = Path(ingestion.source.path).expanduser()
+    if not root.exists() or not root.is_dir():
+        return 0
+
+    selected_types = {documents._normalize_extension(ext) for ext in ingestion.source.file_types}
+    count = 0
+    for path in documents._iter_files(
+        root,
+        recursive=ingestion.source.recursive,
+        excluded_dirs=ingestion.source.excluded_dirs,
+        exclusion_patterns=ingestion.source.exclusion_patterns,
+        max_file_size_mb=ingestion.source.max_file_size_mb,
+    ):
+        if documents._normalize_extension(path.suffix) in selected_types:
+            count += 1
+    return count
 
 
 @router.get("/monitoring/config", response_model=MonitoringConfig)

@@ -228,25 +228,56 @@ async def analyze_profile(answers: WizardAnswers) -> WizardProfileResponse:
 @router.post("/complete")
 async def complete_wizard(request: WizardCompletionRequest):
     try:
+        config = request.config
+        config.setup_completed = True
+        config.general = _normalize_general_settings(config)
+
         # Save full configuration
-        request.config.setup_completed = True
-        config_manager.save_config(request.config)
+        config_manager.save_config(config)
 
         # Invalidate the in-memory cache so ingestion endpoints pick up new config
         from ragkit.desktop.api import ingestion
-        from ragkit.desktop.models import IngestionConfig
-        if request.config.ingestion:
-            ingestion._CURRENT_CONFIG = IngestionConfig.model_validate(request.config.ingestion)
+        from ragkit.desktop.ingestion_runtime import runtime
+        if config.ingestion:
+            ingestion._CURRENT_CONFIG = IngestionConfig.model_validate(config.ingestion)
         else:
             ingestion._CURRENT_CONFIG = None
 
-        # Analysis is NOT done here - it would block for minutes on large corpora.
-        # The Settings page triggers analysis via POST /api/ingestion/analyze.
+        runtime.ensure_background_tasks()
 
-        return {"success": True}
-    except Exception as e:
+        auto_started = False
+        mode = str(config.general.get("ingestion_mode", "manual")).strip().lower()
+        if mode == "automatic" and config.ingestion and config.ingestion.source.path:
+            started = await runtime.start(incremental=False)
+            auto_started = str(started.get("status", "")).lower() == "running"
+
+        return {"success": True, "auto_ingestion_started": auto_started}
+    except Exception:
         logger.exception("Failed to complete wizard")
         raise HTTPException(status_code=500, detail="Unable to save setup configuration.")
+
+
+def _normalize_general_settings(config: SettingsPayload) -> dict:
+    payload = dict(config.general) if isinstance(config.general, dict) else {}
+
+    mode_raw = str(payload.get("ingestion_mode") or "").strip().lower()
+    if mode_raw in {"auto", "automatic"}:
+        mode = "automatic"
+    elif mode_raw == "manual":
+        mode = "manual"
+    else:
+        calibration = config.calibration_answers if isinstance(config.calibration_answers, dict) else {}
+        auto_selected = bool(calibration.get("q5") or calibration.get("q5_frequent_updates"))
+        mode = "automatic" if auto_selected else "manual"
+    payload["ingestion_mode"] = mode
+
+    raw_delay = payload.get("auto_ingestion_delay")
+    if isinstance(raw_delay, (int, float)):
+        payload["auto_ingestion_delay"] = max(5, min(int(raw_delay), 300))
+    elif mode == "automatic":
+        payload["auto_ingestion_delay"] = 30
+
+    return payload
 
 
 @router.get("/environment-detection")

@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from ragkit.config.manager import config_manager
 from ragkit.config.retrieval_schema import SearchType
-from ragkit.config.vector_store_schema import GeneralSettings, VectorStoreConfig
+from ragkit.config.vector_store_schema import GeneralSettings, IngestionMode, VectorStoreConfig
 from ragkit.desktop import documents, settings_store
 from ragkit.desktop.analysis_progress import AnalysisProgress
 from ragkit.desktop.ingestion_runtime import runtime
@@ -69,6 +69,9 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
         search_type = SearchType.HYBRID
 
     defaults = GeneralSettings()
+    calibration = settings.calibration_answers if isinstance(settings.calibration_answers, dict) else {}
+    frequent_updates = bool(calibration.get("q5") or calibration.get("q5_frequent_updates"))
+    ingestion_mode = IngestionMode.AUTOMATIC if frequent_updates else defaults.ingestion_mode
     llm_provider = str(user_llm.get("provider") or profile_llm.get("provider") or "openai").strip().lower() or "openai"
     llm_model = str(user_llm.get("model") or profile_llm.get("model") or "gpt-4o-mini").strip() or "gpt-4o-mini"
     llm_temperature = float(user_llm.get("temperature", profile_llm.get("temperature", defaults.llm_temperature)))
@@ -76,7 +79,7 @@ def _default_general_settings_from_profile(settings: SettingsPayload) -> General
     if response_language not in {"auto", "fr", "en"}:
         response_language = "auto"
     return GeneralSettings(
-        ingestion_mode=defaults.ingestion_mode,
+        ingestion_mode=ingestion_mode,
         auto_ingestion_delay=defaults.auto_ingestion_delay,
         search_type=search_type,
         llm_model=f"{llm_provider}/{llm_model}",
@@ -206,7 +209,7 @@ async def cancel_ingestion():
 
 @router.get("/status")
 async def ingestion_status():
-    # Pure in-memory read — no need to spawn background tasks
+    runtime.ensure_background_tasks()
     return runtime.progress
 
 
@@ -261,7 +264,7 @@ async def progress_stream():
 
 @router.get("/settings/general")
 async def get_general_settings():
-    # Do NOT call runtime.ensure_background_tasks() here — this is a
+    # Do NOT call runtime.ensure_background_tasks() here - this is a
     # read-only endpoint and should never block due to background I/O.
     def _build():
         settings = settings_store.load_settings()
@@ -298,3 +301,4 @@ async def get_general_settings_alias():
 @settings_router.put("/general")
 async def update_general_settings_alias(payload: GeneralSettings):
     return await update_general_settings(payload)
+

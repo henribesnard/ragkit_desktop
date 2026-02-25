@@ -302,7 +302,7 @@ class QueryLogger:
 
         return {
             "total_queries": total,
-            "success_rate": (success_count / total) if total else 1.0,
+            "success_rate": (success_count / total) if total else 0.0,
             "avg_latency_ms": _safe_average(latencies),
             "p95_latency_ms": _safe_p95(latencies),
             "total_cost_usd": total_cost,

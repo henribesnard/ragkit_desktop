@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
-from ragkit.config.embedding_schema import EmbeddingConfig
+from ragkit.config.embedding_schema import EmbeddingConfig, EmbeddingProvider
 from ragkit.config.retrieval_schema import LexicalSearchConfig
 from ragkit.config.vector_store_schema import GeneralSettings, IngestionMode, VectorStoreConfig
 from ragkit.desktop import documents
@@ -142,12 +142,59 @@ class IngestionRuntime:
         )
         return LexicalSearchConfig.model_validate(lexical_profile_payload)
 
+    def _resolve_general_settings(self, settings: SettingsPayload) -> GeneralSettings:
+        payload = dict(settings.general) if isinstance(settings.general, dict) else {}
+
+        mode = str(payload.get("ingestion_mode") or "").strip().lower()
+        if mode == "auto":
+            payload["ingestion_mode"] = IngestionMode.AUTOMATIC.value
+        elif mode in {IngestionMode.AUTOMATIC.value, IngestionMode.MANUAL.value}:
+            payload["ingestion_mode"] = mode
+        else:
+            payload.pop("ingestion_mode", None)
+
+        if "ingestion_mode" not in payload:
+            calibration = settings.calibration_answers if isinstance(settings.calibration_answers, dict) else {}
+            if bool(calibration.get("q5") or calibration.get("q5_frequent_updates")):
+                payload["ingestion_mode"] = IngestionMode.AUTOMATIC.value
+
+        return GeneralSettings.model_validate(payload)
+
+    def _effective_embedding_batch_size(self, embedder: EmbeddingEngine) -> int:
+        configured = max(1, int(getattr(embedder.config, "batch_size", 100) or 100))
+        if embedder.config.provider == EmbeddingProvider.OLLAMA:
+            return min(configured, 32)
+        return configured
+
+    async def _embed_document_chunks(
+        self,
+        *,
+        embedder: EmbeddingEngine,
+        texts: list[str],
+        started: float,
+    ) -> list:
+        if not texts:
+            return []
+
+        outputs: list = []
+        batch_size = self._effective_embedding_batch_size(embedder)
+        for offset in range(0, len(texts), batch_size):
+            await self._pause.wait()
+            if self._cancelled:
+                break
+            batch = texts[offset : offset + batch_size]
+            batch_outputs = await asyncio.to_thread(embedder.embed_texts, batch)
+            outputs.extend(batch_outputs)
+            self.progress.elapsed_seconds = time.perf_counter() - started
+            await self.publish("progress", self.progress.model_dump(mode="json"))
+        return outputs
+
     async def _auto_ingestion_loop(self) -> None:
         while True:
             try:
                 # Run settings load in thread to avoid any I/O blocking
                 settings = await asyncio.to_thread(load_settings)
-                general_settings = GeneralSettings.model_validate(settings.general or {})
+                general_settings = self._resolve_general_settings(settings)
 
                 if general_settings.ingestion_mode != IngestionMode.AUTOMATIC:
                     self._pending_auto_trigger_at = None
@@ -283,184 +330,244 @@ class IngestionRuntime:
             return
 
         version = self._next_version()
-        self.progress = IngestionProgress(status="running", version=version, is_incremental=incremental, phase="scanning")
         started = time.perf_counter()
         started_at = self._now()
+        docs_added = 0
+        docs_modified = 0
+        docs_removed = 0
+        docs_skipped = 0
+        history_open = False
+        stats_chunks = 0
+
+        self.progress = IngestionProgress(status="running", version=version, is_incremental=incremental, phase="scanning")
         self.logs = [IngestionLogEntry(timestamp=started_at, level="info", message=f"Ingestion {version} démarrée")]
 
-        chunk_cfg = ChunkingConfig.model_validate(settings.chunking or {})
-        emb_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
-        vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
-        lexical_cfg = self._resolve_lexical_config(settings)
-        bm25_index = BM25Index(lexical_cfg)
-        bm25_index.load(self._bm25_index_dir())
-        store = create_vector_store(vec_cfg)
-        embedder = EmbeddingEngine(emb_cfg)
-        chunker = create_chunker(chunk_cfg)
-
-        changes = self.detect_changes(settings)
-        registry_before = self._load_registry()
-        removed_paths = [change.path for change in changes.changes if change.type == "removed"]
-        modified_paths = {change.path for change in changes.changes if change.type == "modified"}
-        docs_added = sum(1 for change in changes.changes if change.type == "added")
-        docs_modified = sum(1 for change in changes.changes if change.type == "modified")
-        docs_removed = len(removed_paths)
-        docs_skipped = 0
-        docs, _ = await asyncio.to_thread(documents.analyze_documents, settings.ingestion)
-
-        to_process = docs
-        if incremental:
-            impacted = {c.path for c in changes.changes if c.type in {"added", "modified"}}
-            to_process = [d for d in docs if d.file_path in impacted]
-            docs_skipped = max(len(docs) - len(to_process), 0)
-
-        dims = await asyncio.to_thread(embedder.resolve_dimensions)
-        await store.create_snapshot(version)
         try:
-            await store.initialize(dims)
-        except ValueError as exc:
+            chunk_cfg = ChunkingConfig.model_validate(settings.chunking or {})
+            emb_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
+            vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
+            lexical_cfg = self._resolve_lexical_config(settings)
+            bm25_index = BM25Index(lexical_cfg)
+            bm25_index.load(self._bm25_index_dir())
+            store = create_vector_store(vec_cfg)
+            embedder = EmbeddingEngine(emb_cfg)
+            chunker = create_chunker(chunk_cfg)
+
+            changes = self.detect_changes(settings)
+            registry_before = self._load_registry()
+            removed_paths = [change.path for change in changes.changes if change.type == "removed"]
+            modified_paths = {change.path for change in changes.changes if change.type == "modified"}
+            docs_added = sum(1 for change in changes.changes if change.type == "added")
+            docs_modified = sum(1 for change in changes.changes if change.type == "modified")
+            docs_removed = len(removed_paths)
+            docs, _ = await asyncio.to_thread(documents.analyze_documents, settings.ingestion)
+
+            to_process = docs
             if incremental:
-                self.progress.status = "failed"
+                impacted = {c.path for c in changes.changes if c.type in {"added", "modified"}}
+                to_process = [d for d in docs if d.file_path in impacted]
+                docs_skipped = max(len(docs) - len(to_process), 0)
+
+            dims = await asyncio.to_thread(embedder.resolve_dimensions)
+            await store.create_snapshot(version)
+            try:
+                await store.initialize(dims)
+            except ValueError as exc:
+                if incremental:
+                    raise RuntimeError(f"Ingestion failed: {exc}") from exc
                 self.logs.append(
                     IngestionLogEntry(
                         timestamp=self._now(),
-                        level="error",
-                        message=f"Ingestion failed: {exc}",
+                        level="warning",
+                        message="Embedding dimensions changed, rebuilding vector collection from scratch.",
                     )
                 )
-                await self.publish("complete", self.progress.model_dump(mode="json"))
-                return
-            self.logs.append(
-                IngestionLogEntry(
-                    timestamp=self._now(),
-                    level="warning",
-                    message="Embedding dimensions changed, rebuilding vector collection from scratch.",
-                )
-            )
-            await store.delete_collection()
-            await store.initialize(dims)
+                await store.delete_collection()
+                await store.initialize(dims)
 
-        # Keep index in sync when files were removed from the source folder.
-        for removed_path in removed_paths:
-            previous = registry_before.get(removed_path)
-            if not previous:
-                continue
-            doc_id = previous.get("doc_id")
-            if not doc_id:
-                continue
-            await store.delete_by_doc_id(str(doc_id))
-            bm25_index.remove_document_chunks(str(doc_id))
-            with sqlite3.connect(self._registry) as con:
-                con.execute("DELETE FROM ingestion_registry WHERE doc_id = ?", (doc_id,))
+            # Keep index in sync when files were removed from the source folder.
+            for removed_path in removed_paths:
+                previous = registry_before.get(removed_path)
+                if not previous:
+                    continue
+                doc_id = previous.get("doc_id")
+                if not doc_id:
+                    continue
+                await store.delete_by_doc_id(str(doc_id))
+                bm25_index.remove_document_chunks(str(doc_id))
+                with sqlite3.connect(self._registry) as con:
+                    con.execute("DELETE FROM ingestion_registry WHERE doc_id = ?", (doc_id,))
 
-        with sqlite3.connect(self._registry) as con:
-            con.execute(
-                "INSERT OR REPLACE INTO ingestion_history(version,started_at,status,total_docs,is_incremental,config_snapshot) VALUES(?,?,?,?,?,?)",
-                (version, started_at, "running", len(to_process), 1 if incremental else 0, json.dumps(settings.model_dump(mode="json"))),
-            )
-
-        doc_times: list[float] = []
-        self.progress.doc_total = len(to_process)
-        for idx, doc in enumerate(to_process, start=1):
-            await self._pause.wait()
-            if self._cancelled:
-                break
-            self.progress.doc_index = idx
-            self.progress.current_doc = doc.filename
-            self.progress.phase = "parsing"
-            text = await asyncio.to_thread(documents.get_document_text, settings.ingestion, doc)
-            self.progress.phase = "chunking"
-            chunks = await asyncio.to_thread(chunker.chunk, text, {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename})
-            self.progress.phase = "embedding"
-            outputs = await asyncio.to_thread(embedder.embed_texts, [c.content for c in chunks])
-            self.progress.phase = "storing"
-
-            # For modified documents (or full re-index runs), remove all previous
-            # chunks first so obsolete chunks do not remain in the index.
-            if (not incremental) or (doc.file_path in modified_paths):
-                await store.delete_by_doc_id(doc.id)
-                bm25_index.remove_document_chunks(doc.id)
-
-            points = [
-                VectorPoint(
-                    id=hashlib.sha1(f"{doc.id}:{i}:{chunk.content}".encode("utf-8")).hexdigest(),
-                    vector=outputs[i].vector,
-                    payload={
-                        "doc_id": doc.id,
-                        "doc_title": doc.title or doc.filename,
-                        "filename": doc.filename,
-                        "doc_path": doc.file_path,
-                        "doc_type": doc.file_type,
-                        "doc_language": doc.language,
-                        "category": doc.category,
-                        "keywords": list(doc.keywords),
-                        "tags": list(doc.tags),
-                        "page_number": doc.page_count,
-                        "chunk_index": i,
-                        "chunk_total": len(chunks),
-                        "chunk_text": chunk.content,
-                        "chunk_tokens": chunk.tokens,
-                        "ingestion_version": version,
-                        "ingested_at": self._now(),
-                    },
-                )
-                for i, chunk in enumerate(chunks)
-            ]
-            await store.upsert(points)
-
-            for point in points:
-                payload = dict(point.payload or {})
-                bm25_index.add_document(
-                    doc_id=point.id,
-                    text=str(payload.get("chunk_text") or ""),
-                    metadata=payload,
-                    language=doc.language,
-                )
-
-            file_abs = source_root / doc.file_path
-            file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
             with sqlite3.connect(self._registry) as con:
                 con.execute(
-                    "INSERT OR REPLACE INTO ingestion_registry(doc_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?)",
-                    (doc.id, doc.file_path, file_hash, doc.file_size_bytes, doc.last_modified, len(chunks), version, self._now()),
+                    "INSERT OR REPLACE INTO ingestion_history(version,started_at,status,total_docs,is_incremental,config_snapshot) VALUES(?,?,?,?,?,?)",
+                    (version, started_at, "running", len(to_process), 1 if incremental else 0, json.dumps(settings.model_dump(mode="json"))),
                 )
-            self.progress.docs_succeeded += 1
-            self.progress.total_chunks += len(chunks)
-            elapsed = time.perf_counter() - started
-            dt = elapsed - sum(doc_times)
-            doc_times.append(dt)
-            self.progress.elapsed_seconds = elapsed
-            if len(doc_times) >= 1:
-                avg = sum(doc_times) / len(doc_times)
-                self.progress.estimated_remaining_seconds = max((len(to_process) - idx) * avg, 0)
-            self.logs.append(IngestionLogEntry(timestamp=self._now(), level="success", message=f"{doc.filename} — {len(chunks)} chunks"))
-            await self.publish("progress", self.progress.model_dump(mode="json"))
+            history_open = True
 
-        self.progress.phase = "finalizing"
-        stats = await store.collection_stats()
-        bm25_index.save(self._bm25_index_dir())
-        end_status = "cancelled" if self._cancelled else "completed"
-        self.progress.status = end_status
-        self.progress.elapsed_seconds = time.perf_counter() - started
-        completed_at = self._now()
-        with sqlite3.connect(self._registry) as con:
-            con.execute(
-                "UPDATE ingestion_history SET completed_at=?,status=?,total_chunks=?,duration_seconds=?,docs_added=?,docs_modified=?,docs_removed=?,docs_skipped=?,docs_failed=? WHERE version=?",
-                (
-                    completed_at,
-                    end_status,
-                    stats.vectors_count,
-                    self.progress.elapsed_seconds,
-                    docs_added,
-                    docs_modified,
-                    docs_removed,
-                    docs_skipped,
-                    self.progress.docs_failed,
-                    version,
-                ),
+            doc_times: list[float] = []
+            last_elapsed = 0.0
+            self.progress.doc_total = len(to_process)
+            for idx, doc in enumerate(to_process, start=1):
+                await self._pause.wait()
+                if self._cancelled:
+                    break
+
+                self.progress.doc_index = idx
+                self.progress.current_doc = doc.filename
+                try:
+                    self.progress.phase = "parsing"
+                    text = await asyncio.to_thread(documents.get_document_text, settings.ingestion, doc)
+                    self.progress.phase = "chunking"
+                    chunks = await asyncio.to_thread(
+                        chunker.chunk,
+                        text,
+                        {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename},
+                    )
+                    self.progress.phase = "embedding"
+                    outputs = await self._embed_document_chunks(
+                        embedder=embedder,
+                        texts=[chunk.content for chunk in chunks],
+                        started=started,
+                    )
+                    if self._cancelled:
+                        break
+                    if len(outputs) != len(chunks):
+                        raise RuntimeError(
+                            f"Embedding output mismatch: {len(outputs)} embeddings for {len(chunks)} chunks."
+                        )
+
+                    self.progress.phase = "storing"
+                    # For modified documents (or full re-index runs), remove all previous
+                    # chunks first so obsolete chunks do not remain in the index.
+                    if (not incremental) or (doc.file_path in modified_paths):
+                        await store.delete_by_doc_id(doc.id)
+                        bm25_index.remove_document_chunks(doc.id)
+
+                    points = [
+                        VectorPoint(
+                            id=hashlib.sha1(f"{doc.id}:{i}:{chunk.content}".encode("utf-8")).hexdigest(),
+                            vector=outputs[i].vector,
+                            payload={
+                                "doc_id": doc.id,
+                                "doc_title": doc.title or doc.filename,
+                                "filename": doc.filename,
+                                "doc_path": doc.file_path,
+                                "doc_type": doc.file_type,
+                                "doc_language": doc.language,
+                                "category": doc.category,
+                                "keywords": list(doc.keywords),
+                                "tags": list(doc.tags),
+                                "page_number": doc.page_count,
+                                "chunk_index": i,
+                                "chunk_total": len(chunks),
+                                "chunk_text": chunk.content,
+                                "chunk_tokens": chunk.tokens,
+                                "ingestion_version": version,
+                                "ingested_at": self._now(),
+                            },
+                        )
+                        for i, chunk in enumerate(chunks)
+                    ]
+                    await store.upsert(points)
+
+                    for point in points:
+                        payload = dict(point.payload or {})
+                        bm25_index.add_document(
+                            doc_id=point.id,
+                            text=str(payload.get("chunk_text") or ""),
+                            metadata=payload,
+                            language=doc.language,
+                        )
+
+                    file_abs = source_root / doc.file_path
+                    file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
+                    with sqlite3.connect(self._registry) as con:
+                        con.execute(
+                            "INSERT OR REPLACE INTO ingestion_registry(doc_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?)",
+                            (doc.id, doc.file_path, file_hash, doc.file_size_bytes, doc.last_modified, len(chunks), version, self._now()),
+                        )
+                    self.progress.docs_succeeded += 1
+                    self.progress.total_chunks += len(chunks)
+                    self.logs.append(
+                        IngestionLogEntry(timestamp=self._now(), level="success", message=f"{doc.filename} — {len(chunks)} chunks")
+                    )
+                except Exception as exc:  # pragma: no cover - defensive at runtime
+                    self.progress.docs_failed += 1
+                    self.logs.append(
+                        IngestionLogEntry(
+                            timestamp=self._now(),
+                            level="error",
+                            message=f"{doc.filename} — échec: {exc}",
+                        )
+                    )
+                finally:
+                    elapsed = time.perf_counter() - started
+                    dt = max(elapsed - last_elapsed, 0.0)
+                    last_elapsed = elapsed
+                    doc_times.append(dt)
+                    self.progress.elapsed_seconds = elapsed
+                    avg = (sum(doc_times) / len(doc_times)) if doc_times else 0.0
+                    self.progress.estimated_remaining_seconds = max((len(to_process) - idx) * avg, 0)
+                    await self.publish("progress", self.progress.model_dump(mode="json"))
+
+            self.progress.phase = "finalizing"
+            stats = await store.collection_stats()
+            stats_chunks = int(stats.vectors_count)
+            bm25_index.save(self._bm25_index_dir())
+            end_status = "cancelled" if self._cancelled else "completed"
+            self.progress.status = end_status
+            self.progress.elapsed_seconds = time.perf_counter() - started
+            completed_at = self._now()
+            if history_open:
+                with sqlite3.connect(self._registry) as con:
+                    con.execute(
+                        "UPDATE ingestion_history SET completed_at=?,status=?,total_chunks=?,duration_seconds=?,docs_added=?,docs_modified=?,docs_removed=?,docs_skipped=?,docs_failed=? WHERE version=?",
+                        (
+                            completed_at,
+                            end_status,
+                            stats_chunks,
+                            self.progress.elapsed_seconds,
+                            docs_added,
+                            docs_modified,
+                            docs_removed,
+                            docs_skipped,
+                            self.progress.docs_failed,
+                            version,
+                        ),
+                    )
+            self.logs.append(IngestionLogEntry(timestamp=completed_at, level="info", message=f"Ingestion {version} {end_status}"))
+            await self.publish("complete", self.progress.model_dump(mode="json"))
+        except Exception as exc:  # pragma: no cover - defensive at runtime
+            self.progress.status = "failed"
+            self.progress.phase = "error"
+            self.progress.elapsed_seconds = time.perf_counter() - started
+            completed_at = self._now()
+            self.logs.append(
+                IngestionLogEntry(
+                    timestamp=completed_at,
+                    level="error",
+                    message=f"Ingestion {version} failed: {exc}",
+                )
             )
-        self.logs.append(IngestionLogEntry(timestamp=completed_at, level="info", message=f"Ingestion {version} {end_status}"))
-        await self.publish("complete", self.progress.model_dump(mode="json"))
+            if history_open:
+                with sqlite3.connect(self._registry) as con:
+                    con.execute(
+                        "UPDATE ingestion_history SET completed_at=?,status=?,total_chunks=?,duration_seconds=?,docs_added=?,docs_modified=?,docs_removed=?,docs_skipped=?,docs_failed=? WHERE version=?",
+                        (
+                            completed_at,
+                            "failed",
+                            stats_chunks or self.progress.total_chunks,
+                            self.progress.elapsed_seconds,
+                            docs_added,
+                            docs_modified,
+                            docs_removed,
+                            docs_skipped,
+                            self.progress.docs_failed or 1,
+                            version,
+                        ),
+                    )
+            await self.publish("complete", self.progress.model_dump(mode="json"))
 
     def get_history(self, limit: int = 10) -> list[IngestionHistoryEntry]:
         with sqlite3.connect(self._registry) as con:

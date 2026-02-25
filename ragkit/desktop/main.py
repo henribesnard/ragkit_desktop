@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 APP_NAME = "RAGKIT"
-VERSION = "1.2.3"
+VERSION = "1.2.4"
 
 
 def create_app() -> FastAPI:
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     )
     
     from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
+    from ragkit.desktop.ingestion_runtime import runtime
 
     app.include_router(wizard.router)
     app.include_router(ingestion.router)
@@ -46,6 +47,10 @@ def create_app() -> FastAPI:
     app.include_router(monitoring.router)
     app.include_router(security.router)
     app.include_router(general.router)
+
+    @app.on_event("startup")
+    async def _start_background_tasks():
+        runtime.ensure_background_tasks()
 
     @app.get("/health")
     async def health_check():
