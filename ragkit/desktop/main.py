@@ -7,16 +7,34 @@ import argparse
 import asyncio
 import logging
 import sys
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from logging.handlers import RotatingFileHandler
 
-logging.basicConfig(level=logging.INFO)
+from .settings_store import ensure_storage_dirs, get_log_dir
+
+# Ensure directories are created before configuring logging
+ensure_storage_dirs()
+
+log_file = get_log_dir() / "ragkit-backend.log"
+file_handler = RotatingFileHandler(
+    log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(formatter)
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        file_handler,
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 APP_NAME = "RAGKIT"
-VERSION = "1.2.11"
+VERSION = "1.2.12"
 
 
 def create_app() -> FastAPI:

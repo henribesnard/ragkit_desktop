@@ -1,7 +1,7 @@
 ﻿import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, MessageSquare, Send, Settings2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, MessageSquare, Send, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
@@ -328,8 +328,8 @@ export function Chat() {
     setPage(1);
     setHasMore(false);
     setTotalResults(0);
+    setQuery(""); // Clear immediately for better responsiveness
     await startStream(payload);
-    setQuery("");
   };
 
   return (
@@ -338,10 +338,20 @@ export function Chat() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t("chat.title")}</h2>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50">
+              <div className={`w-2 h-2 rounded-full ${chatReady.ready ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                {chatReady.ready ? "Chat opérationnel" : "Chat non opérationnel"}
+              </span>
+            </div>
+
             {isIngesting && (
-              <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full border border-blue-100 dark:border-blue-800/50 animate-in fade-in zoom-in duration-300">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <span className="text-[11px] font-bold tracking-tight">{ingestionPercent}%</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-800/50 animate-in fade-in slide-in-from-right-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="text-xs font-bold whitespace-nowrap">
+                  Ingestion en cours · {(ingestionProgress as any)?.coverage_percent ?? ingestionPercent}% couv.
+                </span>
               </div>
             )}
           </div>

@@ -511,13 +511,28 @@ class QdrantVectorStore(BaseVectorStore):
         if not client.collection_exists(self.config.collection_name):
             return []
 
-        results = client.search(
-            collection_name=self.config.collection_name,
-            query_vector=[float(value) for value in vector],
-            limit=top_k,
-            with_payload=True,
-            with_vectors=True,
-        )
+        try:
+            results = client.search(
+                collection_name=self.config.collection_name,
+                query_vector=[float(value) for value in vector],
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+        except AttributeError as exc:
+            # Diagnostics for the reported 'QdrantClient' object has no attribute 'search'
+            logger.error(f"FATAL: QdrantClient attribute error: {exc}")
+            logger.error(f"Client type: {type(client)}")
+            logger.error(f"Client representation: {repr(client)}")
+            logger.error(f"Available attributes: {dir(client)}")
+            try:
+                import qdrant_client
+                logger.error(f"qdrant-client package path: {qdrant_client.__file__}")
+                logger.error(f"qdrant-client classes: {[k for k in dir(qdrant_client) if 'Client' in k]}")
+            except Exception:
+                pass
+            raise
+
         hits: list[tuple[VectorPoint, float]] = []
         for hit in results:
             payload = dict(hit.payload or {})

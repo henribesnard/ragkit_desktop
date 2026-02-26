@@ -359,6 +359,7 @@ class IngestionProgress(BaseModel):
     docs_failed: int = 0
     docs_skipped: int = 0
     total_chunks: int = 0
+    coverage_percent: float = 0.0
 
 
 class IngestionHistoryEntry(BaseModel):

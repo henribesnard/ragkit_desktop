@@ -46,6 +46,28 @@ class IngestionRuntime:
         self._registry = get_data_dir() / "ingestion_registry.db"
         self._ensure_db()
 
+    def _count_source_documents_fast(self, settings: SettingsPayload) -> int:
+        ingestion = getattr(settings, "ingestion", None)
+        if ingestion is None or not ingestion.source.path:
+            return 0
+
+        root = Path(ingestion.source.path).expanduser()
+        if not root.exists() or not root.is_dir():
+            return 0
+
+        selected_types = {documents._normalize_extension(ext) for ext in ingestion.source.file_types}
+        count = 0
+        for path in documents._iter_files(
+            root,
+            recursive=ingestion.source.recursive,
+            excluded_dirs=ingestion.source.excluded_dirs,
+            exclusion_patterns=ingestion.source.exclusion_patterns,
+            max_file_size_mb=ingestion.source.max_file_size_mb,
+        ):
+            if documents._normalize_extension(path.suffix) in selected_types:
+                count += 1
+        return count
+
     def _ensure_db(self) -> None:
         self._registry.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._registry) as con:
@@ -405,6 +427,7 @@ class IngestionRuntime:
                 )
             history_open = True
 
+            source_docs_count = await asyncio.to_thread(self._count_source_documents_fast, settings)
             doc_times: list[float] = []
             last_elapsed = 0.0
             self.progress.doc_total = len(to_process)
@@ -522,6 +545,15 @@ class IngestionRuntime:
                     self.progress.elapsed_seconds = elapsed
                     avg = (sum(doc_times) / len(doc_times)) if doc_times else 0.0
                     self.progress.estimated_remaining_seconds = max((len(to_process) - idx) * avg, 0)
+                    
+                    if source_docs_count > 0:
+                        # total_documents_indexed reflects the state of the whole collection
+                        # but we want a live progress of coverage.
+                        # We use the registry or a quick count to approximate if needed,
+                        # but here we can just update it based on history + current progress.
+                        current_indexed = self.progress.docs_succeeded + (len(registry_before) - docs_removed - docs_modified)
+                        self.progress.coverage_percent = round((current_indexed / source_docs_count) * 100, 2)
+
                     await self.publish("progress", self.progress.model_dump(mode="json"))
 
             self.progress.phase = "finalizing"

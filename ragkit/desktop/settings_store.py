@@ -20,6 +20,10 @@ def get_data_dir() -> Path:
     return get_data_root() / "data"
 
 
+def get_log_dir() -> Path:
+    return get_data_root() / "logs"
+
+
 def get_settings_path() -> Path:
     return get_config_dir() / "settings.json"
 
@@ -31,6 +35,7 @@ def get_documents_path() -> Path:
 def ensure_storage_dirs() -> None:
     get_config_dir().mkdir(parents=True, exist_ok=True)
     get_data_dir().mkdir(parents=True, exist_ok=True)
+    get_log_dir().mkdir(parents=True, exist_ok=True)
 
 
 def load_settings() -> SettingsPayload:
