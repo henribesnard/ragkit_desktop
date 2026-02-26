@@ -20,7 +20,7 @@ const API_PROVIDERS = [
 ];
 
 export function LLMStep({ wizard }: { wizard: any }) {
-    const { state, updateConfig } = wizard;
+    const { state, updateConfig, setStepValid } = wizard;
     const llmCfg = state.config?.llm || {};
 
     const [apiKey, setApiKey] = useState("");
@@ -45,6 +45,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
             return cfg;
         });
         setTestResult(null);
+        setStepValid(false);
     };
 
     // Initialize defaults
@@ -102,6 +103,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 setApiKey("");
             }
             setTestResult({ success: true, msg: "Configuration prête !" });
+            setStepValid(true);
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
         } finally {
@@ -154,11 +156,10 @@ export function LLMStep({ wizard }: { wizard: any }) {
                                     <button
                                         key={p.value}
                                         onClick={() => handleSwitchToApi(p.value)}
-                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                                            provider === p.value
+                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${provider === p.value
                                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                                                 : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
-                                        }`}
+                                            }`}
                                     >
                                         {p.label}
                                     </button>

@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "RAGKIT",
-    "version": "v1.2.11"
+    "name": "RAGKIT"
   },
   "navigation": {
     "chat": "Chat",

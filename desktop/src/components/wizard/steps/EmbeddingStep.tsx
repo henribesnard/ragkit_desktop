@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Download } from "lucide-react";
 
 export function EmbeddingStep({ wizard }: { wizard: any }) {
-    const { state, updateConfig } = wizard;
+    const { state, updateConfig, setStepValid } = wizard;
     const embCfg = state.config?.embedding || {};
 
     const [apiKey, setApiKey] = useState("");
@@ -28,6 +28,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
             return cfg;
         });
         setTestResult(null); // reset testing whenever config changes
+        setStepValid(false); // require re-test when config changes
     };
 
     useEffect(() => {
@@ -75,6 +76,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
             const res: any = await ipc.testEmbeddingConnection(provider, model);
             if (res.success) {
                 setTestResult({ success: true, msg: "Connexion réussie !" });
+                setStepValid(true);
             } else {
                 setTestResult({ success: false, msg: res.error || "Échec de la connexion" });
             }

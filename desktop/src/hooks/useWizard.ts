@@ -5,6 +5,7 @@ export interface WizardState {
     step: number;
     config: any; // Mapped to SettingsPayload
     isLoading: boolean;
+    stepValid: boolean;
 }
 
 export function useWizard() {
@@ -12,6 +13,7 @@ export function useWizard() {
         step: 0,
         config: null,
         isLoading: true,
+        stepValid: true,
     });
 
     useEffect(() => {
@@ -24,6 +26,7 @@ export function useWizard() {
                         step: res.wizard_step || 0,
                         config: res.config,
                         isLoading: false,
+                        stepValid: true,
                     });
                 }
             } catch (e) {
@@ -43,10 +46,14 @@ export function useWizard() {
                     config: newConfig,
                 }
             });
-            setState({ step: newStep, config: newConfig, isLoading: false });
+            setState({ step: newStep, config: newConfig, isLoading: false, stepValid: true });
         } catch (e) {
             console.error("Failed to save progress", e);
         }
+    }, []);
+
+    const setStepValid = useCallback((valid: boolean) => {
+        setState(s => ({ ...s, stepValid: valid }));
     }, []);
 
     const updateConfig = (updater: (cfg: any) => any) => {
@@ -121,6 +128,7 @@ export function useWizard() {
         nextStep,
         prevStep,
         updateConfig,
+        setStepValid,
         completeWizard,
     };
 }

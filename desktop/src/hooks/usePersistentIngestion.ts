@@ -6,6 +6,7 @@ export interface IngestionStatus {
     doc_index: number;
     doc_total: number;
     current_doc?: string;
+    coverage_percent?: number;
 }
 
 // Module-level state to persist across unmounts
@@ -27,16 +28,13 @@ async function pollIngestion() {
             const status = await invoke<IngestionStatus>("get_ingestion_status");
             updateGlobalStatus(status);
 
-            if (status.status !== "running") {
-                pollingActive = false;
-                break;
-            }
+            // Poll fast while running, slow otherwise
+            const delay = status.status === "running" ? 2000 : 10000;
+            await new Promise(resolve => setTimeout(resolve, delay));
         } catch (err) {
             console.error("Failed to poll ingestion status:", err);
-            pollingActive = false;
-            break;
+            await new Promise(resolve => setTimeout(resolve, 10000));
         }
-        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
 
@@ -54,13 +52,17 @@ export function usePersistentIngestion() {
 
         return () => {
             listeners.delete(listener);
+            // Stop polling if no more listeners
+            if (listeners.size === 0) {
+                pollingActive = false;
+            }
         };
     }, []);
 
     const refresh = async () => {
         const newStatus = await invoke<IngestionStatus>("get_ingestion_status");
         updateGlobalStatus(newStatus);
-        if (newStatus.status === "running" && !pollingActive) {
+        if (!pollingActive && listeners.size > 0) {
             void pollIngestion();
         }
         return newStatus;
@@ -70,6 +72,7 @@ export function usePersistentIngestion() {
         status,
         refresh,
         isRunning: status?.status === "running",
-        progress: status?.doc_total ? Math.round((status.doc_index / status.doc_total) * 100) : 0
+        progress: status?.doc_total ? Math.round((status.doc_index / status.doc_total) * 100) : 0,
+        coveragePercent: status?.coverage_percent ?? 0,
     };
 }

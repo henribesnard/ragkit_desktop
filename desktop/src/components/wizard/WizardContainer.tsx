@@ -83,7 +83,7 @@ export function WizardContainer() {
                         ) : (
                             <Button
                                 onClick={() => wizard.nextStep()}
-                                disabled={state.isLoading}
+                                disabled={state.isLoading || !state.stepValid}
                                 className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
                             >
                                 Continuer

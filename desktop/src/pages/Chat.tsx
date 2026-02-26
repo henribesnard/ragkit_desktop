@@ -138,7 +138,7 @@ export function Chat() {
   const [debug, setDebug] = useState<Record<string, any> | null>(null);
   const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
   const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
-  const { status: ingestionProgress, progress: ingestionPercent, isRunning: isIngesting } = usePersistentIngestion();
+  const { status: ingestionProgress, progress: ingestionPercent, isRunning: isIngesting, coveragePercent } = usePersistentIngestion();
   const [showTestQuestion, setShowTestQuestion] = useState(false);
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
@@ -350,7 +350,7 @@ export function Chat() {
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-800/50 animate-in fade-in slide-in-from-right-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span className="text-xs font-bold whitespace-nowrap">
-                  Ingestion en cours · {(ingestionProgress as any)?.coverage_percent ?? ingestionPercent}% couv.
+                  Ingestion en cours · {coveragePercent || ingestionPercent}% couv.
                 </span>
               </div>
             )}

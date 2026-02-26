@@ -13,7 +13,7 @@ function cn(...inputs: ClassValue[]) {
 export function Sidebar() {
     const { t, i18n } = useTranslation();
     const location = useLocation();
-    const isBackendHealthy = useBackendHealth();
+    const { isHealthy: isBackendHealthy, version: backendVersion } = useBackendHealth();
     const { theme, toggle: toggleTheme } = useTheme();
 
     const toggleLanguage = () => {
@@ -90,7 +90,7 @@ export function Sidebar() {
                 </div>
                 {/* Version */}
                 <div className="text-center text-[10px] text-gray-300 dark:text-gray-600">
-                    {t("app.version")}
+                    {backendVersion ? `v${backendVersion}` : "..."}
                 </div>
             </div>
         </div>
