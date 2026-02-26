@@ -514,29 +514,19 @@ class QdrantVectorStore(BaseVectorStore):
             return []
 
         try:
-            results = client.search(
+            response = client.query_points(
                 collection_name=self.config.collection_name,
-                query_vector=[float(value) for value in vector],
+                query=[float(value) for value in vector],
                 limit=top_k,
                 with_payload=True,
                 with_vectors=True,
             )
-        except AttributeError as exc:
-            # Diagnostics for the reported 'QdrantClient' object has no attribute 'search'
-            logger.error(f"FATAL: QdrantClient attribute error: {exc}")
-            logger.error(f"Client type: {type(client)}")
-            logger.error(f"Client representation: {repr(client)}")
-            logger.error(f"Available attributes: {dir(client)}")
-            try:
-                import qdrant_client
-                logger.error(f"qdrant-client package path: {qdrant_client.__file__}")
-                logger.error(f"qdrant-client classes: {[k for k in dir(qdrant_client) if 'Client' in k]}")
-            except Exception:
-                pass
+        except Exception as exc:
+            logger.error(f"Qdrant query_points error: {exc}", exc_info=True)
             raise
 
         hits: list[tuple[VectorPoint, float]] = []
-        for hit in results:
+        for hit in response.points:
             payload = dict(hit.payload or {})
             point_id = str(payload.pop("__ragkit_point_id", hit.id))
             point_vector = [float(value) for value in (hit.vector or [])]
