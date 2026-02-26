@@ -12,7 +12,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from logging.handlers import RotatingFileHandler
 
-from .settings_store import ensure_storage_dirs, get_log_dir
+# Add project root to sys.path to allow absolute imports when run as a script
+import os
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from ragkit.desktop.settings_store import ensure_storage_dirs, get_log_dir
 
 # Ensure directories are created before configuring logging
 ensure_storage_dirs()
@@ -34,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 APP_NAME = "RAGKIT"
-VERSION = "1.2.12"
+VERSION = "1.2.13"
 
 
 def create_app() -> FastAPI:
