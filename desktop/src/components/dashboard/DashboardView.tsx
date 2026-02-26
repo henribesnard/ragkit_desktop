@@ -6,6 +6,7 @@ import { QueryLogView } from "@/components/dashboard/QueryLogView";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useMonitoringConfig } from "@/hooks/useMonitoringConfig";
 import { useIngestionControl } from "@/hooks/useIngestionControl";
+import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import {
   MessageSquare,
   FileText,
@@ -79,6 +80,7 @@ export function DashboardView() {
   );
   const [showLogs, setShowLogs] = useState(false);
   const ingestion = useIngestionControl();
+  const { status: sharedIngestionStatus, progress: sharedProgress } = usePersistentIngestion();
 
   const intentMax = useMemo(() => Math.max(...state.intents.intents.map((item) => item.count), 1), [state.intents.intents]);
   const activityMax = useMemo(() => Math.max(...state.activity.map((item) => item.total), 1), [state.activity]);
@@ -160,11 +162,11 @@ export function DashboardView() {
 
       {/* INGESTION STATUS PANEL */}
       {(() => {
-        const s = ingestion.status;
+        const s = sharedIngestionStatus || ingestion.status;
         const statusInfo = ingestionStatusLabel(s?.status ?? "idle");
         const isRunning = s?.status === "running";
         const isPaused = s?.status === "paused";
-        const progressRatio = s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0;
+        const progressRatio = sharedIngestionStatus ? sharedProgress : (s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0);
 
         return (
           <section className="rounded-2xl border border-gray-200 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 shadow-sm">
@@ -185,8 +187,8 @@ export function DashboardView() {
                 <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${isPaused
-                        ? "bg-amber-400"
-                        : "bg-gradient-to-r from-blue-500 to-indigo-500"
+                      ? "bg-amber-400"
+                      : "bg-gradient-to-r from-blue-500 to-indigo-500"
                       }`}
                     style={{ width: `${progressRatio}%` }}
                   />

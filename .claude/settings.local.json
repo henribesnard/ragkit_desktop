@@ -56,7 +56,10 @@
       "Bash(findstr:*)",
       "Bash(/c/Windows/System32/curl.exe:*)",
       "Bash(PORT=20391)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vite build)"
     ]
   }
 }

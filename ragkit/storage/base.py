@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import math
+import threading
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -220,6 +222,8 @@ def _directory_size(path: Path) -> int:
 
 
 _QDRANT_CLIENTS: dict[str, object] = {}
+_CHROMA_CLIENTS: dict[str, object] = {}
+_VECTOR_STORE_LOCK = threading.Lock()
 
 
 class QdrantVectorStore(BaseVectorStore):
@@ -268,24 +272,27 @@ class QdrantVectorStore(BaseVectorStore):
     def _ensure_client(self):
         if self._client is not None:
             return self._client
-        from qdrant_client import QdrantClient
 
         if self.config.mode.value == "persistent":
             self._client_key = str(self._root)
         else:
             self._client_key = f"memory:{self.config.collection_name}"
-        if self._client_key in _QDRANT_CLIENTS:
-            self._client = _QDRANT_CLIENTS[self._client_key]
-            return self._client
 
-        if self.config.mode.value == "persistent":
-            self._root.mkdir(parents=True, exist_ok=True)
-            self._patch_qdrant_meta(self._root)
-            self._client = QdrantClient(path=str(self._root))
-        else:
-            self._client = QdrantClient(path=":memory:")
-        _QDRANT_CLIENTS[self._client_key] = self._client
-        return self._client
+        with _VECTOR_STORE_LOCK:
+            if self._client_key in _QDRANT_CLIENTS:
+                self._client = _QDRANT_CLIENTS[self._client_key]
+                return self._client
+
+            from qdrant_client import QdrantClient
+
+            if self.config.mode.value == "persistent":
+                self._root.mkdir(parents=True, exist_ok=True)
+                self._patch_qdrant_meta(self._root)
+                self._client = QdrantClient(path=str(self._root))
+            else:
+                self._client = QdrantClient(path=":memory:")
+            _QDRANT_CLIENTS[self._client_key] = self._client
+            return self._client
 
     def _close_client(self) -> None:
         if self._client is None:
@@ -560,14 +567,24 @@ class ChromaVectorStore(BaseVectorStore):
     def _ensure_client(self):
         if self._client is not None:
             return self._client
-        import chromadb
 
-        if self.config.mode.value == "persistent":
-            self._root.mkdir(parents=True, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=str(self._root))
-        else:
-            self._client = chromadb.Client()
-        return self._client
+        client_key = str(self._root) if self.config.mode.value == "persistent" else ":memory:"
+
+        with _VECTOR_STORE_LOCK:
+            if client_key in _CHROMA_CLIENTS:
+                self._client = _CHROMA_CLIENTS[client_key]
+                return self._client
+
+            import chromadb
+
+            if self.config.mode.value == "persistent":
+                self._root.mkdir(parents=True, exist_ok=True)
+                self._client = chromadb.PersistentClient(path=str(self._root))
+            else:
+                self._client = chromadb.Client()
+
+            _CHROMA_CLIENTS[client_key] = self._client
+            return self._client
 
     def _close_client(self) -> None:
         import gc
