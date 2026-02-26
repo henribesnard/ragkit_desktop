@@ -204,44 +204,53 @@ export function Chat() {
   };
 
   const refreshChatState = async () => {
-    const ready = await invoke<ChatReadyResponse>("get_chat_ready");
-    setChatReady(ready);
-
-    // Check ingestion status for partial mode
     try {
+      const ready = await invoke<ChatReadyResponse>("get_chat_ready");
+      setChatReady(ready);
+
       if (ingestionProgress?.status === "completed" && ready.ready && history.messages.length === 0) {
         setShowTestQuestion(true);
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.warn("Failed to check chat readiness:", err);
+    }
 
-    const [docTypes, languages, categories, docIds, semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
-      invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_type" }),
-      invoke<FilterValuesResponse>("get_search_filter_values", { field: "language" }),
-      invoke<FilterValuesResponse>("get_search_filter_values", { field: "category" }),
-      invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_id" }),
-      invoke<SearchConfigState>("get_semantic_search_config"),
-      invoke<{ enabled: boolean; stemming: boolean }>("get_lexical_search_config"),
-      invoke<GeneralSettingsPayload>("get_general_settings"),
-      invoke<{ alpha?: number }>("get_hybrid_search_config"),
-    ]);
+    // Fetch configs individually to be resilient to errors during ingestion
+    try {
+      const [docTypes, languages, categories, docIds] = await Promise.all([
+        invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_type" }).catch(() => ({ values: [] })),
+        invoke<FilterValuesResponse>("get_search_filter_values", { field: "language" }).catch(() => ({ values: [] })),
+        invoke<FilterValuesResponse>("get_search_filter_values", { field: "category" }).catch(() => ({ values: [] })),
+        invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_id" }).catch(() => ({ values: [] })),
+      ]);
+      setAvailableFilters({
+        doc_types: docTypes.values || [],
+        languages: languages.values || [],
+        categories: categories.values || [],
+        doc_ids: docIds.values || [],
+      });
+    } catch { /* ignore filter errors */ }
 
-    setAvailableFilters({
-      doc_types: docTypes.values || [],
-      languages: languages.values || [],
-      categories: categories.values || [],
-      doc_ids: docIds.values || [],
-    });
-
-    applySearchConfig(
-      semanticCfg,
-      { enabled: lexicalCfg.enabled, lexical_stemming: lexicalCfg.stemming },
-      generalCfg,
-    );
-    setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
+    try {
+      const [semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
+        invoke<SearchConfigState>("get_semantic_search_config").catch(() => null),
+        invoke<{ enabled: boolean; stemming: boolean }>("get_lexical_search_config").catch(() => null),
+        invoke<GeneralSettingsPayload>("get_general_settings").catch(() => null),
+        invoke<{ alpha?: number }>("get_hybrid_search_config").catch(() => null),
+      ]);
+      if (semanticCfg && lexicalCfg && generalCfg) {
+        applySearchConfig(
+          semanticCfg,
+          { enabled: lexicalCfg.enabled, lexical_stemming: lexicalCfg.stemming },
+          generalCfg,
+        );
+      }
+      if (hybridCfg) setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
+    } catch { /* ignore config errors during ingestion */ }
   };
 
   useEffect(() => {
-    void refreshChatState().catch(err => setError(String(err)));
+    void refreshChatState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -328,7 +337,7 @@ export function Chat() {
     setPage(1);
     setHasMore(false);
     setTotalResults(0);
-    setQuery(""); // Clear immediately for better responsiveness
+    // Don't clear query here — let the message stay visible in the chat
     await startStream(payload);
   };
 
@@ -340,9 +349,9 @@ export function Chat() {
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t("chat.title")}</h2>
 
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50">
-              <div className={`w-2 h-2 rounded-full ${chatReady.ready ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+              <div className={`w-2 h-2 rounded-full ${isIngesting ? 'bg-amber-500 animate-pulse' : chatReady.ready ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
               <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                {chatReady.ready ? "Chat opérationnel" : "Chat non opérationnel"}
+                {isIngesting ? "Ingestion en cours..." : chatReady.ready ? "Chat opérationnel" : "Chat non opérationnel"}
               </span>
             </div>
 
