@@ -14,6 +14,8 @@ from pathlib import Path
 
 from ragkit.config.vector_store_schema import CollectionStats, ConnectionTestResult, VectorStoreConfig
 
+logger = logging.getLogger(__name__)
+
 try:
     from qdrant_client import QdrantClient
     from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct
