@@ -14,6 +14,18 @@ from pathlib import Path
 
 from ragkit.config.vector_store_schema import CollectionStats, ConnectionTestResult, VectorStoreConfig
 
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct
+except ImportError:
+    QdrantClient = None
+    PointStruct = None
+
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
+
 
 @dataclass
 class VectorPoint:
@@ -241,8 +253,6 @@ class QdrantVectorStore(BaseVectorStore):
         return str(uuid.uuid5(uuid.NAMESPACE_URL, raw_id))
 
     def _distance_metric(self):
-        from qdrant_client.models import Distance
-
         mapping = {
             "cosine": Distance.COSINE,
             "euclidean": Distance.EUCLID,
@@ -283,7 +293,8 @@ class QdrantVectorStore(BaseVectorStore):
                 self._client = _QDRANT_CLIENTS[self._client_key]
                 return self._client
 
-            from qdrant_client import QdrantClient
+            if QdrantClient is None:
+                raise ImportError("qdrant-client is not installed")
 
             if self.config.mode.value == "persistent":
                 self._root.mkdir(parents=True, exist_ok=True)
@@ -291,6 +302,7 @@ class QdrantVectorStore(BaseVectorStore):
                 self._client = QdrantClient(path=str(self._root))
             else:
                 self._client = QdrantClient(path=":memory:")
+            
             _QDRANT_CLIENTS[self._client_key] = self._client
             return self._client
 
@@ -575,7 +587,8 @@ class ChromaVectorStore(BaseVectorStore):
                 self._client = _CHROMA_CLIENTS[client_key]
                 return self._client
 
-            import chromadb
+            if chromadb is None:
+                raise ImportError("chromadb is not installed")
 
             if self.config.mode.value == "persistent":
                 self._root.mkdir(parents=True, exist_ok=True)

@@ -329,6 +329,7 @@ export function Chat() {
     setHasMore(false);
     setTotalResults(0);
     await startStream(payload);
+    setQuery("");
   };
 
   return (
