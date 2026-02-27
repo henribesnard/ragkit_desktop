@@ -265,7 +265,7 @@ class EmbeddingEngine:
             from sentence_transformers import SentenceTransformer
             
             # Set HF cache home to a local ragkit directory so large models don't pollute the generic OS cache
-            models_dir = Path.home() / ".ragkit" / "models"
+            models_dir = Path.home() / ".loko" / "models"
             models_dir.mkdir(parents=True, exist_ok=True)
             os.environ["HF_HOME"] = str(models_dir)
             

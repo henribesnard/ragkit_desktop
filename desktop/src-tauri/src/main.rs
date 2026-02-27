@@ -12,7 +12,7 @@ fn get_log_dir() -> std::path::PathBuf {
     #[cfg(not(target_os = "windows"))]
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
     
-    std::path::PathBuf::from(home).join(".ragkit").join("logs")
+    std::path::PathBuf::from(home).join(".loko").join("logs")
 }
 
 fn main() {

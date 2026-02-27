@@ -163,6 +163,7 @@ class ChatQuery(BaseModel):
     """Complete chat query - triggers retrieval + generation pipeline."""
 
     query: str = Field(..., min_length=1, max_length=5000)
+    conversation_id: str | None = None
     search_type: SearchType | None = None
     alpha: float | None = Field(default=None, ge=0.0, le=1.0)
     filters: SearchFilters | None = None

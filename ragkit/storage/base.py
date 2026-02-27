@@ -92,7 +92,7 @@ class LocalJsonVectorStore(BaseVectorStore):
     @property
     def _root(self) -> Path:
         base = Path(self.config.path).expanduser()
-        return base if self.config.mode.value == "persistent" else Path.home() / ".ragkit" / "data" / "memory"
+        return base if self.config.mode.value == "persistent" else Path.home() / ".loko" / "data" / "memory"
 
     @property
     def _db_file(self) -> Path:
@@ -190,7 +190,7 @@ class LocalJsonVectorStore(BaseVectorStore):
             return ConnectionTestResult(success=False, status="error", message=str(exc))
 
     async def create_snapshot(self, version: str) -> str:
-        snap_root = Path.home() / ".ragkit" / "data" / "snapshots" / version
+        snap_root = Path.home() / ".loko" / "data" / "snapshots" / version
         snap_root.mkdir(parents=True, exist_ok=True)
         if self._db_file.exists():
             target = snap_root / self._db_file.name
@@ -199,7 +199,7 @@ class LocalJsonVectorStore(BaseVectorStore):
         return str(snap_root)
 
     async def restore_snapshot(self, version: str) -> None:
-        snap_file = Path.home() / ".ragkit" / "data" / "snapshots" / version / self._db_file.name
+        snap_file = Path.home() / ".loko" / "data" / "snapshots" / version / self._db_file.name
         if not snap_file.exists():
             raise FileNotFoundError(f"Snapshot {version} not found")
         self._root.mkdir(parents=True, exist_ok=True)
@@ -474,7 +474,7 @@ class QdrantVectorStore(BaseVectorStore):
             return ConnectionTestResult(success=False, status="error", message=str(exc))
 
     async def create_snapshot(self, version: str) -> str:
-        snap_root = Path.home() / ".ragkit" / "data" / "snapshots" / version / "qdrant"
+        snap_root = Path.home() / ".loko" / "data" / "snapshots" / version / "qdrant"
         snap_root.mkdir(parents=True, exist_ok=True)
         target = snap_root / f"{self.config.collection_name}.json"
         points = await self.all_points()
@@ -489,7 +489,7 @@ class QdrantVectorStore(BaseVectorStore):
         return str(target)
 
     async def restore_snapshot(self, version: str) -> None:
-        snapshot_file = Path.home() / ".ragkit" / "data" / "snapshots" / version / "qdrant" / f"{self.config.collection_name}.json"
+        snapshot_file = Path.home() / ".loko" / "data" / "snapshots" / version / "qdrant" / f"{self.config.collection_name}.json"
         if not snapshot_file.exists():
             raise FileNotFoundError(f"Snapshot {version} not found")
         payload = json.loads(snapshot_file.read_text(encoding="utf-8"))
@@ -768,7 +768,7 @@ class ChromaVectorStore(BaseVectorStore):
             return ConnectionTestResult(success=False, status="error", message=str(exc))
 
     async def create_snapshot(self, version: str) -> str:
-        snap_root = Path.home() / ".ragkit" / "data" / "snapshots" / version / "chroma"
+        snap_root = Path.home() / ".loko" / "data" / "snapshots" / version / "chroma"
         snap_root.mkdir(parents=True, exist_ok=True)
         target = snap_root / f"{self.config.collection_name}.json"
         points = await self.all_points()
@@ -783,7 +783,7 @@ class ChromaVectorStore(BaseVectorStore):
         return str(target)
 
     async def restore_snapshot(self, version: str) -> None:
-        snapshot_file = Path.home() / ".ragkit" / "data" / "snapshots" / version / "chroma" / f"{self.config.collection_name}.json"
+        snapshot_file = Path.home() / ".loko" / "data" / "snapshots" / version / "chroma" / f"{self.config.collection_name}.json"
         if not snapshot_file.exists():
             raise FileNotFoundError(f"Snapshot {version} not found")
         payload = json.loads(snapshot_file.read_text(encoding="utf-8"))

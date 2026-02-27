@@ -5,7 +5,7 @@ type Theme = "light" | "dark";
 
 export function useTheme() {
     const [theme, setTheme] = useState<Theme>(() => {
-        const stored = localStorage.getItem("ragkit-theme") as Theme | null;
+        const stored = localStorage.getItem("loko-theme") as Theme | null;
         if (stored) return stored;
         return window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark" : "light";
@@ -14,7 +14,7 @@ export function useTheme() {
     useEffect(() => {
         const root = document.documentElement;
         root.classList.toggle("dark", theme === "dark");
-        localStorage.setItem("ragkit-theme", theme);
+        localStorage.setItem("loko-theme", theme);
     }, [theme]);
 
     const toggle = () => setTheme(t => t === "light" ? "dark" : "light");

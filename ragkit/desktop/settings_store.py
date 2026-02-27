@@ -9,7 +9,7 @@ from .models import DocumentInfo, SettingsPayload
 
 
 def get_data_root() -> Path:
-    return Path.home() / ".ragkit"
+    return Path.home() / ".loko"
 
 
 def get_config_dir() -> Path:
@@ -32,10 +32,15 @@ def get_documents_path() -> Path:
     return get_data_dir() / "documents.json"
 
 
+def get_conversations_dir() -> Path:
+    return get_data_root() / "conversations"
+
+
 def ensure_storage_dirs() -> None:
     get_config_dir().mkdir(parents=True, exist_ok=True)
     get_data_dir().mkdir(parents=True, exist_ok=True)
     get_log_dir().mkdir(parents=True, exist_ok=True)
+    get_conversations_dir().mkdir(parents=True, exist_ok=True)
 
 
 def load_settings() -> SettingsPayload:

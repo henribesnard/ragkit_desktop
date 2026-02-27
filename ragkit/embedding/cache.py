@@ -37,7 +37,7 @@ class MemoryEmbeddingCache(BaseEmbeddingCache):
 
 
 class DiskEmbeddingCache(BaseEmbeddingCache):
-    DB_PATH = Path.home() / ".ragkit" / "cache" / "embeddings.db"
+    DB_PATH = Path.home() / ".loko" / "cache" / "embeddings.db"
 
     def __init__(self) -> None:
         self.DB_PATH.parent.mkdir(parents=True, exist_ok=True)

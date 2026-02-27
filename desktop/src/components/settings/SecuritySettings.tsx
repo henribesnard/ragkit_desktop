@@ -58,9 +58,9 @@ export function SecuritySettings() {
                     onClick={async () => {
                       if (!confirm(`Supprimer les clés système pour ${key.provider} ?`)) return;
                       await import("@tauri-apps/api/core").then(async ({ invoke }) => {
-                        await invoke("delete_secret", { keyName: `ragkit.embedding.${key.provider}.api_key` }).catch(() => { });
-                        await invoke("delete_secret", { keyName: `ragkit.llm.${key.provider}.api_key` }).catch(() => { });
-                        await invoke("delete_secret", { keyName: `ragkit.rerank.${key.provider}.api_key` }).catch(() => { });
+                        await invoke("delete_secret", { keyName: `loko.embedding.${key.provider}.api_key` }).catch(() => { });
+                        await invoke("delete_secret", { keyName: `loko.llm.${key.provider}.api_key` }).catch(() => { });
+                        await invoke("delete_secret", { keyName: `loko.rerank.${key.provider}.api_key` }).catch(() => { });
                       });
                       // Refresh the status automatically
                       window.location.reload();

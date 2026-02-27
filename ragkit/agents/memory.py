@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from ragkit.config.agents_schema import AgentsConfig, MemoryStrategy
 from ragkit.llm.base import BaseLLMProvider, LLMMessage
+import json
+from pathlib import Path
 
 
 def _utc_now_iso() -> str:
@@ -35,10 +37,21 @@ class ConversationState:
 class ConversationMemory:
     """Manage in-memory conversation context and optional summary compression."""
 
-    def __init__(self, config: AgentsConfig, llm: BaseLLMProvider | None = None):
+    def __init__(
+        self,
+        config: AgentsConfig,
+        llm: BaseLLMProvider | None = None,
+        conversation_id: str | None = None,
+        storage_path: Path | None = None,
+    ):
         self.config = config
         self.llm = llm
+        self.conversation_id = conversation_id
+        self.storage_path = storage_path
         self.state = ConversationState()
+
+        if self.storage_path and self.storage_path.exists():
+            self.load()
 
     def add_message(
         self,
@@ -61,6 +74,8 @@ class ConversationMemory:
             )
         )
         self.state.total_messages += 1
+        if self.storage_path:
+            self.save()
 
     def get_history_for_llm(self) -> list[dict[str, str]]:
         if self.config.max_history_messages <= 0:
@@ -131,6 +146,43 @@ class ConversationMemory:
 
     def clear(self) -> None:
         self.state = ConversationState()
+        if self.storage_path and self.storage_path.exists():
+            self.storage_path.unlink()
+
+    def save(self) -> None:
+        if not self.storage_path:
+            return
+        data = {
+            "messages": [
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "intent": m.intent,
+                    "sources": m.sources,
+                    "query_log_id": m.query_log_id,
+                    "feedback": m.feedback,
+                    "timestamp": m.timestamp,
+                }
+                for m in self.state.messages
+            ],
+            "summary": self.state.summary,
+            "total_messages": self.state.total_messages,
+        }
+        self.storage_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def load(self) -> None:
+        if not self.storage_path or not self.storage_path.exists():
+            return
+        try:
+            data = json.loads(self.storage_path.read_text(encoding="utf-8"))
+            self.state = ConversationState(
+                messages=[ConversationMessage(**m) for m in data.get("messages", [])],
+                summary=data.get("summary"),
+                total_messages=data.get("total_messages", 0),
+            )
+        except Exception:
+            # If load fails, start fresh
+            self.state = ConversationState()
 
     def _summary_prefix(self) -> str:
         return "Resume de la conversation precedente :\n"

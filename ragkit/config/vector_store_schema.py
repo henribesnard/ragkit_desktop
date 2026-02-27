@@ -35,8 +35,8 @@ class HNSWConfig(BaseModel):
 class VectorStoreConfig(BaseModel):
     provider: VectorStoreProvider = VectorStoreProvider.QDRANT
     mode: VectorStoreMode = VectorStoreMode.PERSISTENT
-    path: str = "~/.ragkit/data/qdrant"
-    collection_name: str = Field(default="ragkit_default", pattern=r"^[a-z0-9_-]{1,63}$")
+    path: str = "~/.loko/data/qdrant"
+    collection_name: str = Field(default="loko_default", pattern=r"^[a-z0-9_-]{1,63}$")
     distance_metric: DistanceMetric = DistanceMetric.COSINE
     hnsw: HNSWConfig = Field(default_factory=HNSWConfig)
     snapshot_retention: int = Field(default=5, ge=1, le=30)

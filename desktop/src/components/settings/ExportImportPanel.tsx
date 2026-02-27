@@ -13,8 +13,8 @@ export function ExportImportPanel() {
   const handleExport = async () => {
     try {
       const path = await save({
-        defaultPath: "ragkit-config.ragkit-config",
-        filters: [{ name: "LOKO Config", extensions: ["ragkit-config"] }],
+        defaultPath: "loko-config.loko-config",
+        filters: [{ name: "LOKO Config", extensions: ["loko-config"] }],
       });
       if (!path) return;
       await exportConfig(path);
@@ -26,7 +26,7 @@ export function ExportImportPanel() {
   const handleSelectImport = async () => {
     try {
       const path = await open({
-        filters: [{ name: "LOKO Config", extensions: ["ragkit-config"] }],
+        filters: [{ name: "LOKO Config", extensions: ["loko-config"] }],
         multiple: false,
       });
       if (!path) return;

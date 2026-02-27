@@ -38,12 +38,6 @@ function statusColor(status: string): string {
   return "var(--text-tertiary)";
 }
 
-function getStatusIcon(status: string) {
-  if (status === "ok") return <CheckCircle2 size={16} style={{ color: "var(--success)" }} />;
-  if (status === "error") return <XCircle size={16} style={{ color: "var(--error)" }} />;
-  if (status === "loading") return <Activity size={16} style={{ color: "var(--warning)" }} className="animate-pulse" />;
-  return <ShieldAlert size={16} style={{ color: "var(--text-tertiary)" }} />;
-}
 
 function feedbackShort(value: "positive" | "negative" | null | undefined): string {
   if (value === "positive") return "👍";
@@ -113,49 +107,51 @@ export function DashboardView() {
       ) : null}
 
       {/* TOP LEVEL: SERVICES & INGESTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* System Health */}
-        <div className="flex flex-col" style={cardStyle}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-1.5">
-              <Activity size={14} style={{ color: "var(--info)" }} /> {t("monitoring.dashboard.servicesTitle")}
-            </h3>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void refresh()}>
-              <Activity size={12} />
-            </Button>
-          </div>
-          <div className="space-y-4 flex-1 overflow-y-auto pr-2">
-            {state.health.map(service => (
-              <div key={service.name} className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
+      <div className="space-y-6">
+        {/* System Health — Horizontal Bar */}
+        <div style={{ ...cardStyle, padding: "12px 20px" }}>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="flex items-center gap-2 pr-4 border-r border-default">
+              <Activity size={14} style={{ color: "var(--info)" }} />
+              <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }}>
+                {t("monitoring.dashboard.servicesTitle")}
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 flex-1">
+              {state.health.map(service => (
+                <div key={service.name} className="flex items-center gap-2">
                   <div
                     className="rounded-full"
                     style={{
-                      width: 8,
-                      height: 8,
+                      width: 6,
+                      height: 6,
                       background: statusColor(service.status),
-                      boxShadow: `0 0 8px ${statusColor(service.status)}`,
+                      boxShadow: `0 0 6px ${statusColor(service.status)}`,
                     }}
                   />
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1 }}>{service.name}</p>
-                    <p style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      {service.provider || t("monitoring.common.notAvailable")}
-                    </p>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>{service.name}</span>
+                    <span style={{ fontSize: 9, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.03em", marginTop: 2 }}>
+                      {service.provider || "N/A"}
+                    </span>
                   </div>
                 </div>
-                <div>{getStatusIcon(service.status)}</div>
-              </div>
-            ))}
-            {!state.health.length ? (
-              <p style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", padding: "16px 0", fontStyle: "italic" }}>
-                {t("monitoring.common.noData")}
-              </p>
-            ) : null}
+              ))}
+              {!state.health.length && (
+                <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontStyle: "italic" }}>
+                  {t("monitoring.common.noData")}
+                </span>
+              )}
+            </div>
+
+            <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => void refresh()}>
+              <RefreshCw size={12} />
+            </Button>
           </div>
         </div>
 
-        {/* INGESTION STATUS PANEL */}
+        {/* INGESTION STATUS PANEL — Now potentially full width or constrained */}
         {(() => {
           const s = sharedIngestionStatus || ingestion.status;
           const statusInfo = getIngestionStatusLabel(s?.status ?? "idle", t);
@@ -194,7 +190,7 @@ export function DashboardView() {
                   <div className="flex items-center justify-between mt-1.5" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                     <span>{s?.doc_index ?? 0}/{s?.doc_total ?? 0} documents · {progressRatio}%</span>
                     {s?.current_doc && (
-                      <span className="truncate" style={{ maxWidth: 200 }} title={s.current_doc}>{s.current_doc}</span>
+                      <span className="truncate" style={{ maxWidth: 300 }} title={s.current_doc}>{s.current_doc}</span>
                     )}
                   </div>
                 </div>

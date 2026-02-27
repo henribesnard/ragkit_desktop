@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigManager:
     def __init__(self):
-        self.config_dir = Path.home() / ".ragkit" / "config"
+        self.config_dir = Path.home() / ".loko" / "config"
         self.config_file = self.config_dir / "settings.json"
         self._ensure_config_dir()
 

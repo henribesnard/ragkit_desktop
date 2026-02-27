@@ -68,7 +68,7 @@ function normalizeConfig(config: Partial<LLMConfig> | undefined): LLMConfig {
 
 function apiKeyName(provider: LLMProvider): string | null {
   if (provider === "openai" || provider === "anthropic" || provider === "mistral" || provider === "deepseek") {
-    return `ragkit.llm.${provider}.api_key`;
+    return `loko.llm.${provider}.api_key`;
   }
   return null;
 }

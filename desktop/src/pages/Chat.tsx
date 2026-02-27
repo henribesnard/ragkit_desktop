@@ -1,13 +1,13 @@
 ﻿import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUp, FileText, Loader2, Square } from "lucide-react";
+import { ArrowUp, FileText, Loader2 } from "lucide-react";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
+import { useParams } from "react-router-dom";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
-import { TestQuestionPrompt } from "@/components/chat/TestQuestionPrompt";
-import { ConversationExportMenu } from "@/components/chat/ConversationExportMenu";
+import { useConversations } from "@/hooks/useConversations";
+import { ipc } from "@/lib/ipc";
 import { EmptyState } from "@/components/chat/EmptyState";
-import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ScrollToBottom } from "@/components/chat/ScrollToBottom";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversation } from "@/hooks/useConversation";
@@ -30,6 +30,8 @@ interface GeneralSettingsPayload {
 }
 
 export function Chat() {
+  const { id: urlId } = useParams<{ id: string }>();
+  const { updateConversationActivity, openConversation } = useConversations();
   const { t } = useTranslation();
   const {
     content: streamedAnswer,
@@ -37,10 +39,9 @@ export function Chat() {
     finalResponse,
     error: streamError,
     startStream,
-    stopStream,
     clear: clearStreamState,
   } = useChatStream();
-  const { history, refresh: refreshHistory } = useConversation();
+  const { history, refresh: refreshHistory } = useConversation(urlId || null);
   const {
     submit: submitFeedback,
     error: feedbackError,
@@ -52,13 +53,14 @@ export function Chat() {
   const [query, setQuery] = useState("");
   const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
   const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
-  const { status: ingestionProgress, isRunning: isIngesting } = usePersistentIngestion();
-  const [showTestQuestion, setShowTestQuestion] = useState(false);
+  const { isRunning: isIngesting } = usePersistentIngestion();
+
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
-  const [debugMode, setDebugMode] = useState(false);
+  const [debugMode] = useState(false);
   const [alphaOverride, setAlphaOverride] = useState(0.5);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [activeQuery, setActiveQuery] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -91,9 +93,7 @@ export function Chat() {
     try {
       const ready = await invoke<ChatReadyResponse>("get_chat_ready");
       setChatReady(ready);
-      if (ingestionProgress?.status === "completed" && ready.ready && history.messages.length === 0) {
-        setShowTestQuestion(true);
-      }
+
     } catch { /* ignore */ }
 
     try {
@@ -132,6 +132,11 @@ export function Chat() {
     void (async () => {
       await refreshHistory();
       clearStreamState();
+      setActiveQuery(null);
+
+      // Trigger title generation if it was the first interaction
+      // history.messages.length is checked inside generateTitleIfNeeded
+      await generateTitleIfNeeded();
     })();
   }, [finalResponse, refreshHistory, clearStreamState]);
 
@@ -155,6 +160,38 @@ export function Chat() {
   useEffect(() => {
     if (!showScrollBtn) scrollToBottom();
   }, [history.messages.length, streamedAnswer, scrollToBottom, showScrollBtn]);
+
+  useEffect(() => {
+    if (urlId) {
+      void openConversation(urlId);
+    }
+  }, [urlId, openConversation]);
+
+  // Unused placeholder removed
+
+  const generateTitleIfNeeded = async () => {
+    if (!urlId) return;
+
+    // We generate title if we have at least 2 messages.
+    // In our simplified logic, we trigger this after the first response.
+    if (history.messages.length >= 2 || (history.messages.length === 0 && finalResponse)) {
+      try {
+        const { title } = await ipc.generateConversationTitle(urlId);
+        if (title) {
+          updateConversationActivity(urlId, history.messages.length + 2, title);
+        }
+      } catch (err) {
+        console.error("Failed to generate title", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (history.messages.length >= 2) {
+      // We might want to avoid re-generating if title already exists
+      // useConversations hook stores the list
+    }
+  }, [history.messages.length]);
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;
@@ -181,12 +218,15 @@ export function Chat() {
     if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
     const payload = {
       query: query.trim(),
+      conversation_id: urlId || undefined,
       search_type: searchMode,
       alpha: searchMode === "hybrid" ? alphaOverride : undefined,
       filters: { doc_ids: [], doc_types: [], languages: [], categories: [] },
       include_debug: debugMode,
     };
+    const q = query.trim();
     setQuery("");
+    setActiveQuery(q);
     await startStream(payload);
   };
 
@@ -236,15 +276,7 @@ export function Chat() {
         </div>
       )}
 
-      {/* Test Question Prompt */}
-      {showTestQuestion && (
-        <div style={{ maxWidth: "var(--chat-max-width)", width: "100%", margin: "0 auto", padding: "0 20px" }}>
-          <TestQuestionPrompt
-            onAsk={(q) => { setShowTestQuestion(false); setQuery(q); }}
-            onDismiss={() => setShowTestQuestion(false)}
-          />
-        </div>
-      )}
+
 
       {/* Messages Area */}
       <div
@@ -279,7 +311,7 @@ export function Chat() {
           ) : (
             <div className="flex flex-col" style={{ gap: 24 }}>
               {/* History messages */}
-              {history.messages.map((message, index) => (
+              {history.messages.map((message: any, index: number) => (
                 <div
                   key={`${message.timestamp}-${index}`}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}
@@ -322,7 +354,7 @@ export function Chat() {
                             {t("chat.sources")}
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            {message.sources.map((src, si) => (
+                            {message.sources.map((src: any, si: number) => (
                               <span
                                 key={si}
                                 className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
@@ -358,8 +390,22 @@ export function Chat() {
                 </div>
               ))}
 
-              {/* Streaming / Typing */}
-              {isStreaming && !streamedAnswer && <TypingIndicator />}
+              {/* Optimistic User Message */}
+              {activeQuery && (
+                <div className="flex justify-end animate-message-in">
+                  <div
+                    className="text-sm text-white"
+                    style={{
+                      maxWidth: "80%",
+                      padding: "12px 16px",
+                      borderRadius: "20px 20px 4px 20px",
+                      background: "var(--primary-500)",
+                    }}
+                  >
+                    <div className="whitespace-pre-wrap">{activeQuery}</div>
+                  </div>
+                </div>
+              )}
 
               {(streamedAnswer || isStreaming) && (
                 <div className="flex justify-start animate-message-in">
@@ -385,31 +431,6 @@ export function Chat() {
                       />
                     )}
 
-                    {/* Stop button */}
-                    {isStreaming && (
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          onClick={() => void stopStream()}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors"
-                          style={{
-                            color: "var(--text-secondary)",
-                            border: "1px solid var(--border-default)",
-                            background: "transparent",
-                          }}
-                          onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "var(--error)";
-                            (e.currentTarget as HTMLElement).style.borderColor = "var(--error)";
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
-                            (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
-                          }}
-                        >
-                          <Square size={10} fill="currentColor" />
-                          {t("chat.stopGeneration")}
-                        </button>
-                      </div>
-                    )}
 
                     {/* Final response sources */}
                     {finalResponse?.sources?.length ? (
@@ -421,7 +442,7 @@ export function Chat() {
                           {t("chat.sources")}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {finalResponse.sources.map((src) => (
+                          {finalResponse.sources.map((src: any) => (
                             <span
                               key={`${src.id}-${src.chunk_id}`}
                               className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
@@ -552,46 +573,7 @@ export function Chat() {
           </button>
         </form>
 
-        {/* Options bar */}
-        <div
-          className="flex items-center justify-center gap-4 mt-2"
-          style={{ fontSize: 11, color: "var(--text-tertiary)" }}
-        >
-          {/* Search mode dropdown */}
-          <select
-            value={searchMode}
-            onChange={(e) => setSearchMode(e.target.value as ChatSearchMode)}
-            className="outline-none cursor-pointer"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--text-tertiary)",
-              fontSize: 11,
-            }}
-          >
-            <option value="semantic">semantic</option>
-            <option value="lexical">lexical</option>
-            <option value="hybrid">hybrid</option>
-          </select>
 
-          {/* Debug toggle */}
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className="transition-colors"
-            style={{
-              color: debugMode ? "var(--primary-500)" : "var(--text-tertiary)",
-              background: "transparent",
-              border: "none",
-              fontSize: 11,
-              cursor: "pointer",
-            }}
-          >
-            {t("chat.debug")}
-          </button>
-
-          {/* Export */}
-          <ConversationExportMenu />
-        </div>
 
         {/* Disclaimer */}
         <div

@@ -1,4 +1,4 @@
-"""Export and import full RAGKIT configuration."""
+"""Export and import full LOKO configuration."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ragkit.desktop.settings_store import load_settings, save_settings
 
 
 class ConfigExporter:
-    """Exports the full configuration to a .ragkit-config file."""
+    """Exports the full configuration to a .loko-config file."""
 
     def export(self, output_path: str) -> str:
         settings = load_settings()
@@ -24,7 +24,7 @@ class ConfigExporter:
                 config[section]["api_key_set"] = False
 
         export_data = {
-            "ragkit_version": config.get("version", "1.0.0"),
+            "loko_version": config.get("version", "1.0.0"),
             "export_date": datetime.now(timezone.utc).isoformat(),
             "profile": config.get("profile", "general"),
             "config": config,
@@ -44,18 +44,18 @@ class ConfigExporter:
 
 
 class ConfigImporter:
-    """Imports configuration from a .ragkit-config file."""
+    """Imports configuration from a .loko-config file."""
 
     def validate(self, path: str) -> dict[str, Any]:
         """Validate and return import preview."""
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        if "ragkit_version" not in data or "config" not in data:
-            raise ValueError("Invalid .ragkit-config file")
+        if "loko_version" not in data or "config" not in data:
+            raise ValueError("Invalid .loko-config file")
 
         return {
-            "version": data["ragkit_version"],
+            "version": data["loko_version"],
             "export_date": data.get("export_date"),
             "profile": data.get("profile"),
             "metadata": data.get("metadata", {}),
@@ -67,7 +67,7 @@ class ConfigImporter:
             data = json.load(f)
 
         if "config" not in data:
-            raise ValueError("Invalid .ragkit-config file")
+            raise ValueError("Invalid .loko-config file")
 
         from ragkit.desktop.models import SettingsPayload
 
@@ -86,7 +86,7 @@ class ConfigImporter:
             data = json.load(f)
 
         if "config" not in data:
-            raise ValueError("Invalid .ragkit-config file")
+            raise ValueError("Invalid .loko-config file")
 
         current = load_settings()
         current_dict = current.model_dump(mode="json")

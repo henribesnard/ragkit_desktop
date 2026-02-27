@@ -32,7 +32,7 @@ export function Sidebar() {
     const toggleLanguage = () => {
         const newLang = i18n.language === "fr" ? "en" : "fr";
         i18n.changeLanguage(newLang);
-        localStorage.setItem("ragkit-lang", newLang);
+        localStorage.setItem("loko-lang", newLang);
     };
 
     const filteredConversations = useMemo(() => {
@@ -43,13 +43,13 @@ export function Sidebar() {
     const showSearch = conversations.filter((c) => !c.archived).length > 5;
 
     const handleNewConversation = async () => {
-        await createConversation();
-        navigate("/chat");
+        const id = await createConversation();
+        navigate(`/chat/${id}`);
     };
 
     const handleSelectConversation = (id: string) => {
         openConversation(id);
-        navigate("/chat");
+        navigate(`/chat/${id}`);
     };
 
     const isNavActive = (path: string) => location.pathname.startsWith(path);

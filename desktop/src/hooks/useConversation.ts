@@ -25,15 +25,18 @@ const emptyHistory: ConversationHistory = {
   has_summary: false,
 };
 
-export function useConversation() {
+export function useConversation(conversationId: string | null) {
   const [history, setHistory] = useState<ConversationHistory>(emptyHistory);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
+    if (!conversationId) return;
     setLoading(true);
     try {
-      const payload = await invoke<ConversationHistory>("get_conversation_history");
+      const payload = await invoke<ConversationHistory>("get_conversation_history", {
+        conversation_id: conversationId,
+      });
       setHistory(payload || emptyHistory);
       setError(null);
     } catch (err: any) {
@@ -44,13 +47,14 @@ export function useConversation() {
   };
 
   const resetConversation = async () => {
-    await invoke("new_conversation");
+    if (!conversationId) return;
+    await invoke("new_conversation", { conversation_id: conversationId });
     setHistory(emptyHistory);
   };
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [conversationId]);
 
   return {
     history,

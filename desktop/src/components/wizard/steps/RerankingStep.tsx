@@ -45,7 +45,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
         setTestResult(null);
         try {
             if (provider === "cohere" && apiKey) {
-                await invoke("store_secret", { keyName: "ragkit.rerank.cohere.api_key", value: apiKey });
+                await invoke("store_secret", { keyName: "loko.rerank.cohere.api_key", value: apiKey });
             }
             setTestResult({ success: true, msg: "Prêt à être sauvegardé !" });
         } catch (e: any) {

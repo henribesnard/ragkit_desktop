@@ -73,7 +73,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
         try {
             if (provider === "openai" && apiKey) {
                 // Save the key first
-                await invoke("store_secret", { keyName: "ragkit.embedding.openai.api_key", value: apiKey });
+                await invoke("store_secret", { keyName: "loko.embedding.openai.api_key", value: apiKey });
             }
 
             const res: any = await ipc.testEmbeddingConnection(provider, model);

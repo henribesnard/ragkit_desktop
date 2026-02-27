@@ -81,10 +81,10 @@ export function useConversations() {
     }, [conversations]);
 
     const createConversation = useCallback(async (): Promise<string> => {
-        // Reset on backend
-        await invoke("new_conversation");
-
         const id = crypto.randomUUID();
+        // Reset on backend
+        await invoke("new_conversation", { conversation_id: id });
+
         const now = new Date().toISOString();
         const newConv: ConversationListItem = {
             id,

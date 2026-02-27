@@ -12,7 +12,7 @@ import platform
 from pathlib import Path
 
 SERVICE_NAME = "ragkit"
-CREDENTIALS_FILE = Path.home() / ".ragkit" / "credentials.enc"
+CREDENTIALS_FILE = Path.home() / ".loko" / "credentials.enc"
 
 
 class SecretsManager:

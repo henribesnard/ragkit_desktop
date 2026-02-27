@@ -6,7 +6,7 @@ import en from "./locales/en.json";
 
 i18n.use(initReactI18next).init({
     resources: { fr: { translation: fr }, en: { translation: en } },
-    lng: localStorage.getItem("ragkit-lang") || "fr",
+    lng: localStorage.getItem("loko-lang") || "fr",
     fallbackLng: "fr",
     interpolation: { escapeValue: false },
 });

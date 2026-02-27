@@ -83,7 +83,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
         updateLLM({ provider: target });
     };
 
-    const secretKeyName = isApiProvider ? `ragkit.llm.${provider}.api_key` : null;
+    const secretKeyName = isApiProvider ? `loko.llm.${provider}.api_key` : null;
 
     const handleSaveKey = async () => {
         if (!secretKeyName || !apiKey.trim()) return;

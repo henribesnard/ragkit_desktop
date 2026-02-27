@@ -22,9 +22,12 @@ from ragkit.desktop.api.retrieval.unified_api import execute_unified_search
 from ragkit.desktop.llm_service import get_llm_config, resolve_llm_provider
 from ragkit.desktop.monitoring_service import get_query_logger
 from ragkit.llm.response_generator import ResponseGenerator
+from ragkit.desktop.settings_store import get_conversations_dir
+from pathlib import Path
 
 router = APIRouter(prefix="/api", tags=["chat"])
-_CONVERSATION_MEMORY: ConversationMemory | None = None
+_MEMORY_CACHE: dict[str, ConversationMemory] = {}
+_DEFAULT_ID = "default"
 
 
 def _build_chat_response(
@@ -45,11 +48,17 @@ def _build_chat_response(
     )
 
 
-def _get_conversation_memory() -> ConversationMemory:
-    global _CONVERSATION_MEMORY
-    if _CONVERSATION_MEMORY is None:
-        _CONVERSATION_MEMORY = ConversationMemory(get_agents_config())
-    return _CONVERSATION_MEMORY
+def _get_conversation_memory(conversation_id: str | None = None) -> ConversationMemory:
+    global _MEMORY_CACHE
+    cid = conversation_id or _DEFAULT_ID
+    if cid not in _MEMORY_CACHE:
+        storage_path = get_conversations_dir() / f"{cid}.json"
+        _MEMORY_CACHE[cid] = ConversationMemory(
+            get_agents_config(),
+            conversation_id=cid,
+            storage_path=storage_path
+        )
+    return _MEMORY_CACHE[cid]
 
 
 def _analyzer_llm_config(base: LLMConfig, analyzer_model: str | None) -> LLMConfig:
@@ -70,7 +79,7 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool]:
     provider = resolve_llm_provider(llm_config)
     analyzer_provider = resolve_llm_provider(_analyzer_llm_config(llm_config, agents_config.analyzer_model))
 
-    memory = _get_conversation_memory()
+    memory = _get_conversation_memory(payload.conversation_id if hasattr(payload, "conversation_id") else None)
     memory.config = agents_config
     memory.llm = provider
 
@@ -154,15 +163,17 @@ async def chat_stream(payload: ChatQuery):
 
 
 @router.post("/chat/new")
-async def chat_new() -> dict[str, bool]:
-    memory = _get_conversation_memory()
+async def chat_new(conversation_id: str | None = None) -> dict[str, bool]:
+    memory = _get_conversation_memory(conversation_id)
     memory.clear()
+    if conversation_id in _MEMORY_CACHE:
+        del _MEMORY_CACHE[conversation_id]
     return {"success": True}
 
 
 @router.get("/chat/history", response_model=ConversationHistory)
-async def chat_history() -> ConversationHistory:
-    memory = _get_conversation_memory()
+async def chat_history(conversation_id: str | None = None) -> ConversationHistory:
+    memory = _get_conversation_memory(conversation_id)
     messages = []
     for message in memory.list_messages():
         sources = None
@@ -189,3 +200,36 @@ async def chat_history() -> ConversationHistory:
         total_messages=memory.state.total_messages,
         has_summary=bool(memory.state.summary),
     )
+
+
+@router.post("/chat/generate_title")
+async def generate_title(payload: dict) -> dict[str, str]:
+    conversation_id = payload.get("conversation_id")
+    memory = _get_conversation_memory(conversation_id)
+    
+    if not memory.state.messages:
+        return {"title": "Nouvelle conversation"}
+
+    # Use LLM to generate title from first message
+    llm_config = get_llm_config()
+    provider = resolve_llm_provider(llm_config)
+    
+    first_msg = memory.state.messages[0].content[:500]
+    prompt = (
+        "Génère un titre très court (3 à 5 mots maximum) pour cette conversation "
+        "en te basant sur ce premier message :\n\n"
+        f"\"{first_msg}\"\n\n"
+        "Réponds UNIQUEMENT par le titre, sans ponctuation finale."
+    )
+    
+    try:
+        from ragkit.llm.base import LLMMessage
+        response = await provider.generate(
+            messages=[LLMMessage(role="user", content=prompt)],
+            temperature=0.3,
+            max_tokens=20,
+        )
+        title = str(response.content or "").strip().strip('"')
+        return {"title": title or "Sans titre"}
+    except Exception:
+        return {"title": "Conversation"}

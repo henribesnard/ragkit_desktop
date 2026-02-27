@@ -55,7 +55,7 @@ export function EmbeddingSettings() {
   const [textB, setTextB] = useState(PROFILE_EXAMPLES.general.b);
   const [fetchedQueryModels, setFetchedQueryModels] = useState<ModelInfo[]>([]);
 
-  const keyName = useMemo(() => (config ? `ragkit.embedding.${config.provider}.api_key` : ""), [config]);
+  const keyName = useMemo(() => (config ? `loko.embedding.${config.provider}.api_key` : ""), [config]);
   const queryProvider = config?.query_model.provider || config?.provider;
   const requiresApiKey = config ? CLOUD_PROVIDERS.includes(config.provider) : false;
 

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface ChatPayload {
   query: string;
+  conversation_id?: string;
   search_type?: "semantic" | "lexical" | "hybrid";
   alpha?: number;
   filters?: {

@@ -20,7 +20,7 @@ _LOCAL_RERANKER_MODEL_CACHE: dict[str, Any] = {}
 class LocalReranker(BaseReranker):
     """Local HuggingFace cross-encoder reranker."""
 
-    MODELS_DIR = Path("~/.ragkit/models").expanduser()
+    MODELS_DIR = Path("~/.loko/models").expanduser()
 
     def __init__(self, config: RerankConfig):
         self.config = config
