@@ -55,7 +55,7 @@ function feedbackShort(value: "positive" | "negative" | null | undefined): strin
   return "—";
 }
 
-function useIngestionStatusLabel(status: string, t: (key: string) => string): { label: string; color: string; icon: React.ReactNode } {
+function getIngestionStatusLabel(status: string, t: (key: string) => string): { label: string; color: string; icon: React.ReactNode } {
   switch (status) {
     case "running":
       return { label: t("dashboard.ingestionRunning"), color: "var(--info)", icon: <Loader2 size={16} className="animate-spin" /> };
@@ -217,7 +217,7 @@ export function DashboardView() {
       {/* INGESTION STATUS PANEL */}
       {(() => {
         const s = sharedIngestionStatus || ingestion.status;
-        const statusInfo = useIngestionStatusLabel(s?.status ?? "idle", t);
+        const statusInfo = getIngestionStatusLabel(s?.status ?? "idle", t);
         const isRunning = s?.status === "running";
         const isPaused = s?.status === "paused";
         const progressRatio = sharedIngestionStatus ? sharedProgress : (s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -20,14 +20,14 @@ export function SourceStep({ wizard }: { wizard: any }) {
     const [folderTree, setFolderTree] = useState<any>(null);
     const [scanResult, setScanResult] = useState<any>(null);
 
-    const updateSource = (patch: any) => {
+    const updateSource = useCallback((patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.ingestion) cfg.ingestion = {};
             if (!cfg.ingestion.source) cfg.ingestion.source = {};
             cfg.ingestion.source = { ...cfg.ingestion.source, ...patch };
             return cfg;
         });
-    };
+    }, [updateConfig]);
 
     const handleSelectFolder = async () => {
         try {
@@ -100,7 +100,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
         // Debounce slightly if needed, but direct calls are fine for desktop
         const t = setTimeout(scan, 300);
         return () => clearTimeout(t);
-    }, [sourceCfg.path, sourceCfg.recursive, sourceCfg.excluded_dirs, isValidating, error]);
+    }, [sourceCfg.path, sourceCfg.recursive, sourceCfg.excluded_dirs, isValidating, error, updateSource]);
 
     const toggleExclusion = (path: string) => {
         const current = [...(sourceCfg.excluded_dirs || [])];

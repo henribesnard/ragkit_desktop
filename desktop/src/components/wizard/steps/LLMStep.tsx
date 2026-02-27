@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Cloud } from "lucide-react";
@@ -38,7 +38,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
     const isOllama = provider === "ollama";
     const isApiProvider = !isOllama;
 
-    const updateLLM = (patch: any) => {
+    const updateLLM = useCallback((patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.llm) cfg.llm = {};
             cfg.llm = { ...cfg.llm, ...patch };
@@ -46,14 +46,14 @@ export function LLMStep({ wizard }: { wizard: any }) {
         });
         setTestResult(null);
         setStepValid(false);
-    };
+    }, [updateConfig, setStepValid]);
 
     // Initialize defaults
     useEffect(() => {
         if (!llmCfg.provider || !llmCfg.model) {
             updateLLM({ provider, model });
         }
-    }, [llmCfg.provider, llmCfg.model, provider, model]);
+    }, [llmCfg.provider, llmCfg.model, provider, model, updateLLM]);
 
     // Load models when provider changes
     useEffect(() => {
@@ -70,7 +70,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
             })
             .catch(console.error)
             .finally(() => setLoadingModels(false));
-    }, [provider]);
+    }, [provider, updateLLM]);
 
     const handleSwitchToOllama = () => {
         updateLLM({ provider: "ollama" });
@@ -157,8 +157,8 @@ export function LLMStep({ wizard }: { wizard: any }) {
                                         key={p.value}
                                         onClick={() => handleSwitchToApi(p.value)}
                                         className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${provider === p.value
-                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
                                             }`}
                                     >
                                         {p.label}

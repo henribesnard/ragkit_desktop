@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 
@@ -10,24 +10,28 @@ interface ToastProps {
 }
 
 export function Toast({ message, visible, onClose, duration = 3000 }: ToastProps) {
-    const [show, setShow] = useState(false);
+    const [fading, setFading] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        if (visible) {
-            setShow(true);
-            const timer = setTimeout(() => {
-                setShow(false);
-                setTimeout(onClose, 200);
-            }, duration);
-            return () => clearTimeout(timer);
+        if (!visible) {
+            setFading(false);
+            return;
         }
+        timerRef.current = setTimeout(() => {
+            setFading(true);
+            setTimeout(onClose, 200);
+        }, duration);
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
     }, [visible, duration, onClose]);
 
-    if (!visible && !show) return null;
+    if (!visible) return null;
 
     return createPortal(
         <div
-            className={show ? "animate-slide-up" : ""}
+            className="animate-slide-up"
             style={{
                 position: "fixed",
                 bottom: 32,
@@ -44,7 +48,7 @@ export function Toast({ message, visible, onClose, duration = 3000 }: ToastProps
                 fontSize: 13,
                 fontWeight: 500,
                 boxShadow: "var(--shadow-md)",
-                opacity: show ? 1 : 0,
+                opacity: fading ? 0 : 1,
                 transition: "opacity 200ms ease-out",
             }}
         >
@@ -54,3 +58,4 @@ export function Toast({ message, visible, onClose, duration = 3000 }: ToastProps
         document.body
     );
 }
+

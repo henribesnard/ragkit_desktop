@@ -87,7 +87,7 @@ export function Chat() {
     setSearchMode("hybrid");
   };
 
-  const refreshChatState = useCallback(async () => {
+  const refreshChatState = async () => {
     try {
       const ready = await invoke<ChatReadyResponse>("get_chat_ready");
       setChatReady(ready);
@@ -112,15 +112,20 @@ export function Chat() {
       }
       if (hybridCfg) setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
     } catch { /* ignore */ }
-  }, [ingestionProgress?.status, history.messages.length]);
+  };
+
+  const refreshChatStateRef = useRef(refreshChatState);
+  refreshChatStateRef.current = refreshChatState;
 
   const prevIngesting = useRef(isIngesting);
   useEffect(() => {
-    if (prevIngesting.current && !isIngesting) void refreshChatState();
+    if (prevIngesting.current && !isIngesting) {
+      void refreshChatStateRef.current();
+    }
     prevIngesting.current = isIngesting;
-  }, [isIngesting, refreshChatState]);
+  }, [isIngesting]);
 
-  useEffect(() => { void refreshChatState(); }, []);
+  useEffect(() => { void refreshChatStateRef.current(); }, []);
 
   useEffect(() => {
     if (!finalResponse) return;
