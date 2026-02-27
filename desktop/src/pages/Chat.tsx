@@ -178,7 +178,7 @@ export function Chat() {
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled) return;
+    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
     const payload = {
       query: query.trim(),
       search_type: searchMode,
@@ -518,7 +518,7 @@ export function Chat() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={getPlaceholder()}
-            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
+            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting}
             rows={1}
             className="w-full resize-none outline-none text-sm"
             style={{
@@ -533,15 +533,15 @@ export function Chat() {
           {/* Send Button */}
           <button
             type="submit"
-            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
             className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
             style={{
               width: 36,
               height: 36,
               borderRadius: "var(--radius-full)",
-              background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
-              color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
-              cursor: query.trim() && chatReady.ready ? "pointer" : "default",
+              background: query.trim() && chatReady.ready && !isIngesting ? "var(--primary-500)" : "var(--bg-hover)",
+              color: query.trim() && chatReady.ready && !isIngesting ? "white" : "var(--text-tertiary)",
+              cursor: query.trim() && chatReady.ready && !isIngesting ? "pointer" : "default",
             }}
           >
             {isStreaming ? (

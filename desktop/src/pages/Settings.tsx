@@ -52,7 +52,7 @@ export function Settings() {
       <button
         key={section}
         onClick={() => setActiveSection(section)}
-        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors"
         style={{
           borderRadius: "var(--radius-md)",
           background: active ? "var(--bg-hover)" : "transparent",
@@ -81,7 +81,7 @@ export function Settings() {
         style={{
           maxWidth: "var(--settings-max-width)",
           margin: "0 auto",
-          padding: "32px 20px",
+          padding: "24px 20px",
         }}
       >
         <h1
@@ -96,7 +96,7 @@ export function Settings() {
           <div
             className="flex-shrink-0"
             style={{
-              width: 200,
+              width: 180,
               borderRight: "1px solid var(--border-default)",
               paddingRight: 16,
             }}

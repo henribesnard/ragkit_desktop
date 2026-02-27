@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Cloud } from "lucide-react";
@@ -38,7 +38,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
     const isOllama = provider === "ollama";
     const isApiProvider = !isOllama;
 
-    const updateLLM = useCallback((patch: any) => {
+    const updateLLM = (patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.llm) cfg.llm = {};
             cfg.llm = { ...cfg.llm, ...patch };
@@ -46,14 +46,15 @@ export function LLMStep({ wizard }: { wizard: any }) {
         });
         setTestResult(null);
         setStepValid(false);
-    }, [updateConfig, setStepValid]);
+    };
 
     // Initialize defaults
     useEffect(() => {
         if (!llmCfg.provider || !llmCfg.model) {
             updateLLM({ provider, model });
         }
-    }, [llmCfg.provider, llmCfg.model, provider, model, updateLLM]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [llmCfg.provider, llmCfg.model, provider, model]);
 
     // Load models when provider changes
     useEffect(() => {
@@ -70,7 +71,8 @@ export function LLMStep({ wizard }: { wizard: any }) {
             })
             .catch(console.error)
             .finally(() => setLoadingModels(false));
-    }, [provider, updateLLM]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [provider]);
 
     const handleSwitchToOllama = () => {
         updateLLM({ provider: "ollama" });

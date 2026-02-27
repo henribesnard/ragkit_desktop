@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { QueryLogView } from "@/components/dashboard/QueryLogView";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -8,9 +7,6 @@ import { useMonitoringConfig } from "@/hooks/useMonitoringConfig";
 import { useIngestionControl } from "@/hooks/useIngestionControl";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import {
-  MessageSquare,
-  FileText,
-  Settings2,
   Activity,
   Database,
   Server,
@@ -80,7 +76,6 @@ const cardStyle: React.CSSProperties = {
 
 export function DashboardView() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { config } = useMonitoringConfig();
   const { state, loading, error, refresh } = useDashboard(
     config.dashboard_refresh_interval || 30,
@@ -117,65 +112,12 @@ export function DashboardView() {
         </section>
       ) : null}
 
-      {/* TOP LEVEL: QUICK ACTIONS & HEALTH */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Quick Actions */}
-        <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate("/chat")}
-            className="flex flex-col items-center justify-center p-6 text-white transition-all"
-            style={{
-              background: "linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)",
-              borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--shadow-md)",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
-          >
-            <MessageSquare size={28} className="mb-3 opacity-90" />
-            <span className="font-semibold" style={{ letterSpacing: "0.02em" }}>{t("dashboard.startChat")}</span>
-          </button>
-
-          <button
-            onClick={() => navigate("/settings?tab=ingestion")}
-            className="flex flex-col items-center justify-center p-6 text-white transition-all"
-            style={{
-              background: "var(--gradient-hero)",
-              borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--shadow-md)",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
-          >
-            <FileText size={28} className="mb-3 opacity-90" />
-            <span className="font-semibold" style={{ letterSpacing: "0.02em" }}>{t("dashboard.addDocs")}</span>
-          </button>
-
-          <button
-            onClick={() => navigate("/settings?tab=agents")}
-            className="group flex flex-col items-center justify-center p-6 transition-all"
-            style={{
-              ...cardStyle,
-              color: "var(--text-primary)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "none";
-            }}
-          >
-            <Settings2 size={28} className="mb-3" style={{ color: "var(--primary-500)" }} />
-            <span className="font-semibold" style={{ letterSpacing: "0.02em" }}>{t("dashboard.configureAgents")}</span>
-          </button>
-        </div>
-
+      {/* TOP LEVEL: SERVICES & INGESTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* System Health */}
         <div className="flex flex-col" style={cardStyle}>
           <div className="flex items-center justify-between mb-4">
-            <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-2">
+            <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-1.5">
               <Activity size={14} style={{ color: "var(--info)" }} /> {t("monitoring.dashboard.servicesTitle")}
             </h3>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void refresh()}>
@@ -212,131 +154,131 @@ export function DashboardView() {
             ) : null}
           </div>
         </div>
-      </div>
 
-      {/* INGESTION STATUS PANEL */}
-      {(() => {
-        const s = sharedIngestionStatus || ingestion.status;
-        const statusInfo = getIngestionStatusLabel(s?.status ?? "idle", t);
-        const isRunning = s?.status === "running";
-        const isPaused = s?.status === "paused";
-        const progressRatio = sharedIngestionStatus ? sharedProgress : (s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0);
+        {/* INGESTION STATUS PANEL */}
+        {(() => {
+          const s = sharedIngestionStatus || ingestion.status;
+          const statusInfo = getIngestionStatusLabel(s?.status ?? "idle", t);
+          const isRunning = s?.status === "running";
+          const isPaused = s?.status === "paused";
+          const progressRatio = sharedIngestionStatus ? sharedProgress : (s?.doc_total ? Math.min(100, Math.round((s.doc_index / s.doc_total) * 100)) : 0);
 
-        return (
-          <section style={cardStyle}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-2">
-                <HardDriveDownload size={14} style={{ color: "var(--primary-500)" }} />
-                {t("dashboard.knowledgeBase")}
-              </h3>
-              <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, color: statusInfo.color }}>
-                {statusInfo.icon}
-                {statusInfo.label}
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            {(isRunning || isPaused) && (
-              <div className="mb-3">
-                <div className="overflow-hidden" style={{ height: 8, borderRadius: "var(--radius-full)", background: "var(--bg-tertiary)" }}>
-                  <div
-                    className="transition-all"
-                    style={{
-                      height: "100%",
-                      borderRadius: "var(--radius-full)",
-                      background: isPaused ? "var(--warning)" : "var(--gradient-hero)",
-                      width: `${progressRatio}%`,
-                      transition: "width 500ms ease-out",
-                    }}
-                  />
-                </div>
-                <div className="flex items-center justify-between mt-1.5" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                  <span>{s?.doc_index ?? 0}/{s?.doc_total ?? 0} documents · {progressRatio}%</span>
-                  {s?.current_doc && (
-                    <span className="truncate" style={{ maxWidth: 200 }} title={s.current_doc}>{s.current_doc}</span>
-                  )}
+          return (
+            <section style={cardStyle}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-1.5">
+                  <HardDriveDownload size={14} style={{ color: "var(--primary-500)" }} />
+                  {t("dashboard.knowledgeBase")}
+                </h3>
+                <div className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, color: statusInfo.color }}>
+                  {statusInfo.icon}
+                  {statusInfo.label}
                 </div>
               </div>
-            )}
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {!isRunning && !isPaused && (
-                <>
-                  <Button
-                    size="sm"
-                    className="text-xs gap-1.5 text-white"
-                    style={{ background: "var(--primary-500)" }}
-                    onClick={() => void ingestion.start(false)}
-                  >
-                    <Play size={14} />
-                    {t("dashboard.startIngestion")}
-                  </Button>
+              {/* Progress bar */}
+              {(isRunning || isPaused) && (
+                <div className="mb-3">
+                  <div className="overflow-hidden" style={{ height: 8, borderRadius: "var(--radius-full)", background: "var(--bg-tertiary)" }}>
+                    <div
+                      className="transition-all"
+                      style={{
+                        height: "100%",
+                        borderRadius: "var(--radius-full)",
+                        background: isPaused ? "var(--warning)" : "var(--gradient-hero)",
+                        width: `${progressRatio}%`,
+                        transition: "width 500ms ease-out",
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                    <span>{s?.doc_index ?? 0}/{s?.doc_total ?? 0} documents · {progressRatio}%</span>
+                    {s?.current_doc && (
+                      <span className="truncate" style={{ maxWidth: 200 }} title={s.current_doc}>{s.current_doc}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {!isRunning && !isPaused && (
+                  <>
+                    <Button
+                      size="sm"
+                      className="text-xs gap-1.5 text-white"
+                      style={{ background: "var(--primary-500)" }}
+                      onClick={() => void ingestion.start(false)}
+                    >
+                      <Play size={14} />
+                      {t("dashboard.startIngestion")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1.5"
+                      onClick={() => void ingestion.start(true)}
+                    >
+                      <RefreshCw size={14} />
+                      {t("dashboard.incremental")}
+                    </Button>
+                  </>
+                )}
+                {isRunning && (
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-xs gap-1.5"
-                    onClick={() => void ingestion.start(true)}
+                    onClick={() => void ingestion.pause()}
                   >
-                    <RefreshCw size={14} />
-                    {t("dashboard.incremental")}
+                    <Pause size={14} />
+                    {t("dashboard.pause")}
                   </Button>
-                </>
-              )}
-              {isRunning && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs gap-1.5"
-                  onClick={() => void ingestion.pause()}
-                >
-                  <Pause size={14} />
-                  {t("dashboard.pause")}
-                </Button>
-              )}
-              {isPaused && (
-                <Button
-                  size="sm"
-                  className="text-xs gap-1.5 text-white"
-                  style={{ background: "var(--primary-500)" }}
-                  onClick={() => void ingestion.resume()}
-                >
-                  <Play size={14} />
-                  {t("dashboard.resume")}
-                </Button>
-              )}
-              {(isRunning || isPaused) && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs"
-                  style={{ color: "var(--error)" }}
-                  onClick={() => {
-                    if (confirm(t("dashboard.cancelIngestionConfirm"))) {
-                      void ingestion.cancel();
-                    }
-                  }}
-                >
-                  {t("dashboard.cancelIngestion")}
-                </Button>
-              )}
+                )}
+                {isPaused && (
+                  <Button
+                    size="sm"
+                    className="text-xs gap-1.5 text-white"
+                    style={{ background: "var(--primary-500)" }}
+                    onClick={() => void ingestion.resume()}
+                  >
+                    <Play size={14} />
+                    {t("dashboard.resume")}
+                  </Button>
+                )}
+                {(isRunning || isPaused) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    style={{ color: "var(--error)" }}
+                    onClick={() => {
+                      if (confirm(t("dashboard.cancelIngestionConfirm"))) {
+                        void ingestion.cancel();
+                      }
+                    }}
+                  >
+                    {t("dashboard.cancelIngestion")}
+                  </Button>
+                )}
 
-              {/* Stats summary inline */}
-              <div className="ml-auto flex items-center gap-4" style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                <span>
-                  <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{state.ingestion.total_documents}</span> {t("dashboard.docs")}
-                </span>
-                <span>
-                  <span style={{ fontWeight: 600, color: "var(--info)" }}>{state.ingestion.total_chunks}</span> {t("dashboard.chunks")}
-                </span>
-                <span style={{ color: "var(--success)", fontWeight: 500 }}>
-                  {state.ingestion.coverage_percent.toFixed(1)}% {t("dashboard.coverage")}
-                </span>
+                {/* Stats summary inline */}
+                <div className="ml-auto flex items-center gap-4" style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  <span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{state.ingestion.total_documents}</span> {t("dashboard.docs")}
+                  </span>
+                  <span>
+                    <span style={{ fontWeight: 600, color: "var(--info)" }}>{state.ingestion.total_chunks}</span> {t("dashboard.chunks")}
+                  </span>
+                  <span style={{ color: "var(--success)", fontWeight: 500 }}>
+                    {state.ingestion.coverage_percent.toFixed(1)}% {t("dashboard.coverage")}
+                  </span>
+                </div>
               </div>
-            </div>
-          </section>
-        );
-      })()}
+            </section>
+          );
+        })()}
+      </div>
 
       {/* MAIN STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -402,7 +344,7 @@ export function DashboardView() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* ACTIVITY CHART */}
         <section className="col-span-1 lg:col-span-2" style={cardStyle}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-2">
+          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-1.5">
             <BarChart3 size={14} style={{ color: "var(--primary-500)" }} /> {t("monitoring.dashboard.activity7dTitle")}
           </h3>
           <div className="grid grid-cols-7 gap-3 items-end" style={{ height: 160, marginTop: 16 }}>
@@ -440,7 +382,7 @@ export function DashboardView() {
 
         {/* INTENT DISTRIBUTION */}
         <section className="col-span-1" style={cardStyle}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-2">
+          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-1.5">
             <Cpu size={14} style={{ color: "var(--primary-500)" }} /> {t("monitoring.dashboard.intentDistributionTitle")}
           </h3>
           <div className="space-y-4">

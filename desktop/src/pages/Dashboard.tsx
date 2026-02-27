@@ -13,7 +13,7 @@ export function Dashboard() {
         style={{
           maxWidth: "var(--settings-max-width)",
           margin: "0 auto",
-          padding: "32px 20px",
+          padding: "24px 20px",
         }}
       >
         <h1

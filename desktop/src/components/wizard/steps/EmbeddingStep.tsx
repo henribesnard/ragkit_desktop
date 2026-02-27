@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { ipc } from "@/lib/ipc";
 import { invoke } from "@tauri-apps/api/core";
@@ -21,21 +21,22 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     const modelRef = useRef(model);
     modelRef.current = model;
 
-    const updateEmbedding = useCallback((patch: any) => {
+    const updateEmbedding = (patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.embedding) cfg.embedding = {};
             cfg.embedding = { ...cfg.embedding, ...patch };
             return cfg;
         });
-        setTestResult(null); // reset testing whenever config changes
-        setStepValid(false); // require re-test when config changes
-    }, [updateConfig, setStepValid]);
+        setTestResult(null);
+        setStepValid(false);
+    };
 
     useEffect(() => {
         if (!embCfg.provider || !embCfg.model) {
             updateEmbedding({ provider, model });
         }
-    }, [embCfg.provider, embCfg.model, provider, model, updateEmbedding]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [embCfg.provider, embCfg.model, provider, model]);
 
     useEffect(() => {
         if (provider === "ollama") {
@@ -53,7 +54,8 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 .catch(console.error)
                 .finally(() => setLoadingModels(false));
         }
-    }, [provider, updateEmbedding]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [provider]);
 
     useEffect(() => {
         if (provider === "openai" && model !== "text-embedding-3-small" && model !== "text-embedding-3-large") {
@@ -61,7 +63,8 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
         } else if (provider === "huggingface" && model !== "intfloat/multilingual-e5-large") {
             updateEmbedding({ model: "intfloat/multilingual-e5-large" });
         }
-    }, [provider, model, updateEmbedding]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [provider, model]);
 
 
     const handleTest = async () => {
