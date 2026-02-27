@@ -10,8 +10,11 @@ import "./i18n";
 
 function SplashScreen() {
     return (
-        <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-900">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white"></div>
+        <div
+            className="h-screen w-screen flex items-center justify-center"
+            style={{ background: "var(--bg-primary)" }}
+        >
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: "var(--primary-500)" }}></div>
         </div>
     );
 }
@@ -32,13 +35,15 @@ export default function App() {
 
     return (
         <BrowserRouter>
-            <div className="flex h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+            <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
                 <Sidebar />
                 <main className="flex-1 overflow-hidden">
                     <Routes>
                         <Route path="/chat" element={<Chat />} />
+                        <Route path="/chat/:id" element={<Chat />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/settings" element={<Settings />} />
+                        <Route path="/settings/:section" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/chat" replace />} />
                     </Routes>
                 </main>

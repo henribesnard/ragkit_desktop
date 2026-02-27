@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "RAGKIT"
+    "name": "LOKO"
   },
   "navigation": {
     "chat": "Chat",
@@ -11,9 +11,30 @@
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode"
   },
+  "sidebar": {
+    "newChat": "New conversation",
+    "search": "Search...",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last7days": "Last 7 days",
+    "last30days": "Last 30 days",
+    "older": "Older",
+    "archives": "Archives",
+    "archiveCount": "Archives ({{count}})",
+    "rename": "Rename",
+    "archive": "Archive",
+    "delete": "Delete",
+    "restore": "Restore",
+    "deleteConfirmTitle": "Delete conversation?",
+    "deleteConfirmMessage": "This action is irreversible. The conversation \"{{title}}\" will be permanently deleted.",
+    "cancel": "Cancel"
+  },
   "chat": {
     "title": "Chat",
     "placeholder": "Chat will be available after configuration",
+    "inputPlaceholder": "Ask a question about your documents...",
+    "inputPlaceholderIngestion": "Ingestion in progress... You can already ask questions.",
+    "inputPlaceholderNotReady": "Configure your knowledge base first.",
     "description": "Configure your knowledge base to start asking questions.",
     "semanticDescription": "Ask a question to run semantic retrieval and display the most relevant chunks.",
     "lexicalDescription": "Ask a question to run lexical BM25 retrieval on exact terms.",
@@ -32,7 +53,19 @@
     "noThanks": "No thanks, I'll ask my own",
     "export": "Export",
     "exportConversation": "Export conversation",
-    "exportSuccess": "Conversation exported"
+    "exportSuccess": "Conversation exported",
+    "emptyTitle": "Ask me a question about your documents.",
+    "emptySubtitle": "Your local search assistant is ready.",
+    "notConfiguredTitle": "Welcome to LOKO!",
+    "notConfiguredSubtitle": "Configure your knowledge base to start asking questions.",
+    "notConfiguredAction": "Launch configuration",
+    "stopGeneration": "Stop",
+    "generating": "Generating...",
+    "response": "Response",
+    "sources": "Sources",
+    "newConversation": "New conversation",
+    "aiDisclaimer": "AI can make mistakes. Always verify the provided sources.",
+    "debug": "Debug"
   },
   "settings": {
     "title": "Settings",
@@ -53,16 +86,43 @@
     "agents": "Agents",
     "monitoring": "Monitoring",
     "security": "Security",
-    "advanced": "Advanced"
+    "advanced": "Advanced",
+    "saved": "Settings saved"
   },
   "dashboard": {
     "title": "Dashboard",
     "placeholder": "Monitoring will appear here",
-    "description": "Monitoring and statistics will appear here once ingestion is launched."
+    "description": "Monitoring and statistics will appear here once ingestion is launched.",
+    "startChat": "Start Chat",
+    "addDocs": "Add Documents",
+    "configureAgents": "Configure Agents",
+    "knowledgeBase": "Knowledge Base",
+    "startIngestion": "Start Ingestion",
+    "incremental": "Incremental",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancelIngestion": "Cancel",
+    "cancelIngestionConfirm": "Cancel ongoing ingestion?",
+    "docs": "docs",
+    "chunks": "chunks",
+    "coverage": "cov.",
+    "successRate": "success",
+    "over24h": "Over 24h",
+    "satisfactionRate": "Satisfaction Rate",
+    "over7d": "Over 7d",
+    "average": "Average",
+    "reqs": "reqs",
+    "systemAlerts": "System Alerts",
+    "ingestionRunning": "Ingestion running",
+    "ingestionPaused": "Ingestion paused",
+    "ingestionCompleted": "Ingestion completed",
+    "ingestionError": "Ingestion error",
+    "ingestionReady": "Ready"
   },
   "backend": {
     "connected": "Backend connected",
-    "disconnected": "Backend disconnected"
+    "disconnected": "Backend disconnected",
+    "reconnecting": "Reconnecting..."
   },
   "monitoring": {
     "status": {

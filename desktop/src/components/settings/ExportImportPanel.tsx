@@ -14,7 +14,7 @@ export function ExportImportPanel() {
     try {
       const path = await save({
         defaultPath: "ragkit-config.ragkit-config",
-        filters: [{ name: "RAGKIT Config", extensions: ["ragkit-config"] }],
+        filters: [{ name: "LOKO Config", extensions: ["ragkit-config"] }],
       });
       if (!path) return;
       await exportConfig(path);
@@ -26,7 +26,7 @@ export function ExportImportPanel() {
   const handleSelectImport = async () => {
     try {
       const path = await open({
-        filters: [{ name: "RAGKIT Config", extensions: ["ragkit-config"] }],
+        filters: [{ name: "LOKO Config", extensions: ["ragkit-config"] }],
         multiple: false,
       });
       if (!path) return;

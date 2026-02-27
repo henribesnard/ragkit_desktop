@@ -17,7 +17,7 @@ export function AgentsStep({ wizard }: { wizard: any }) {
         <div className="max-w-2xl mx-auto py-8">
             <h1 className="text-2xl font-bold mb-4">Agents Intelligents</h1>
             <p className="text-gray-500 mb-8">
-                RAGKIT peut utiliser une architecture multi-agents pour décomposer des questions complexes et chercher dans plusieurs directions simultanément.
+                LOKO peut utiliser une architecture multi-agents pour décomposer des questions complexes et chercher dans plusieurs directions simultanément.
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">

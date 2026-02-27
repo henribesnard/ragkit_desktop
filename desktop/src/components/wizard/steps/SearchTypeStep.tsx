@@ -17,7 +17,7 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
         <div className="max-w-2xl mx-auto py-8">
             <h1 className="text-2xl font-bold mb-4">Stratégie de Recherche</h1>
             <p className="text-gray-500 mb-8">
-                Comment souhaitez-vous que RAGKIT recherche l'information pour générer ses réponses ?
+                Comment souhaitez-vous que LOKO recherche l'information pour générer ses réponses ?
             </p>
 
             <div className="space-y-4 mb-8">

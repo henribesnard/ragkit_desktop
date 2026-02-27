@@ -1,20 +1,33 @@
-import { Link, useLocation } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { MessageSquare, LayoutDashboard, Settings, Moon, Sun, Languages } from "lucide-react";
+import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { useConversations } from "../../hooks/useConversations";
+import { ConversationList } from "./ConversationList";
+import { ConversationSearch } from "./ConversationSearch";
 
 export function Sidebar() {
     const { t, i18n } = useTranslation();
     const location = useLocation();
+    const navigate = useNavigate();
     const { isHealthy: isBackendHealthy, version: backendVersion } = useBackendHealth();
     const { theme, toggle: toggleTheme } = useTheme();
+    const {
+        grouped,
+        activeId,
+        conversations,
+        archivedCount,
+        createConversation,
+        openConversation,
+        deleteConversation,
+        archiveConversation,
+        renameConversation,
+        searchConversations,
+    } = useConversations();
+
+    const [searchQuery, setSearchQuery] = useState("");
 
     const toggleLanguage = () => {
         const newLang = i18n.language === "fr" ? "en" : "fr";
@@ -22,38 +35,208 @@ export function Sidebar() {
         localStorage.setItem("ragkit-lang", newLang);
     };
 
-    const navItems = [
-        { path: "/chat", label: t("navigation.chat"), icon: MessageSquare },
-        { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard },
-        { path: "/settings", label: t("navigation.settings"), icon: Settings },
-    ];
+    const filteredConversations = useMemo(() => {
+        if (!searchQuery.trim()) return null;
+        return searchConversations(searchQuery);
+    }, [searchQuery, searchConversations]);
+
+    const showSearch = conversations.filter((c) => !c.archived).length > 5;
+
+    const handleNewConversation = async () => {
+        await createConversation();
+        navigate("/chat");
+    };
+
+    const handleSelectConversation = (id: string) => {
+        openConversation(id);
+        navigate("/chat");
+    };
+
+    const isNavActive = (path: string) => location.pathname.startsWith(path);
 
     return (
-        <div className="flex flex-col w-52 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 h-screen">
-            {/* Logo */}
-            <div className="px-4 py-5 flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black font-bold text-xs">
-                    R
-                </div>
-                <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{t("app.name")}</span>
+        <div
+            className="flex flex-col h-screen"
+            style={{
+                width: "var(--sidebar-width)",
+                background: "var(--bg-secondary)",
+                borderRight: "1px solid var(--border-default)",
+                padding: 12,
+                flexShrink: 0,
+            }}
+        >
+            {/* Header — LOKO Wordmark */}
+            <div style={{ padding: "8px 12px", marginBottom: 8 }}>
+                <span
+                    style={{
+                        fontSize: 20,
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                        color: theme === "dark" ? "var(--primary-400)" : "var(--primary-800)",
+                    }}
+                >
+                    LOKO
+                </span>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-3 space-y-0.5">
-                {navItems.map((item) => {
-                    const isActive = location.pathname.startsWith(item.path);
-                    const Icon = item.icon;
+            {/* New Conversation Button */}
+            <button
+                onClick={handleNewConversation}
+                className="flex items-center gap-2 w-full transition-colors"
+                style={{
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-md)",
+                    background: "transparent",
+                    color: "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    height: 36,
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
+            >
+                <SquarePen size={18} />
+                {t("sidebar.newChat")}
+            </button>
 
+            {/* Separator */}
+            <div
+                style={{
+                    height: 1,
+                    background: "var(--border-default)",
+                    margin: "8px 12px",
+                }}
+            />
+
+            {/* Search (if > 5 conversations) */}
+            {showSearch && (
+                <div style={{ padding: "0 0 4px 0" }}>
+                    <ConversationSearch
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                    />
+                </div>
+            )}
+
+            {/* Conversations List — Scrollable */}
+            <div
+                className="flex-1 overflow-y-auto"
+                style={{ marginBottom: 8 }}
+            >
+                {filteredConversations ? (
+                    // Search results — flat list
+                    <div className="space-y-0.5">
+                        {filteredConversations.length === 0 ? (
+                            <div
+                                className="text-center py-4 text-xs"
+                                style={{ color: "var(--text-tertiary)" }}
+                            >
+                                {t("chat.emptyResults")}
+                            </div>
+                        ) : (
+                            filteredConversations.map((conv) => (
+                                <div
+                                    key={conv.id}
+                                    className="cursor-pointer transition-colors"
+                                    style={{
+                                        padding: "8px 12px",
+                                        borderRadius: "var(--radius-md)",
+                                        background: conv.id === activeId ? "var(--bg-hover)" : "transparent",
+                                    }}
+                                    onClick={() => handleSelectConversation(conv.id)}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (conv.id !== activeId) {
+                                            (e.currentTarget as HTMLElement).style.background = "transparent";
+                                        }
+                                    }}
+                                >
+                                    <span
+                                        className="text-sm truncate block"
+                                        style={{ color: "var(--text-primary)" }}
+                                    >
+                                        {conv.title || t("sidebar.newChat")}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : (
+                    <ConversationList
+                        grouped={grouped}
+                        activeId={activeId}
+                        onSelect={handleSelectConversation}
+                        onRename={renameConversation}
+                        onArchive={archiveConversation}
+                        onDelete={deleteConversation}
+                    />
+                )}
+
+                {/* Archives link */}
+                {archivedCount > 0 && !filteredConversations && (
+                    <div
+                        className="text-xs mt-4 px-3 cursor-pointer transition-colors"
+                        style={{ color: "var(--text-tertiary)" }}
+                        onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                        }}
+                    >
+                        📁 {t("sidebar.archiveCount", { count: archivedCount })}
+                    </div>
+                )}
+            </div>
+
+            {/* Separator */}
+            <div
+                style={{
+                    height: 1,
+                    background: "var(--border-default)",
+                    margin: "0 12px 8px",
+                }}
+            />
+
+            {/* Secondary Navigation */}
+            <nav className="space-y-0.5 mb-2">
+                {[
+                    { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard },
+                    { path: "/settings", label: t("navigation.settings"), icon: Settings },
+                ].map((item) => {
+                    const active = isNavActive(item.path);
+                    const Icon = item.icon;
                     return (
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                isActive
-                                    ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800/50"
-                            )}
+                            className="flex items-center gap-2 transition-colors"
+                            style={{
+                                padding: "8px 12px",
+                                borderRadius: "var(--radius-md)",
+                                fontSize: 13,
+                                color: active ? "var(--primary-500)" : "var(--text-secondary)",
+                                background: active ? "var(--bg-hover)" : "transparent",
+                                fontWeight: active ? 500 : 400,
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!active) {
+                                    (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                                    (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!active) {
+                                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                                    (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                                }
+                            }}
                         >
                             <Icon size={18} />
                             {item.label}
@@ -62,35 +245,84 @@ export function Sidebar() {
                 })}
             </nav>
 
+            {/* Separator */}
+            <div
+                style={{
+                    height: 1,
+                    background: "var(--border-default)",
+                    margin: "0 12px 8px",
+                }}
+            />
+
             {/* Footer */}
-            <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
-                {/* Controls */}
-                <div className="flex items-center justify-between px-1">
-                    <button
-                        onClick={toggleLanguage}
-                        className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        title={i18n.language.toUpperCase()}
-                    >
-                        <Languages size={16} />
-                    </button>
-                    <button
-                        onClick={toggleTheme}
-                        className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        title={theme === "light" ? t("layout.darkMode") : t("layout.lightMode")}
-                    >
-                        {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-                    </button>
+            <div
+                className="flex items-center justify-between"
+                style={{ padding: "0 4px" }}
+            >
+                {/* Language Toggle */}
+                <button
+                    onClick={toggleLanguage}
+                    className="flex items-center gap-1 transition-colors"
+                    style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "var(--text-tertiary)",
+                        background: "transparent",
+                        padding: "4px 6px",
+                        borderRadius: "var(--radius-sm)",
+                    }}
+                    onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                    }}
+                    title={i18n.language.toUpperCase()}
+                >
+                    <Globe size={14} />
+                    {i18n.language.toUpperCase()}
+                </button>
+
+                {/* Theme Toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className="transition-colors"
+                    style={{
+                        color: "var(--text-tertiary)",
+                        background: "transparent",
+                        padding: 6,
+                        borderRadius: "var(--radius-sm)",
+                    }}
+                    onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                    }}
+                    title={theme === "light" ? t("layout.darkMode") : t("layout.lightMode")}
+                >
+                    {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+                </button>
+
+                {/* Backend Status */}
+                <div
+                    className="flex items-center gap-1.5"
+                    title={isBackendHealthy ? t("backend.connected") : t("backend.disconnected")}
+                >
                     <div
-                        className="flex items-center gap-1.5 px-1.5"
-                        title={isBackendHealthy ? t("backend.connected") : t("backend.disconnected")}
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                            background: isBackendHealthy ? "var(--success)" : "var(--error)",
+                        }}
+                    />
+                    <span
+                        style={{
+                            fontSize: 10,
+                            color: "var(--text-tertiary)",
+                        }}
                     >
-                        <div className={cn("w-1.5 h-1.5 rounded-full", isBackendHealthy ? "bg-green-500" : "bg-red-500")} />
-                        <span className="text-[10px] text-gray-400">{isBackendHealthy ? "Online" : "Offline"}</span>
-                    </div>
-                </div>
-                {/* Version */}
-                <div className="text-center text-[10px] text-gray-300 dark:text-gray-600">
-                    {backendVersion ? `v${backendVersion}` : "..."}
+                        {backendVersion ? `v${backendVersion}` : "..."}
+                    </span>
                 </div>
             </div>
         </div>

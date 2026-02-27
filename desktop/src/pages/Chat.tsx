@@ -1,36 +1,23 @@
-﻿import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+﻿import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, Loader2, MessageSquare, Send, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Toggle } from "@/components/ui/Toggle";
-import { LexicalResultCard } from "@/components/chat/LexicalResultCard";
+import { ArrowUp, FileText, Loader2, Square } from "lucide-react";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
 import { TestQuestionPrompt } from "@/components/chat/TestQuestionPrompt";
 import { ConversationExportMenu } from "@/components/chat/ConversationExportMenu";
-import { LexicalSearchResultItem } from "@/hooks/useLexicalSearch";
-import { UnifiedSearchResultItem, useUnifiedSearch } from "@/hooks/useUnifiedSearch";
+import { EmptyState } from "@/components/chat/EmptyState";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { ScrollToBottom } from "@/components/chat/ScrollToBottom";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversation } from "@/hooks/useConversation";
 import { useFeedback } from "@/hooks/useFeedback";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 
-interface FilterValuesResponse {
-  values: string[];
-}
-
 interface ChatReadyResponse {
   ready: boolean;
   vectors_count: number;
   lexical_chunks?: number;
-}
-
-interface ChatFilters {
-  doc_ids: string[];
-  doc_types: string[];
-  languages: string[];
-  categories: string[];
 }
 
 interface SearchConfigState {
@@ -42,77 +29,8 @@ interface GeneralSettingsPayload {
   search_type?: ChatSearchMode;
 }
 
-function scoreClass(score: number): string {
-  if (score >= 0.8) return "text-green-700 bg-green-100";
-  if (score >= 0.6) return "text-lime-700 bg-lime-100";
-  if (score >= 0.4) return "text-amber-700 bg-amber-100";
-  return "text-red-700 bg-red-100";
-}
-
-function normalizeQueryTerms(query: string): string[] {
-  return query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((item) => item.trim())
-    .filter((item) => item.length >= 2);
-}
-
-function renderHighlighted(text: string, query: string): ReactNode {
-  const terms = normalizeQueryTerms(query);
-  if (!terms.length) return text;
-  const escaped = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, index) => {
-    if (terms.includes(part.toLowerCase())) {
-      return (
-        <mark key={`${part}-${index}`} className="bg-yellow-200/80 rounded px-0.5">
-          {part}
-        </mark>
-      );
-    }
-    return <span key={`${part}-${index}`}>{part}</span>;
-  });
-}
-
-function selectedValues(select: HTMLSelectElement): string[] {
-  return Array.from(select.selectedOptions).map((option) => option.value);
-}
-
-
-function rankChangeLabel(rankChange: number | null | undefined): string {
-  if (rankChange === null || rankChange === undefined) return "";
-  if (rankChange > 0) return `▲ +${rankChange}`;
-  if (rankChange < 0) return `▼ ${rankChange}`;
-  return "═ 0";
-}
-
-function toLexicalResult(result: UnifiedSearchResultItem): LexicalSearchResultItem {
-  return {
-    chunk_id: result.chunk_id,
-    score: result.score,
-    text: result.text,
-    text_preview: result.text_preview,
-    matched_terms: result.matched_terms || {},
-    highlight_positions: [],
-    doc_title: result.doc_title,
-    doc_path: result.doc_path,
-    doc_type: result.doc_type,
-    page_number: result.page_number,
-    chunk_index: result.chunk_index,
-    chunk_total: result.chunk_total,
-    chunk_tokens: result.chunk_tokens,
-    section_header: result.section_header,
-    doc_language: result.doc_language,
-    category: result.category,
-    keywords: result.keywords,
-    ingestion_version: result.ingestion_version,
-  };
-}
-
 export function Chat() {
   const { t } = useTranslation();
-  const { search: runUnifiedSearch } = useUnifiedSearch();
   const {
     content: streamedAnswer,
     isStreaming,
@@ -122,7 +40,7 @@ export function Chat() {
     stopStream,
     clear: clearStreamState,
   } = useChatStream();
-  const { history, refresh: refreshHistory, resetConversation } = useConversation();
+  const { history, refresh: refreshHistory } = useConversation();
   const {
     submit: submitFeedback,
     error: feedbackError,
@@ -132,41 +50,20 @@ export function Chat() {
   } = useFeedback();
 
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<UnifiedSearchResultItem[]>([]);
-  const [debug, setDebug] = useState<Record<string, any> | null>(null);
   const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
   const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
   const { status: ingestionProgress, isRunning: isIngesting } = usePersistentIngestion();
   const [showTestQuestion, setShowTestQuestion] = useState(false);
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
-  const [lexicalStemming, setLexicalStemming] = useState(true);
-  const [showOptions, setShowOptions] = useState(false);
-  const [showScores, setShowScores] = useState(true);
-  const [showMetadata, setShowMetadata] = useState(true);
-  const [showProvenance, setShowProvenance] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
   const [alphaOverride, setAlphaOverride] = useState(0.5);
-  const [hasMore, setHasMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [availableFilters, setAvailableFilters] = useState<ChatFilters>({
-    doc_ids: [],
-    doc_types: [],
-    languages: [],
-    categories: [],
-  });
-  const [filters, setFilters] = useState<ChatFilters>({
-    doc_ids: [],
-    doc_types: [],
-    languages: [],
-    categories: [],
-  });
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
-  const hasActiveFilters = useMemo(() => Object.values(filters).some((items) => items.length > 0), [filters]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const selectedModeEnabled =
     searchMode === "semantic" ? semanticEnabled : searchMode === "lexical" ? lexicalEnabled : semanticEnabled && lexicalEnabled;
 
@@ -175,61 +72,29 @@ export function Chat() {
     lexicalCfg: SearchConfigState,
     generalCfg: GeneralSettingsPayload,
   ) => {
-    const semanticIsEnabled = Boolean(semanticCfg.enabled ?? true);
-    const lexicalIsEnabled = Boolean(lexicalCfg.enabled ?? true);
-    setSemanticEnabled(semanticIsEnabled);
-    setLexicalEnabled(lexicalIsEnabled);
-    setLexicalStemming(Boolean(lexicalCfg.lexical_stemming ?? true));
-
-    const preferredMode = generalCfg.search_type || "hybrid";
-    const preferredAvailable =
-      (preferredMode === "semantic" && semanticIsEnabled) ||
-      (preferredMode === "lexical" && lexicalIsEnabled) ||
-      (preferredMode === "hybrid" && semanticIsEnabled && lexicalIsEnabled);
-
-    if (preferredAvailable) {
-      setSearchMode(preferredMode);
-      return;
-    }
-
-    if (semanticIsEnabled) {
-      setSearchMode("semantic");
-      return;
-    }
-    if (lexicalIsEnabled) {
-      setSearchMode("lexical");
-      return;
-    }
+    const sEnabled = Boolean(semanticCfg.enabled ?? true);
+    const lEnabled = Boolean(lexicalCfg.enabled ?? true);
+    setSemanticEnabled(sEnabled);
+    setLexicalEnabled(lEnabled);
+    const preferred = generalCfg.search_type || "hybrid";
+    const available =
+      (preferred === "semantic" && sEnabled) ||
+      (preferred === "lexical" && lEnabled) ||
+      (preferred === "hybrid" && sEnabled && lEnabled);
+    if (available) { setSearchMode(preferred); return; }
+    if (sEnabled) { setSearchMode("semantic"); return; }
+    if (lEnabled) { setSearchMode("lexical"); return; }
     setSearchMode("hybrid");
   };
 
-  const refreshChatState = async () => {
+  const refreshChatState = useCallback(async () => {
     try {
       const ready = await invoke<ChatReadyResponse>("get_chat_ready");
       setChatReady(ready);
-
       if (ingestionProgress?.status === "completed" && ready.ready && history.messages.length === 0) {
         setShowTestQuestion(true);
       }
-    } catch (err) {
-      console.warn("Failed to check chat readiness:", err);
-    }
-
-    // Fetch configs individually to be resilient to errors during ingestion
-    try {
-      const [docTypes, languages, categories, docIds] = await Promise.all([
-        invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_type" }).catch(() => ({ values: [] })),
-        invoke<FilterValuesResponse>("get_search_filter_values", { field: "language" }).catch(() => ({ values: [] })),
-        invoke<FilterValuesResponse>("get_search_filter_values", { field: "category" }).catch(() => ({ values: [] })),
-        invoke<FilterValuesResponse>("get_search_filter_values", { field: "doc_id" }).catch(() => ({ values: [] })),
-      ]);
-      setAvailableFilters({
-        doc_types: docTypes.values || [],
-        languages: languages.values || [],
-        categories: categories.values || [],
-        doc_ids: docIds.values || [],
-      });
-    } catch { /* ignore filter errors */ }
+    } catch { /* ignore */ }
 
     try {
       const [semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
@@ -246,27 +111,21 @@ export function Chat() {
         );
       }
       if (hybridCfg) setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
-    } catch { /* ignore config errors during ingestion */ }
-  };
+    } catch { /* ignore */ }
+  }, [ingestionProgress?.status, history.messages.length]);
 
   const prevIngesting = useRef(isIngesting);
   useEffect(() => {
-    if (prevIngesting.current && !isIngesting) {
-      void refreshChatState();
-    }
+    if (prevIngesting.current && !isIngesting) void refreshChatState();
     prevIngesting.current = isIngesting;
   }, [isIngesting, refreshChatState]);
 
-  useEffect(() => {
-    void refreshChatState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { void refreshChatState(); }, []);
 
   useEffect(() => {
     if (!finalResponse) return;
     void (async () => {
       await refreshHistory();
-      // Clear stream state after history has been updated to prevent double display
       clearStreamState();
     })();
   }, [finalResponse, refreshHistory, clearStreamState]);
@@ -283,483 +142,458 @@ export function Chat() {
     }
   }, [history.messages, setValueByQueryId]);
 
+  // Auto-scroll
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (!showScrollBtn) scrollToBottom();
+  }, [history.messages.length, streamedAnswer, scrollToBottom, showScrollBtn]);
+
+  const handleScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBtn(distFromBottom > 100);
+  }, []);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
+  }, [query]);
+
   const onSubmitFeedback = async (queryId: string, feedback: "positive" | "negative") => {
     await submitFeedback(queryId, feedback);
     await refreshHistory();
   };
 
-  const executeSearch = async (targetPage: number, append: boolean) => {
-    if (!query.trim()) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const payload = {
-        query: query.trim(),
-        search_type: searchMode,
-        alpha: searchMode === "hybrid" ? alphaOverride : undefined,
-        page: targetPage,
-        page_size: 5,
-        include_debug: debugMode,
-        filters,
-      };
-
-      const response = await runUnifiedSearch(payload);
-      setResults((prev) => (append ? [...prev, ...(response.results || [])] : response.results || []));
-      setHasMore(Boolean(response.has_more));
-      setPage(response.page || targetPage);
-      setTotalResults(response.total_results || 0);
-      setDebug((response.debug as Record<string, any>) || null);
-
-      if (!append) {
-        setExpanded({});
-      }
-    } catch (err: any) {
-      if (!append) {
-        setResults([]);
-      }
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (searchMode !== "hybrid" || !query.trim()) return;
-    const timer = window.setTimeout(() => {
-      void executeSearch(1, false);
-    }, 300);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alphaOverride]);
-
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled) return;
     const payload = {
       query: query.trim(),
       search_type: searchMode,
       alpha: searchMode === "hybrid" ? alphaOverride : undefined,
-      filters,
+      filters: { doc_ids: [], doc_types: [], languages: [], categories: [] },
       include_debug: debugMode,
     };
-    setResults([]);
-    setDebug(null);
-    setPage(1);
-    setHasMore(false);
-    setTotalResults(0);
-    // Don't clear query here — let the message stay visible in the chat
+    setQuery("");
     await startStream(payload);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void onSearch(e as unknown as FormEvent);
+    }
+  };
+
+  const getPlaceholder = () => {
+    if (!chatReady.ready) return t("chat.inputPlaceholderNotReady");
+    if (isIngesting) return t("chat.inputPlaceholderIngestion");
+    return t("chat.inputPlaceholder");
+  };
+
+  const hasMessages = history.messages.length > 0 || isStreaming || streamedAnswer;
+
   return (
-    <div className="h-full flex flex-col p-6 gap-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t("chat.title")}</h2>
-
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50">
-              <div className={`w-2 h-2 rounded-full ${isIngesting ? 'bg-amber-500 animate-pulse' : chatReady.ready ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                {isIngesting ? "Ingestion en cours..." : chatReady.ready ? "Chat opérationnel" : "Chat non opérationnel"}
-              </span>
-            </div>
-
-            {isIngesting && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-800/50 animate-in fade-in slide-in-from-right-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span className="text-xs font-bold whitespace-nowrap">
-                  Ingestion en cours
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (!confirm("Demarrer une nouvelle conversation ?")) return;
-              void (async () => {
-                await resetConversation();
-                clearStreamState();
-                setResults([]);
-                setDebug(null);
-              })();
+    <div className="h-full flex flex-col relative" style={{ background: "var(--bg-primary)" }}>
+      {/* Ingestion Banner */}
+      {isIngesting && (
+        <div
+          className="animate-fade-in flex items-center gap-2 mx-auto"
+          style={{
+            maxWidth: "var(--chat-max-width)",
+            width: "100%",
+            padding: "8px 16px",
+            margin: "8px auto 0",
+            borderRadius: "var(--radius-md)",
+            fontSize: 13,
+          }}
+        >
+          <style>{`.dark .ingestion-banner { background: rgba(6, 78, 59, 0.2) !important; color: var(--primary-300) !important; }`}</style>
+          <div
+            className="ingestion-banner flex items-center gap-2 w-full"
+            style={{
+              background: "var(--primary-50)",
+              color: "var(--primary-700)",
+              padding: "8px 16px",
+              borderRadius: "var(--radius-md)",
             }}
           >
-            Nouvelle conversation
-          </Button>
-          <ConversationExportMenu />
-          <Button variant="outline" onClick={() => setShowOptions((value) => !value)}>
-            <Settings2 className="w-4 h-4 mr-2" />
-            Options
-          </Button>
+            <Loader2 size={14} className="animate-spin" />
+            {t("chat.ingestionInProgress")}...
+          </div>
         </div>
-      </div>
-
-      {/* Ingestion progress is now a subtle badge in the header */}
+      )}
 
       {/* Test Question Prompt */}
       {showTestQuestion && (
-        <TestQuestionPrompt
-          onAsk={(q) => {
-            setShowTestQuestion(false);
-            setQuery(q);
-          }}
-          onDismiss={() => setShowTestQuestion(false)}
-        />
+        <div style={{ maxWidth: "var(--chat-max-width)", width: "100%", margin: "0 auto", padding: "0 20px" }}>
+          <TestQuestionPrompt
+            onAsk={(q) => { setShowTestQuestion(false); setQuery(q); }}
+            onDismiss={() => setShowTestQuestion(false)}
+          />
+        </div>
       )}
 
-      {showOptions && (
-        <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">
-          <div className="grid md:grid-cols-4 gap-3">
-            <Toggle checked={debugMode} onChange={setDebugMode} label="Mode debug" />
-            <Toggle checked={showScores} onChange={setShowScores} label="Afficher scores" />
-            <Toggle checked={showMetadata} onChange={setShowMetadata} label="Afficher metadonnees" />
-            <Toggle checked={showProvenance} onChange={setShowProvenance} label="Afficher provenance" />
-          </div>
-
-          {searchMode === "hybrid" && (
-            <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
-              <label className="text-sm font-medium">Alpha ({alphaOverride.toFixed(2)})</label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={alphaOverride}
-                onChange={(event) => setAlphaOverride(Number(event.target.value))}
-                className="mt-2 w-full"
-              />
-              <div className="mt-1 text-xs text-gray-500 flex justify-between">
-                <span>Lexical {Math.round((1 - alphaOverride) * 100)}%</span>
-                <span>Semantique {Math.round(alphaOverride * 100)}%</span>
-              </div>
+      {/* Messages Area */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto"
+        style={{ padding: "32px 0 0" }}
+        onScroll={handleScroll}
+      >
+        <div
+          style={{
+            maxWidth: "var(--chat-max-width)",
+            margin: "0 auto",
+            padding: "0 20px",
+          }}
+        >
+          {/* Errors */}
+          {(streamError || feedbackError) && (
+            <div
+              className="mb-4 rounded-lg px-4 py-3 text-sm"
+              style={{
+                background: "#FEE2E2",
+                color: "#991B1B",
+                border: "1px solid #FCA5A5",
+              }}
+            >
+              {streamError || feedbackError}
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-3">
-            <label className="text-sm">
-              Types
-              <select
-                className="mt-1 w-full border rounded px-2 py-1 min-h-28"
-                multiple
-                value={filters.doc_types}
-                onChange={(event) => setFilters((prev) => ({ ...prev, doc_types: selectedValues(event.target) }))}
-              >
-                {availableFilters.doc_types.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm">
-              Langues
-              <select
-                className="mt-1 w-full border rounded px-2 py-1 min-h-28"
-                multiple
-                value={filters.languages}
-                onChange={(event) => setFilters((prev) => ({ ...prev, languages: selectedValues(event.target) }))}
-              >
-                {availableFilters.languages.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm">
-              Categories
-              <select
-                className="mt-1 w-full border rounded px-2 py-1 min-h-28"
-                multiple
-                value={filters.categories}
-                onChange={(event) => setFilters((prev) => ({ ...prev, categories: selectedValues(event.target) }))}
-              >
-                {availableFilters.categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm">
-              Documents
-              <select
-                className="mt-1 w-full border rounded px-2 py-1 min-h-28"
-                multiple
-                value={filters.doc_ids}
-                onChange={(event) => setFilters((prev) => ({ ...prev, doc_ids: selectedValues(event.target) }))}
-              >
-                {availableFilters.doc_ids.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setFilters({ doc_ids: [], doc_types: [], languages: [], categories: [] })}>
-              Reinitialiser filtres
-            </Button>
-            {hasActiveFilters && <span className="text-xs text-amber-700 self-center">Filtres actifs</span>}
-          </div>
-        </section>
-      )}
-
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4 px-1 pr-3">
-        {error && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
-        {streamError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{streamError}</div>}
-        {feedbackError && <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">{feedbackError}</div>}
-
-        {history.messages.length > 0 ? (
-          <div className="flex flex-col space-y-4">
-            {history.messages.map((message, index) => (
-              <div key={`${message.timestamp}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${message.role === "user" ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm border border-gray-200 dark:border-gray-700 shadow-sm"}`}>
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                  {message.intent ? <div className="mt-1 text-xs opacity-80">Intent: {message.intent}</div> : null}
-                  {message.role === "assistant" && message.query_log_id ? (
-                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                      <FeedbackButtons
-                        queryId={message.query_log_id}
-                        value={valueByQueryId[message.query_log_id] || message.feedback || null}
-                        loading={Boolean(pendingByQueryId[message.query_log_id])}
-                        onSubmit={onSubmitFeedback}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {debugMode && debug && (
-          <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-xs space-y-1">
-            {Object.entries(debug).map(([key, value]) => (
-              <div key={key} className="break-words">
-                <span className="font-semibold">{key}: </span>
-                <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {(streamedAnswer || isStreaming || finalResponse) && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2 pb-2 border-b border-blue-100 dark:border-blue-800/50">
-                <span className="font-semibold text-blue-900 dark:text-blue-200">
-                  {isStreaming ? (
-                    <span className="flex items-center gap-2">
-                      <span className="animate-pulse h-2 w-2 bg-blue-600 rounded-full"></span>
-                      Génération en cours...
-                    </span>
-                  ) : "Réponse"}
-                </span>
-                {isStreaming && (
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => void stopStream()}>
-                    Arrêter
-                  </Button>
-                )}
-              </div>
-
-              <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
-
-              {finalResponse?.query_log_id ? (
-                <div className="mt-4 pt-3 border-t border-blue-100 dark:border-blue-800/50">
-                  <FeedbackButtons
-                    queryId={finalResponse.query_log_id}
-                    value={valueByQueryId[finalResponse.query_log_id] || null}
-                    loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
-                    onSubmit={onSubmitFeedback}
-                  />
-                </div>
-              ) : null}
-
-              {finalResponse?.intent ? (
-                <div className="mt-3 text-xs text-blue-700 dark:text-blue-400">
-                  Intent: <b>{finalResponse.intent}</b> | RAG: <b>{String(finalResponse.needs_rag)}</b>
-                  {finalResponse.rewritten_query ? <> | Reformulée: <b>{finalResponse.rewritten_query}</b></> : null}
-                </div>
-              ) : null}
-
-              {finalResponse?.sources?.length ? (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sources utilisées</h4>
-                  {finalResponse.sources.map((source) => (
-                    <article
-                      key={`${source.id}-${source.chunk_id}`}
-                      className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 text-xs"
+          {!hasMessages ? (
+            <EmptyState isReady={chatReady.ready} />
+          ) : (
+            <div className="flex flex-col" style={{ gap: 24 }}>
+              {/* History messages */}
+              {history.messages.map((message, index) => (
+                <div
+                  key={`${message.timestamp}-${index}`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}
+                >
+                  {message.role === "user" ? (
+                    /* User bubble */
+                    <div
+                      className="text-sm text-white"
+                      style={{
+                        maxWidth: "80%",
+                        padding: "12px 16px",
+                        borderRadius: "20px 20px 4px 20px",
+                        background: "var(--primary-500)",
+                      }}
                     >
-                      <div className="font-medium text-blue-800 dark:text-blue-300">
-                        [{source.id}] {source.title} {source.page ? `p.${source.page}` : ""}
-                      </div>
-                      <div className="text-gray-600 dark:text-gray-400 mt-1 line-clamp-2" title={source.text_preview}>
-                        {source.text_preview}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
-
-              {debugMode && finalResponse?.debug ? (
-                <section className="mt-3 rounded border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/20 p-2 text-xs space-y-1">
-                  {Object.entries(finalResponse.debug).map(([key, value]) => (
-                    <div key={key} className="break-words">
-                      <span className="font-semibold">{key}: </span>
-                      <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+                      <div className="whitespace-pre-wrap">{message.content}</div>
                     </div>
-                  ))}
-                </section>
-              ) : null}
-            </div>
-          </div>
-        )}
+                  ) : (
+                    /* Assistant bubble */
+                    <div
+                      className="text-sm"
+                      style={{
+                        maxWidth: "85%",
+                        padding: 16,
+                        borderRadius: "4px 20px 20px 20px",
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--border-default)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
 
-        {/* Results grid */}
-        {results.length > 0 && (
-          <div className="space-y-3 mt-6">
-            <h4 className="text-sm font-medium text-gray-500 px-1 border-b pb-2">Documents trouvés</h4>
-            {searchMode === "lexical" &&
-              results.map((result) => (
-                <LexicalResultCard
-                  key={result.chunk_id}
-                  result={toLexicalResult(result)}
-                  expanded={Boolean(expanded[result.chunk_id])}
-                  onToggle={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !prev[result.chunk_id] }))}
-                  showScores={showScores}
-                  showMetadata={showMetadata}
-                  stemming={lexicalStemming}
-                />
+                      {/* Sources */}
+                      {message.sources?.length ? (
+                        <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--border-default)" }}>
+                          <div
+                            className="text-xs font-semibold uppercase mb-2"
+                            style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
+                          >
+                            {t("chat.sources")}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {message.sources.map((src, si) => (
+                              <span
+                                key={si}
+                                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
+                                style={{
+                                  background: "var(--bg-tertiary)",
+                                  color: "var(--text-secondary)",
+                                  borderRadius: "var(--radius-sm)",
+                                }}
+                                title={src.text_preview}
+                              >
+                                <FileText size={12} />
+                                {src.title || src.id}
+                                {src.page ? ` p.${src.page}` : ""}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Feedback */}
+                      {message.query_log_id && (
+                        <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                          <FeedbackButtons
+                            queryId={message.query_log_id}
+                            value={valueByQueryId[message.query_log_id] || message.feedback || null}
+                            loading={Boolean(pendingByQueryId[message.query_log_id])}
+                            onSubmit={onSubmitFeedback}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
 
-            {searchMode !== "lexical" &&
-              results.map((result) => {
-                const opened = Boolean(expanded[result.chunk_id]);
-                const displayedScore =
-                  result.is_reranked && result.rerank_score !== null && result.rerank_score !== undefined
-                    ? result.rerank_score
-                    : result.score;
-                const rerankToRank =
-                  result.original_rank !== null &&
-                    result.original_rank !== undefined &&
-                    result.rank_change !== null &&
-                    result.rank_change !== undefined
-                    ? result.original_rank - result.rank_change
-                    : null;
-                return (
-                  <article key={result.chunk_id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                        <span>{result.doc_title || result.doc_path || "Document inconnu"}</span>
-                        {result.page_number ? <span> | p.{result.page_number}</span> : null}
-                        {result.is_reranked ? (
-                          <span className="inline-flex items-center rounded px-1.5 py-0.5 bg-indigo-100 text-indigo-700">
-                            {rankChangeLabel(result.rank_change)}
-                          </span>
-                        ) : null}
-                      </div>
-                      {showScores ? (
-                        <span className={`text-xs px-2 py-1 rounded ${scoreClass(displayedScore)}`}>
-                          {result.is_reranked ? "Score rerank" : t("chat.score")}: {displayedScore.toFixed(4)}
-                        </span>
-                      ) : null}
-                    </div>
+              {/* Streaming / Typing */}
+              {isStreaming && !streamedAnswer && <TypingIndicator />}
 
-                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                      {renderHighlighted(opened ? result.text : result.text_preview, query)}
-                    </p>
+              {(streamedAnswer || isStreaming) && (
+                <div className="flex justify-start animate-message-in">
+                  <div
+                    className="text-sm"
+                    style={{
+                      maxWidth: "85%",
+                      padding: 16,
+                      borderRadius: "4px 20px 20px 20px",
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-default)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
+                    {isStreaming && (
+                      <span
+                        className="inline-block w-2 h-4 ml-0.5"
+                        style={{
+                          background: "var(--primary-500)",
+                          animation: "typing-dot 1s infinite",
+                        }}
+                      />
+                    )}
 
-                    {searchMode === "hybrid" && showProvenance && (
-                      <div className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
-                        Sémantique: #{result.semantic_rank ?? "-"} ({result.semantic_score?.toFixed(4) ?? "n/a"})
-                        {" | "}
-                        Lexicale: #{result.lexical_rank ?? "-"} ({result.lexical_score?.toFixed(4) ?? "n/a"})
-                        {result.is_reranked ? (
-                          <>
-                            {" | "}
-                            Rerank: #{result.original_rank ?? "-"}{" -> "}#{rerankToRank ?? "-"}
-                            {" "}({result.rerank_score?.toFixed(4) ?? "n/a"})
-                          </>
-                        ) : null}
+                    {/* Stop button */}
+                    {isStreaming && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => void stopStream()}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors"
+                          style={{
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-default)",
+                            background: "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = "var(--error)";
+                            (e.currentTarget as HTMLElement).style.borderColor = "var(--error)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                            (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
+                          }}
+                        >
+                          <Square size={10} fill="currentColor" />
+                          {t("chat.stopGeneration")}
+                        </button>
                       </div>
                     )}
 
-                    {showMetadata && (
-                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 grid md:grid-cols-2 gap-2">
-                        <div>Type: <b>{result.doc_type || "n/a"}</b></div>
-                        <div>Langue: <b>{result.doc_language || "n/a"}</b></div>
-                        <div>Catégorie: <b>{result.category || "n/a"}</b></div>
-                        <div>Chunk: <b>{result.chunk_index ?? "n/a"}/{result.chunk_total ?? "n/a"}</b></div>
+                    {/* Final response sources */}
+                    {finalResponse?.sources?.length ? (
+                      <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--border-default)" }}>
+                        <div
+                          className="text-xs font-semibold uppercase mb-2"
+                          style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
+                        >
+                          {t("chat.sources")}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {finalResponse.sources.map((src) => (
+                            <span
+                              key={`${src.id}-${src.chunk_id}`}
+                              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
+                              style={{
+                                background: "var(--bg-tertiary)",
+                                color: "var(--text-secondary)",
+                                borderRadius: "var(--radius-sm)",
+                              }}
+                              title={src.text_preview}
+                            >
+                              <FileText size={12} />
+                              {src.title} {src.page ? `p.${src.page}` : ""}
+                            </span>
+                          ))}
+                        </div>
                       </div>
+                    ) : null}
+
+                    {/* Debug info */}
+                    {debugMode && finalResponse?.debug && (
+                      <details className="mt-3">
+                        <summary
+                          className="text-xs cursor-pointer font-semibold"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Debug
+                        </summary>
+                        <div
+                          className="mt-2 p-3 rounded text-xs space-y-1"
+                          style={{
+                            background: "var(--bg-tertiary)",
+                            border: "1px dashed var(--border-default)",
+                            borderRadius: "var(--radius-md)",
+                            fontFamily: "var(--font-mono)",
+                          }}
+                        >
+                          {Object.entries(finalResponse.debug).map(([key, value]) => (
+                            <div key={key} className="break-words">
+                              <span className="font-semibold">{key}: </span>
+                              <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
 
-                    <div className="mt-3">
-                      <Button variant="outline" size="sm" onClick={() => setExpanded((prev) => ({ ...prev, [result.chunk_id]: !opened }))} className="text-xs h-7">
-                        {opened ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-                        {opened ? "Réduire" : "Voir le texte complet"}
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-
-            <div className="flex items-center justify-between mt-4 pt-4">
-              <span className="text-xs text-gray-500">{totalResults} résultat(s)</span>
-              {hasMore && (
-                <Button variant="outline" disabled={loading} onClick={() => { void executeSearch(page + 1, true); }}>
-                  Voir plus de résultats
-                </Button>
+                    {/* Feedback for final response */}
+                    {finalResponse?.query_log_id && (
+                      <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                        <FeedbackButtons
+                          queryId={finalResponse.query_log_id}
+                          value={valueByQueryId[finalResponse.query_log_id] || null}
+                          loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
+                          onSubmit={onSubmitFeedback}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {!results.length && !loading && !error && history.messages.length === 0 && !streamedAnswer && !isStreaming && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 mt-12">
-            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
-              <MessageSquare size={32} className="text-blue-500 dark:text-blue-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Comment puis-je vous aider ?</h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-sm text-sm">
-              {chatReady.ready ? "Posez une question sur vos documents ou utilisez la barre de recherche ci-dessous." : "Base de connaissances vide. Lancez une ingestion depuis le tableau de bord pour commencer."}
-            </p>
-          </div>
-        )}
+          <div ref={messagesEndRef} className="h-4" />
+        </div>
       </div>
 
-      <div className="pt-2">
-        <form onSubmit={onSearch} className="relative flex items-center shadow-sm">
-          <input
+      {/* Scroll to bottom */}
+      <ScrollToBottom visible={showScrollBtn} onClick={scrollToBottom} />
+
+      {/* Input Area */}
+      <div
+        style={{
+          maxWidth: "var(--chat-max-width)",
+          width: "100%",
+          margin: "0 auto",
+          padding: "16px 20px 24px",
+        }}
+      >
+        <form
+          onSubmit={onSearch}
+          className="relative"
+          style={{
+            background: "var(--bg-tertiary)",
+            borderRadius: "var(--radius-xl)",
+            boxShadow: "var(--shadow-sm)",
+            padding: "14px 16px",
+            paddingRight: 96,
+          }}
+        >
+          <textarea
+            ref={textareaRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={chatReady.ready ? "Posez votre question..." : "Base vide. Lancez une ingestion."}
-            disabled={loading || !chatReady.ready || !selectedModeEnabled}
-            className="w-full rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pr-14 pl-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-900 transition-all text-sm"
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholder()}
+            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
+            rows={1}
+            className="w-full resize-none outline-none text-sm"
+            style={{
+              background: "transparent",
+              color: "var(--text-primary)",
+              minHeight: 24,
+              maxHeight: 200,
+              fontFamily: "var(--font-sans)",
+            }}
           />
+
+          {/* Send Button */}
           <button
             type="submit"
-            disabled={loading || !query.trim() || !chatReady.ready || !selectedModeEnabled}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors shadow-sm"
+            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+            className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "var(--radius-full)",
+              background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
+              color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
+              cursor: query.trim() && chatReady.ready ? "pointer" : "default",
+            }}
           >
-            <Send size={16} className={loading && (isStreaming || !results.length) ? "opacity-0" : ""} />
-            {loading && (isStreaming || !results.length) && <div className="absolute inset-0 flex items-center justify-center"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>}
+            {isStreaming ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ArrowUp size={18} />
+            )}
           </button>
         </form>
-        <div className="text-center mt-2 text-[10px] text-gray-400">
-          L'IA peut faire des erreurs. Vérifiez toujours les sources fournies.
+
+        {/* Options bar */}
+        <div
+          className="flex items-center justify-center gap-4 mt-2"
+          style={{ fontSize: 11, color: "var(--text-tertiary)" }}
+        >
+          {/* Search mode dropdown */}
+          <select
+            value={searchMode}
+            onChange={(e) => setSearchMode(e.target.value as ChatSearchMode)}
+            className="outline-none cursor-pointer"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--text-tertiary)",
+              fontSize: 11,
+            }}
+          >
+            <option value="semantic">semantic</option>
+            <option value="lexical">lexical</option>
+            <option value="hybrid">hybrid</option>
+          </select>
+
+          {/* Debug toggle */}
+          <button
+            onClick={() => setDebugMode(!debugMode)}
+            className="transition-colors"
+            style={{
+              color: debugMode ? "var(--primary-500)" : "var(--text-tertiary)",
+              background: "transparent",
+              border: "none",
+              fontSize: 11,
+              cursor: "pointer",
+            }}
+          >
+            {t("chat.debug")}
+          </button>
+
+          {/* Export */}
+          <ConversationExportMenu />
+        </div>
+
+        {/* Disclaimer */}
+        <div
+          className="text-center mt-2"
+          style={{ fontSize: 10, color: "var(--text-tertiary)" }}
+        >
+          {t("chat.aiDisclaimer")}
         </div>
       </div>
     </div>

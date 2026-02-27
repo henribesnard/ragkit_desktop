@@ -14,7 +14,7 @@ export function WizardContainer() {
     const { state } = wizard;
 
     if (state.isLoading) {
-        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>;
     }
 
     const steps = [
@@ -43,7 +43,7 @@ export function WizardContainer() {
             {state.step > 0 && (
                 <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
                     <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
-                        RAGKIT <span className="text-gray-400 font-normal text-sm">| Configuration</span>
+                        LOKO <span className="text-gray-400 font-normal text-sm">| Configuration</span>
                     </div>
                     <WizardProgress currentStep={state.step} totalSteps={15} />
                 </header>

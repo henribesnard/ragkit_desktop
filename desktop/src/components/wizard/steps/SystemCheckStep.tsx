@@ -17,7 +17,7 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
     return (
         <div className="max-w-2xl mx-auto py-8">
             <h1 className="text-2xl font-bold mb-4">Vérification du système</h1>
-            <p className="text-gray-500 mb-8">Nous analysons votre environnement pour configurer RAGKIT de manière optimale.</p>
+            <p className="text-gray-500 mb-8">Nous analysons votre environnement pour configurer LOKO de manière optimale.</p>
 
             {loading ? (
                 <div className="flex items-center justify-center p-12">

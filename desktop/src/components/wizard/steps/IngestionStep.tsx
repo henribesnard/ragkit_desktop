@@ -116,7 +116,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                     <Eye className={`w-6 h-6 ${ingestionMode === "automatic" ? "text-blue-600" : "text-gray-400"}`} />
                                     <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>Automatique</span>
                                     <span className="text-xs text-gray-500 text-center">
-                                        RAGKIT surveille votre dossier et indexe les changements automatiquement
+                                        LOKO surveille votre dossier et indexe les changements automatiquement
                                     </span>
                                 </button>
                             </div>

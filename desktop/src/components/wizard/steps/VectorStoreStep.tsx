@@ -28,7 +28,7 @@ export function VectorStoreStep({ wizard }: { wizard: any }) {
                     <div>
                         <h3 className="font-semibold text-blue-900 dark:text-blue-100">Qdrant Local (Par défaut)</h3>
                         <p className="text-sm text-blue-700 dark:text-blue-300">
-                            RAGKIT intègre nativement Qdrant. Vos données restent sur cet ordinateur, sans configuration complexe requise.
+                            LOKO intègre nativement Qdrant. Vos données restent sur cet ordinateur, sans configuration complexe requise.
                         </p>
                     </div>
                 </div>
