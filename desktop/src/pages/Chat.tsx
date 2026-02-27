@@ -127,6 +127,23 @@ export function Chat() {
 
   useEffect(() => { void refreshChatStateRef.current(); }, []);
 
+  const generateTitleIfNeeded = useCallback(async () => {
+    if (!urlId) return;
+
+    // We generate title if we have at least 2 messages.
+    // In our simplified logic, we trigger this after the first response.
+    if (history.messages.length >= 2 || (history.messages.length === 0 && finalResponse)) {
+      try {
+        const { title } = await ipc.generateConversationTitle(urlId);
+        if (title) {
+          updateConversationActivity(urlId, history.messages.length + 2, title);
+        }
+      } catch (err) {
+        console.error("Failed to generate title", err);
+      }
+    }
+  }, [urlId, history.messages.length, finalResponse, updateConversationActivity]);
+
   useEffect(() => {
     if (!finalResponse) return;
     void (async () => {
@@ -138,7 +155,7 @@ export function Chat() {
       // history.messages.length is checked inside generateTitleIfNeeded
       await generateTitleIfNeeded();
     })();
-  }, [finalResponse, refreshHistory, clearStreamState]);
+  }, [finalResponse, refreshHistory, clearStreamState, generateTitleIfNeeded]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -169,22 +186,7 @@ export function Chat() {
 
   // Unused placeholder removed
 
-  const generateTitleIfNeeded = async () => {
-    if (!urlId) return;
-
-    // We generate title if we have at least 2 messages.
-    // In our simplified logic, we trigger this after the first response.
-    if (history.messages.length >= 2 || (history.messages.length === 0 && finalResponse)) {
-      try {
-        const { title } = await ipc.generateConversationTitle(urlId);
-        if (title) {
-          updateConversationActivity(urlId, history.messages.length + 2, title);
-        }
-      } catch (err) {
-        console.error("Failed to generate title", err);
-      }
-    }
-  };
+  // Unused placeholder removed
 
   useEffect(() => {
     if (history.messages.length >= 2) {

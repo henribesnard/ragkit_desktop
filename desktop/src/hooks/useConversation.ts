@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import type { ChatSource } from "@/hooks/useChat";
@@ -30,7 +30,7 @@ export function useConversation(conversationId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
     try {
@@ -44,7 +44,7 @@ export function useConversation(conversationId: string | null) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [conversationId]);
 
   const resetConversation = async () => {
     if (!conversationId) return;
@@ -54,7 +54,7 @@ export function useConversation(conversationId: string | null) {
 
   useEffect(() => {
     void refresh();
-  }, [conversationId]);
+  }, [conversationId, refresh]);
 
   return {
     history,
