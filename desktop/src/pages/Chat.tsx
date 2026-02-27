@@ -115,7 +115,7 @@ export function Chat() {
   };
 
   const refreshChatStateRef = useRef(refreshChatState);
-  refreshChatStateRef.current = refreshChatState;
+  useEffect(() => { refreshChatStateRef.current = refreshChatState; });
 
   const prevIngesting = useRef(isIngesting);
   useEffect(() => {

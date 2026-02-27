@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 
@@ -10,18 +10,11 @@ interface ToastProps {
 }
 
 export function Toast({ message, visible, onClose, duration = 3000 }: ToastProps) {
-    const [fading, setFading] = useState(false);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        if (!visible) {
-            setFading(false);
-            return;
-        }
-        timerRef.current = setTimeout(() => {
-            setFading(true);
-            setTimeout(onClose, 200);
-        }, duration);
+        if (!visible) return;
+        timerRef.current = setTimeout(onClose, duration);
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
         };
@@ -48,8 +41,6 @@ export function Toast({ message, visible, onClose, duration = 3000 }: ToastProps
                 fontSize: 13,
                 fontWeight: 500,
                 boxShadow: "var(--shadow-md)",
-                opacity: fading ? 0 : 1,
-                transition: "opacity 200ms ease-out",
             }}
         >
             <Check size={16} />
