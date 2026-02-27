@@ -612,13 +612,26 @@ pub async fn chat_orchestrated(window: Window, query: serde_json::Value) -> Resu
 }
 
 #[tauri::command]
-pub async fn new_conversation(app: AppHandle) -> Result<serde_json::Value, String> {
-    request(Method::POST, "/api/chat/new", None, &app).await
+pub async fn new_conversation(app: AppHandle, conversation_id: Option<String>) -> Result<serde_json::Value, String> {
+    let endpoint = match &conversation_id {
+        Some(cid) => format!("/api/chat/new?conversation_id={}", _encode_query_value(cid)),
+        None => "/api/chat/new".to_string(),
+    };
+    request(Method::POST, &endpoint, None, &app).await
 }
 
 #[tauri::command]
-pub async fn get_conversation_history(app: AppHandle) -> Result<serde_json::Value, String> {
-    request(Method::GET, "/api/chat/history", None, &app).await
+pub async fn get_conversation_history(app: AppHandle, conversation_id: Option<String>) -> Result<serde_json::Value, String> {
+    let endpoint = match &conversation_id {
+        Some(cid) => format!("/api/chat/history?conversation_id={}", _encode_query_value(cid)),
+        None => "/api/chat/history".to_string(),
+    };
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn generate_title(app: AppHandle, payload: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/chat/generate_title", Some(payload), &app).await
 }
 
 // --- Monitoring config commands ---

@@ -138,6 +138,7 @@ fn main() {
             commands::chat_orchestrated,
             commands::new_conversation,
             commands::get_conversation_history,
+            commands::generate_title,
             commands::get_monitoring_config,
             commands::update_monitoring_config,
             commands::reset_monitoring_config,

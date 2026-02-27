@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 import type { ChatPayload, ChatResponse } from "@/hooks/useChat";
+import { stripSourceTags } from "@/lib/sanitize";
 
 export function useChatStream() {
   const [content, setContent] = useState("");
@@ -32,7 +33,7 @@ export function useChatStream() {
     setIsStreaming(true);
 
     const chunkUnlisten = await listen<string>("chat-stream-chunk", (event) => {
-      setContent((prev) => prev + event.payload);
+      setContent((prev) => stripSourceTags(prev + event.payload));
     });
     unlistenChunkRef.current = chunkUnlisten;
 
@@ -44,7 +45,7 @@ export function useChatStream() {
       } else if (donePayload && typeof donePayload === "object" && "answer" in donePayload) {
         const response = donePayload as ChatResponse;
         setFinalResponse(response);
-        setContent(response.answer || "");
+        setContent(stripSourceTags(response.answer || ""));
       }
       cleanupListeners();
     });

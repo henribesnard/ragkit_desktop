@@ -13,6 +13,7 @@ import { useChatStream } from "@/hooks/useChatStream";
 import { useConversation } from "@/hooks/useConversation";
 import { useFeedback } from "@/hooks/useFeedback";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
+import { stripSourceTags } from "@/lib/sanitize";
 
 interface ChatReadyResponse {
   ready: boolean;
@@ -344,7 +345,7 @@ export function Chat() {
                         color: "var(--text-primary)",
                       }}
                     >
-                      <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                      <div className="whitespace-pre-wrap leading-relaxed">{stripSourceTags(message.content)}</div>
 
                       {/* Sources */}
                       {message.sources?.length ? (
