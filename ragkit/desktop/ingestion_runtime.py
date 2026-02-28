@@ -5,10 +5,13 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
@@ -344,10 +347,12 @@ class IngestionRuntime:
         self.ensure_background_tasks()
         settings = load_settings()
         if not settings.ingestion:
+            logger.warning("Ingestion skipped: no ingestion config in settings")
             self.progress.status = "failed"
             return
         source_root = Path(settings.ingestion.source.path).expanduser()
         if not source_root.exists():
+            logger.warning("Ingestion skipped: source path does not exist: %s", source_root)
             self.progress.status = "failed"
             return
 

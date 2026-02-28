@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
+import logging
+
 from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.monitoring_schema import (
     ActivityDataPoint,
@@ -131,6 +133,7 @@ def _build_health_checker() -> HealthChecker:
 
 
 async def _resolve_ingestion_stats() -> IngestionStats:
+    logger = logging.getLogger(__name__)
     settings = load_settings()
     total_documents_indexed = 0
     total_chunks = 0
@@ -138,14 +141,7 @@ async def _resolve_ingestion_stats() -> IngestionStats:
 
     try:
         vector_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
-        embed_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
         store = create_vector_store(vector_cfg)
-        dims = EmbeddingEngine(embed_cfg).resolve_dimensions()
-        try:
-            await store.initialize(dims)
-        except ValueError:
-            # Keep stats at zero if collection cannot initialize yet.
-            pass
         stats = await store.collection_stats()
         total_chunks = int(stats.vectors_count)
         points = await store.all_points()
@@ -161,7 +157,8 @@ async def _resolve_ingestion_stats() -> IngestionStats:
             for point in points
             if int((point.payload or {}).get("chunk_tokens") or 0) > 0
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to resolve ingestion stats: %s", exc)
         total_documents_indexed = 0
         total_chunks = 0
         total_tokens = 0
