@@ -5,7 +5,7 @@
   nsExec::Exec 'cmd /c taskkill /F /IM "loko.exe" /T'
   
   ; Explicitly kill backend just in case it survived or was standalone
-  nsExec::Exec 'cmd /c taskkill /F /IM "loko-backend.exe" /T'
+  nsExec::Exec 'cmd /c taskkill /F /IM "ragkit-backend.exe" /T'
   
   ; Wait for OS to release file locks
   Sleep 3000
@@ -16,7 +16,7 @@
   nsExec::Exec 'cmd /c taskkill /F /IM "loko.exe" /T'
   
   ; Explicitly kill backend just in case it survived or was standalone
-  nsExec::Exec 'cmd /c taskkill /F /IM "loko-backend.exe" /T'
+  nsExec::Exec 'cmd /c taskkill /F /IM "ragkit-backend.exe" /T'
   
   ; Wait for OS to release file locks
   Sleep 3000
