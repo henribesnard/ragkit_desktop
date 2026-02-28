@@ -1,33 +1,34 @@
 !macro NSIS_HOOK_PREINSTALL
-  ; Kill execution order: Main App first (Parent), then Backend (Child/Sidecar)
-  
-  ; Kill main app and its children
-  nsExec::Exec 'cmd /c taskkill /F /IM "loko.exe" /T'
-  
-  ; Explicitly kill backend just in case it survived or was standalone
-  nsExec::Exec 'cmd /c taskkill /F /IM "ragkit-backend.exe" /T'
-  
-  ; Wait for OS to release file locks
-  Sleep 3000
+  ; Kill every known process variant before overwriting files.
+  ; The Tauri binary is named from Cargo.toml ("ragkit-desktop"), NOT productName.
+  ; Kill the main app first with /T to take children (including the sidecar).
+  nsExec::Exec 'taskkill /F /IM "ragkit-desktop.exe" /T'
+  nsExec::Exec 'taskkill /F /IM "LOKO.exe" /T'
+
+  ; Explicitly kill the backend sidecar in case it outlived the parent
+  nsExec::Exec 'taskkill /F /IM "ragkit-backend.exe" /T'
+
+  ; PowerShell fallback: wildcard-match any process name containing ragkit or loko
+  nsExec::Exec 'powershell -NoProfile -Command "Get-Process -Name *ragkit*,*loko* -ErrorAction SilentlyContinue | Stop-Process -Force"'
+
+  ; Wait for OS to release file locks (5s — the sidecar is ~280 MB)
+  Sleep 5000
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  ; Kill main app and its children
-  nsExec::Exec 'cmd /c taskkill /F /IM "loko.exe" /T'
-  
-  ; Explicitly kill backend just in case it survived or was standalone
-  nsExec::Exec 'cmd /c taskkill /F /IM "ragkit-backend.exe" /T'
-  
-  ; Wait for OS to release file locks
-  Sleep 3000
+  nsExec::Exec 'taskkill /F /IM "ragkit-desktop.exe" /T'
+  nsExec::Exec 'taskkill /F /IM "LOKO.exe" /T'
+  nsExec::Exec 'taskkill /F /IM "ragkit-backend.exe" /T'
+  nsExec::Exec 'powershell -NoProfile -Command "Get-Process -Name *ragkit*,*loko* -ErrorAction SilentlyContinue | Stop-Process -Force"'
+  Sleep 5000
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
   ; Ask user if they want to remove their data
   MessageBox MB_YESNO|MB_ICONQUESTION "Voulez-vous également supprimer toutes les données locales et la configuration de LOKO (dossier .loko) ?" IDNO KeepData
-  
+
   ; Delete the .loko profile folder
   RMDir /r "$PROFILE\.loko"
-  
+
 KeepData:
 !macroend
