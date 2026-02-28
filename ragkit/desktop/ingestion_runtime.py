@@ -445,19 +445,32 @@ class IngestionRuntime:
                 self.progress.current_doc = doc.filename
                 try:
                     self.progress.phase = "parsing"
-                    text = await asyncio.to_thread(documents.get_document_text, settings.ingestion, doc)
-                    self.progress.phase = "chunking"
-                    chunks = await asyncio.to_thread(
-                        chunker.chunk,
-                        text,
-                        {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename},
-                    )
-                    self.progress.phase = "embedding"
-                    outputs = await self._embed_document_chunks(
-                        embedder=embedder,
-                        texts=[chunk.content for chunk in chunks],
-                        started=started,
-                    )
+                    try:
+                        text = await asyncio.wait_for(
+                            asyncio.to_thread(documents.get_document_text, settings.ingestion, doc),
+                            timeout=300
+                        )
+                        self.progress.phase = "chunking"
+                        chunks = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                chunker.chunk,
+                                text,
+                                {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename},
+                            ),
+                            timeout=300
+                        )
+                        self.progress.phase = "embedding"
+                        outputs = await asyncio.wait_for(
+                            self._embed_document_chunks(
+                                embedder=embedder,
+                                texts=[chunk.content for chunk in chunks],
+                                started=started,
+                            ),
+                            timeout=1800  # Give embedding up to 30 mins just in case of huge files on CPU
+                        )
+                    except asyncio.TimeoutError as exc:
+                        raise RuntimeError("Le traitement du document a pris trop de temps et a été annulé.") from exc
+
                     if self._cancelled:
                         break
                     if len(outputs) != len(chunks):
