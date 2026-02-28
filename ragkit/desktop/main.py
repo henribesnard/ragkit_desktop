@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 APP_NAME = "LOKO"
-VERSION = "1.3.4"
+VERSION = "1.3.5"
 
 
 def create_app() -> FastAPI:

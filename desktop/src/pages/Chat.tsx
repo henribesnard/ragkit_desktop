@@ -128,35 +128,40 @@ export function Chat() {
 
   useEffect(() => { void refreshChatStateRef.current(); }, []);
 
-  const generateTitleIfNeeded = useCallback(async () => {
-    if (!urlId) return;
+  // Ref for refreshHistory so the effect doesn't re-fire when conversationId changes
+  const refreshHistoryRef = useRef(refreshHistory);
+  useEffect(() => { refreshHistoryRef.current = refreshHistory; });
 
-    // We generate title if we have at least 2 messages.
-    // In our simplified logic, we trigger this after the first response.
-    if (history.messages.length >= 2 || (history.messages.length === 0 && finalResponse)) {
-      try {
-        const { title } = await ipc.generateConversationTitle(urlId);
-        if (title) {
-          updateConversationActivity(urlId, history.messages.length + 2, title);
-        }
-      } catch (err) {
-        console.error("Failed to generate title", err);
-      }
-    }
-  }, [urlId, history.messages.length, finalResponse, updateConversationActivity]);
-
+  // Handle streaming completion: fetch history, clear stream UI, generate title
   useEffect(() => {
     if (!finalResponse) return;
-    void (async () => {
-      await refreshHistory();
-      clearStreamState();
-      setActiveQuery(null);
 
-      // Trigger title generation if it was the first interaction
-      // history.messages.length is checked inside generateTitleIfNeeded
-      await generateTitleIfNeeded();
+    let cancelled = false;
+    void (async () => {
+      const updated = await refreshHistoryRef.current();
+      if (cancelled) return;
+
+      // Only clear streaming UI when history loaded successfully
+      if (updated.messages.length > 0) {
+        clearStreamState();
+        setActiveQuery(null);
+      }
+
+      // Auto-generate title after first exchange
+      if (urlId && updated.messages.length >= 2) {
+        try {
+          const { title } = await ipc.generateConversationTitle(urlId);
+          if (title && !cancelled) {
+            updateConversationActivity(urlId, updated.messages.length, title);
+          }
+        } catch {
+          // Title generation is best-effort
+        }
+      }
     })();
-  }, [finalResponse, refreshHistory, clearStreamState, generateTitleIfNeeded]);
+
+    return () => { cancelled = true; };
+  }, [finalResponse, clearStreamState, urlId, updateConversationActivity]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -184,17 +189,6 @@ export function Chat() {
       void openConversation(urlId);
     }
   }, [urlId, openConversation]);
-
-  // Unused placeholder removed
-
-  // Unused placeholder removed
-
-  useEffect(() => {
-    if (history.messages.length >= 2) {
-      // We might want to avoid re-generating if title already exists
-      // useConversations hook stores the list
-    }
-  }, [history.messages.length]);
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;

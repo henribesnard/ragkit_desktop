@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -14,7 +14,7 @@ export function useChatStream() {
   const unlistenChunkRef = useRef<null | (() => void)>(null);
   const unlistenDoneRef = useRef<null | (() => void)>(null);
 
-  const cleanupListeners = () => {
+  const cleanupListeners = useCallback(() => {
     if (unlistenChunkRef.current) {
       unlistenChunkRef.current();
       unlistenChunkRef.current = null;
@@ -23,55 +23,58 @@ export function useChatStream() {
       unlistenDoneRef.current();
       unlistenDoneRef.current = null;
     }
-  };
+  }, []);
 
-  const startStream = async (payload: ChatPayload) => {
-    cleanupListeners();
-    setError(null);
-    setContent("");
-    setFinalResponse(null);
-    setIsStreaming(true);
+  const startStream = useCallback(
+    async (payload: ChatPayload) => {
+      cleanupListeners();
+      setError(null);
+      setContent("");
+      setFinalResponse(null);
+      setIsStreaming(true);
 
-    const chunkUnlisten = await listen<string>("chat-stream-chunk", (event) => {
-      setContent((prev) => stripSourceTags(prev + event.payload));
-    });
-    unlistenChunkRef.current = chunkUnlisten;
+      const chunkUnlisten = await listen<string>("chat-stream-chunk", (event) => {
+        setContent((prev) => stripSourceTags(prev + event.payload));
+      });
+      unlistenChunkRef.current = chunkUnlisten;
 
-    const doneUnlisten = await listen<any>("chat-stream-done", (event) => {
-      setIsStreaming(false);
-      const donePayload = event.payload;
-      if (donePayload && typeof donePayload === "object" && "error" in donePayload) {
-        setError(String(donePayload.error || "Streaming error"));
-      } else if (donePayload && typeof donePayload === "object" && "answer" in donePayload) {
-        const response = donePayload as ChatResponse;
-        setFinalResponse(response);
-        setContent(stripSourceTags(response.answer || ""));
+      const doneUnlisten = await listen<any>("chat-stream-done", (event) => {
+        setIsStreaming(false);
+        const donePayload = event.payload;
+        if (donePayload && typeof donePayload === "object" && "error" in donePayload) {
+          setError(String(donePayload.error || "Streaming error"));
+        } else if (donePayload && typeof donePayload === "object" && "answer" in donePayload) {
+          const response = donePayload as ChatResponse;
+          setFinalResponse(response);
+          setContent(stripSourceTags(response.answer || ""));
+        }
+        cleanupListeners();
+      });
+      unlistenDoneRef.current = doneUnlisten;
+
+      try {
+        await invoke("chat_orchestrated", { query: payload });
+      } catch (err: any) {
+        setIsStreaming(false);
+        cleanupListeners();
+        setError(String(err));
+        throw err;
       }
-      cleanupListeners();
-    });
-    unlistenDoneRef.current = doneUnlisten;
+    },
+    [cleanupListeners],
+  );
 
-    try {
-      await invoke("chat_orchestrated", { query: payload });
-    } catch (err: any) {
-      setIsStreaming(false);
-      cleanupListeners();
-      setError(String(err));
-      throw err;
-    }
-  };
-
-  const stopStream = async () => {
+  const stopStream = useCallback(async () => {
     await invoke("chat_stream_stop");
-  };
+  }, []);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     cleanupListeners();
     setContent("");
     setIsStreaming(false);
     setFinalResponse(null);
     setError(null);
-  };
+  }, [cleanupListeners]);
 
   return {
     content,

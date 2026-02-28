@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface ConversationListItem {
@@ -71,7 +71,11 @@ function saveIndex(items: ConversationListItem[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-export function useConversations() {
+// ---------------------------------------------------------------------------
+// Internal hook — actual logic
+// ---------------------------------------------------------------------------
+
+function useConversationsInternal() {
     const [conversations, setConversations] = useState<ConversationListItem[]>(loadIndex);
     const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -82,7 +86,6 @@ export function useConversations() {
 
     const createConversation = useCallback(async (): Promise<string> => {
         const id = crypto.randomUUID();
-        // Reset on backend
         await invoke("new_conversation", { conversation_id: id });
 
         const now = new Date().toISOString();
@@ -99,7 +102,13 @@ export function useConversations() {
         return id;
     }, []);
 
-    const deleteConversation = useCallback((id: string) => {
+    const deleteConversation = useCallback(async (id: string) => {
+        // Clear backend memory + conversation file
+        try {
+            await invoke("new_conversation", { conversation_id: id });
+        } catch {
+            // best-effort cleanup
+        }
         setConversations((prev) => prev.filter((c) => c.id !== id));
         setActiveId((prev) => (prev === id ? null : prev));
     }, []);
@@ -138,7 +147,6 @@ export function useConversations() {
 
     const openConversation = useCallback(async (id: string) => {
         setActiveId(id);
-        // When multi-conversation backend is ready, load specific conversation here
     }, []);
 
     const searchConversations = useCallback(
@@ -174,4 +182,25 @@ export function useConversations() {
         searchConversations,
         setActiveId,
     };
+}
+
+// ---------------------------------------------------------------------------
+// Context — shared singleton between Sidebar and Chat
+// ---------------------------------------------------------------------------
+
+type ConversationsContextValue = ReturnType<typeof useConversationsInternal>;
+
+const ConversationsContext = createContext<ConversationsContextValue | null>(null);
+
+export function ConversationsProvider({ children }: { children: ReactNode }) {
+    const value = useConversationsInternal();
+    return <ConversationsContext.Provider value={value}>{children}</ConversationsContext.Provider>;
+}
+
+export function useConversations(): ConversationsContextValue {
+    const ctx = useContext(ConversationsContext);
+    if (!ctx) {
+        throw new Error("useConversations must be used within ConversationsProvider");
+    }
+    return ctx;
 }

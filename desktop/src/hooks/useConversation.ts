@@ -30,17 +30,22 @@ export function useConversation(conversationId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (!conversationId) return;
+  const refresh = useCallback(async (): Promise<ConversationHistory> => {
+    if (!conversationId) return emptyHistory;
     setLoading(true);
     try {
       const payload = await invoke<ConversationHistory>("get_conversation_history", {
         conversation_id: conversationId,
       });
-      setHistory(payload || emptyHistory);
+      // Validate response shape — request() can return error JSON on 4xx/5xx
+      const result =
+        payload && Array.isArray(payload.messages) ? payload : emptyHistory;
+      setHistory(result);
       setError(null);
+      return result;
     } catch (err: any) {
       setError(String(err));
+      return emptyHistory;
     } finally {
       setLoading(false);
     }

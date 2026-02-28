@@ -6,6 +6,7 @@ import { Settings } from "./pages/Settings";
 import { Onboarding } from "./pages/Onboarding";
 import { useTheme } from "./hooks/useTheme";
 import { useSetupStatus } from "./hooks/useSetupStatus";
+import { ConversationsProvider } from "./hooks/useConversations";
 import "./i18n";
 
 function SplashScreen() {
@@ -35,19 +36,21 @@ export default function App() {
 
     return (
         <BrowserRouter>
-            <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-                <Sidebar />
-                <main className="flex-1 overflow-hidden">
-                    <Routes>
-                        <Route path="/chat" element={<Chat />} />
-                        <Route path="/chat/:id" element={<Chat />} />
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/settings/:section" element={<Settings />} />
-                        <Route path="*" element={<Navigate to="/chat" replace />} />
-                    </Routes>
-                </main>
-            </div>
+            <ConversationsProvider>
+                <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                    <Sidebar />
+                    <main className="flex-1 overflow-hidden">
+                        <Routes>
+                            <Route path="/chat" element={<Chat />} />
+                            <Route path="/chat/:id" element={<Chat />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/settings/:section" element={<Settings />} />
+                            <Route path="*" element={<Navigate to="/chat" replace />} />
+                        </Routes>
+                    </main>
+                </div>
+            </ConversationsProvider>
         </BrowserRouter>
     );
 }
