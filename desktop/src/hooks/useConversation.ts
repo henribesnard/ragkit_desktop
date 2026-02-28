@@ -57,7 +57,10 @@ export function useConversation(conversationId: string | null) {
     setHistory(emptyHistory);
   };
 
+  // Reset history immediately when conversationId changes, then fetch
   useEffect(() => {
+    setHistory(emptyHistory);
+    setError(null);
     void refresh();
   }, [conversationId, refresh]);
 

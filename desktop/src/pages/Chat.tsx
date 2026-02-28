@@ -132,7 +132,15 @@ export function Chat() {
   const refreshHistoryRef = useRef(refreshHistory);
   useEffect(() => { refreshHistoryRef.current = refreshHistory; });
 
-  // Handle streaming completion: fetch history, clear stream UI, generate title
+  // Reset streaming state when switching conversations
+  useEffect(() => {
+    clearStreamState();
+    setActiveQuery(null);
+  }, [urlId, clearStreamState]);
+
+  // Handle streaming completion: fetch history, generate title, then clear stream UI
+  // IMPORTANT: title generation MUST run before clearStreamState() because
+  // clearStreamState sets finalResponse=null which triggers cleanup → cancelled=true
   useEffect(() => {
     if (!finalResponse) return;
 
@@ -141,13 +149,7 @@ export function Chat() {
       const updated = await refreshHistoryRef.current();
       if (cancelled) return;
 
-      // Only clear streaming UI when history loaded successfully
-      if (updated.messages.length > 0) {
-        clearStreamState();
-        setActiveQuery(null);
-      }
-
-      // Auto-generate title after first exchange
+      // Auto-generate title after first exchange (before clearing stream state!)
       if (urlId && updated.messages.length >= 2) {
         try {
           const { title } = await ipc.generateConversationTitle(urlId);
@@ -157,6 +159,12 @@ export function Chat() {
         } catch {
           // Title generation is best-effort
         }
+      }
+
+      // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
+      if (updated.messages.length > 0 && !cancelled) {
+        clearStreamState();
+        setActiveQuery(null);
       }
     })();
 
@@ -212,7 +220,7 @@ export function Chat() {
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
+    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled) return;
     const payload = {
       query: query.trim(),
       conversation_id: urlId || undefined,
@@ -236,7 +244,6 @@ export function Chat() {
 
   const getPlaceholder = () => {
     if (!chatReady.ready) return t("chat.inputPlaceholderNotReady");
-    if (isIngesting) return t("chat.inputPlaceholderIngestion");
     return t("chat.inputPlaceholder");
   };
 
@@ -536,7 +543,7 @@ export function Chat() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={getPlaceholder()}
-            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting}
+            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
             rows={1}
             className="w-full resize-none outline-none text-sm"
             style={{
@@ -551,15 +558,15 @@ export function Chat() {
           {/* Send Button */}
           <button
             type="submit"
-            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
+            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
             className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
             style={{
               width: 36,
               height: 36,
               borderRadius: "var(--radius-full)",
-              background: query.trim() && chatReady.ready && !isIngesting ? "var(--primary-500)" : "var(--bg-hover)",
-              color: query.trim() && chatReady.ready && !isIngesting ? "white" : "var(--text-tertiary)",
-              cursor: query.trim() && chatReady.ready && !isIngesting ? "pointer" : "default",
+              background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
+              color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
+              cursor: query.trim() && chatReady.ready ? "pointer" : "default",
             }}
           >
             {isStreaming ? (
