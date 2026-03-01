@@ -28,7 +28,7 @@ export function ProfileSummary({ profile, calibration }: ProfileSummaryProps) {
         if (params.length === 0) params.push(t('wizard.profileSummary.standard'));
 
         return { name, params };
-    }, [profile, calibration]);
+    }, [profile, calibration, t]);
 
     return (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mt-6">

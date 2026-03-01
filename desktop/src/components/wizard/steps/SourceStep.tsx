@@ -71,7 +71,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
             }
         };
         validate();
-    }, [sourceCfg.path, sourceCfg.recursive]);
+    }, [sourceCfg.path, sourceCfg.recursive, t]);
 
     // 2. Scan file types based on exclusions
     useEffect(() => {
