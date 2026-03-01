@@ -28,3 +28,12 @@
 
 KeepData:
 !macroend
+
+!macro NSIS_HOOK_POSTINSTALL
+  ; Extract the installation language chosen by the user in the NSIS dialog
+  ; 1036 = French, 1033 = English
+  CreateDirectory "$PROFILE\.loko"
+  FileOpen $0 "$PROFILE\.loko\install_lang.txt" w
+  FileWrite $0 "$LANGUAGE"
+  FileClose $0
+!macroend

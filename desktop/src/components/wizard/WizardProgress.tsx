@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { useTranslation } from "react-i18next";
 
 interface WizardProgressProps {
     currentStep: number;
@@ -6,6 +7,7 @@ interface WizardProgressProps {
 }
 
 export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps) {
+    const { t } = useTranslation();
     return (
         <div className="flex items-center gap-2">
             {Array.from({ length: totalSteps }).map((_, i) => {
@@ -23,7 +25,7 @@ export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps)
                 );
             })}
             <span className="ml-4 text-sm text-gray-500 font-medium">
-                Étape {currentStep}/{totalSteps}
+                {t('wizard.progress.step')} {currentStep}/{totalSteps}
             </span>
         </div>
     );

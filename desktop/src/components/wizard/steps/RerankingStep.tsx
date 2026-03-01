@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "react-i18next";
 
 const RERANK_DEFAULTS = { provider: "huggingface", top_n: 3 };
 
 export function RerankingStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const rerankCfg = state.config?.rerank || {};
 
@@ -47,7 +49,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             if (provider === "cohere" && apiKey) {
                 await invoke("store_secret", { keyName: "loko.rerank.cohere.api_key", value: apiKey });
             }
-            setTestResult({ success: true, msg: "Prêt à être sauvegardé !" });
+            setTestResult({ success: true, msg: t('wizard.reranking.readyToSave') });
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
         } finally {
@@ -57,16 +59,16 @@ export function RerankingStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Re-ranking (Optionnel)</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.reranking.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Le re-ranking trie à nouveau les résultats de recherche avec un modèle IA plus précis pour assurer que les documents les plus pertinents soient tout en haut.
+                {t('wizard.reranking.subtitle')}
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
                 <label className="flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-700 pb-4">
                     <div>
-                        <span className="block font-medium text-lg text-blue-900 dark:text-blue-100">Activer le Re-ranking</span>
-                        <span className="text-sm text-gray-500">Améliore significativement la précision, mais réduit légèrement la vitesse. Fortement recommandé pour la plupart des usages professionnels.</span>
+                        <span className="block font-medium text-lg text-blue-900 dark:text-blue-100">{t('wizard.reranking.enable')}</span>
+                        <span className="text-sm text-gray-500">{t('wizard.reranking.enableDesc')}</span>
                     </div>
                     <input
                         type="checkbox"
@@ -79,20 +81,20 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 {enabled && (
                     <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2">
                         <div>
-                            <label className="block font-medium mb-2">Fournisseur du modèle de Reranking</label>
+                            <label className="block font-medium mb-2">{t('wizard.reranking.provider')}</label>
                             <select
                                 className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
                                 value={provider}
                                 onChange={(e) => updateRerank({ provider: e.target.value })}
                             >
-                                <option value="huggingface">HuggingFace (BGE Local - Gratuit)</option>
-                                <option value="cohere">Cohere API (Cloud - Payant)</option>
+                                <option value="huggingface">{t('wizard.reranking.hgLocal')}</option>
+                                <option value="cohere">{t('wizard.reranking.cohereCloud')}</option>
                             </select>
                         </div>
 
                         {provider === "cohere" && (
                             <div>
-                                <label className="block font-medium mb-1 text-sm">Clé API Cohere</label>
+                                <label className="block font-medium mb-1 text-sm">{t('wizard.reranking.cohereKey')}</label>
                                 <input
                                     type="password"
                                     className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
@@ -100,12 +102,12 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Nécessaire pour le re-ranking cloud avec Cohere.</p>
+                                <p className="text-xs text-gray-500 mt-1">{t('wizard.reranking.cohereKeyDesc')}</p>
                             </div>
                         )}
 
                         <div>
-                            <label className="block font-medium mb-2">Nombre final de documents envoyés au LLM (Top N)</label>
+                            <label className="block font-medium mb-2">{t('wizard.reranking.topN')}</label>
                             <input
                                 type="range"
                                 min="1"
@@ -117,10 +119,10 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                             />
                             <div className="flex justify-between text-sm text-gray-500 mt-1">
                                 <span>1</span>
-                                <span className="font-bold text-gray-900 dark:text-white">{topN} documents</span>
+                                <span className="font-bold text-gray-900 dark:text-white">{topN} {t('wizard.reranking.documents')}</span>
                                 <span>10</span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-2">Plus ce nombre est élevé, plus le LLM aura de contexte, mais plus l'inférence sera lente et coûteuse (si via API).</p>
+                            <p className="text-xs text-gray-400 mt-2">{t('wizard.reranking.topNDesc')}</p>
                         </div>
                     </div>
                 )}
@@ -128,7 +130,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 {enabled && (
                     <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
                         <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (provider === "cohere" && !apiKey)}>
-                            {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Validation...</> : "Valider le choix"}
+                            {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.reranking.validating')}</> : t('wizard.reranking.validateChoice')}
                         </Button>
 
                         {testResult && (

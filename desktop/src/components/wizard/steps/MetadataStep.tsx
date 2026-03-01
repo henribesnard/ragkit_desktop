@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Loader2, CheckSquare, Settings2, Save, FileText } from "lucide-react";
 import { ipc } from "@/lib/ipc";
+import { useTranslation } from "react-i18next";
 
 interface TargetFileInfo {
     path: string;
@@ -11,6 +12,7 @@ interface TargetFileInfo {
 }
 
 export function MetadataStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const sourceCfg = state.config?.ingestion?.source || {};
 
@@ -133,9 +135,9 @@ export function MetadataStep({ wizard }: { wizard: any }) {
     return (
         <div className="max-w-6xl mx-auto h-full flex flex-col">
             <div className="mb-6 text-center">
-                <h2 className="text-xl font-bold">Configuration des Métadonnées</h2>
+                <h2 className="text-xl font-bold">{t('wizard.metadata.title')}</h2>
                 <p className="text-sm text-gray-500 mt-2">
-                    Vos métadonnées structurent votre base RAG. Sélectionnez un document pour modifier ses attributs individuels, ou plusieurs pour une édition en masse.
+                    {t('wizard.metadata.subtitle')}
                 </p>
             </div>
 
@@ -146,7 +148,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                     <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
                         <input
                             type="text"
-                            placeholder="Filtrer par nom de fichier..."
+                            placeholder={t('wizard.metadata.filterPlaceholder')}
                             value={searchFilter}
                             onChange={e => setSearchFilter(e.target.value)}
                             className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
@@ -154,10 +156,10 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                     </div>
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center text-gray-500 gap-3">
-                            <Loader2 className="w-5 h-5 animate-spin" /> Analyse des documents...
+                            <Loader2 className="w-5 h-5 animate-spin" /> {t('wizard.metadata.analyzing')}
                         </div>
                     ) : filteredFiles.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500">Aucun fichier trouvé avec ces critères.</div>
+                        <div className="flex-1 flex items-center justify-center text-gray-500">{t('wizard.metadata.noFiles')}</div>
                     ) : (
                         <div className="flex-1 overflow-y-auto">
                             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -168,10 +170,10 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                 <CheckSquare className={`w-4 h-4 ${filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? 'text-blue-500' : 'text-gray-400'}`} />
                                             </button>
                                         </th>
-                                        <th className="p-3 font-semibold">Fichier</th>
-                                        <th className="p-3 font-semibold w-48">Titre</th>
-                                        <th className="p-3 font-semibold w-40">Auteur</th>
-                                        <th className="p-3 font-semibold w-32">Domaine</th>
+                                        <th className="p-3 font-semibold">{t('wizard.metadata.file')}</th>
+                                        <th className="p-3 font-semibold w-48">{t('wizard.metadata.docTitle')}</th>
+                                        <th className="p-3 font-semibold w-40">{t('wizard.metadata.author')}</th>
+                                        <th className="p-3 font-semibold w-32">{t('wizard.metadata.domain')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -225,9 +227,9 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             <Settings2 className="w-5 h-5 text-blue-500" />
                             <div>
                                 <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                                    {selectedPaths.size === 1 ? "Modifier le document" : "Édition en masse"}
+                                    {selectedPaths.size === 1 ? t('wizard.metadata.editSingle') : t('wizard.metadata.editBulk')}
                                 </h3>
-                                <p className="text-xs text-gray-500">{selectedPaths.size} élément(s) sélectionné(s)</p>
+                                <p className="text-xs text-gray-500">{t('wizard.metadata.selectedCount', { count: selectedPaths.size })}</p>
                             </div>
                         </div>
 
@@ -236,7 +238,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             {/* Title (Only for single edit) */}
                             {selectedPaths.size === 1 && singleFile && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Titre</label>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.docTitle')}</label>
                                     <input
                                         type="text"
                                         value={(overrides[singleFile.path] || {}).title || ""}
@@ -249,11 +251,11 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
                             {/* Common Fields */}
                             {[
-                                { id: 'author', label: 'Auteur', placeholder: 'Ex: Jean Dupont' },
-                                { id: 'tenant', label: 'Tenant (Organisation)', placeholder: 'Ex: Client A' },
-                                { id: 'domain', label: 'Domaine', placeholder: 'Ex: Juridique' },
-                                { id: 'subdomain', label: 'Sous-domaine', placeholder: 'Ex: Contrats' },
-                                { id: 'category', label: 'Catégorie', placeholder: 'Ex: Factures' },
+                                { id: 'author', label: t('wizard.metadata.author'), placeholder: t('wizard.metadata.placeholderAuthor') },
+                                { id: 'tenant', label: t('wizard.metadata.tenant'), placeholder: t('wizard.metadata.placeholderTenant') },
+                                { id: 'domain', label: t('wizard.metadata.domain'), placeholder: t('wizard.metadata.placeholderDomain') },
+                                { id: 'subdomain', label: t('wizard.metadata.subdomain'), placeholder: t('wizard.metadata.placeholderSubdomain') },
+                                { id: 'category', label: t('wizard.metadata.category'), placeholder: t('wizard.metadata.placeholderCategory') },
                             ].map(field => (
                                 <div key={field.id}>
                                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{field.label}</label>
@@ -274,7 +276,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             ))}
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tags (séparés par des virgules)</label>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.tags')}</label>
                                 <input
                                     type="text"
                                     value={selectedPaths.size === 1 ? (((overrides[singleFile?.path || ""] || {}).tags || []).join(', ')) : bulkForm.tags}
@@ -286,14 +288,14 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             setBulkForm({ ...bulkForm, tags: e.target.value });
                                         }
                                     }}
-                                    placeholder="important, Q3, finance"
+                                    placeholder={t('wizard.metadata.placeholderTags') as string}
                                     className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Confidentialité</label>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.confidentiality')}</label>
                                     <select
                                         value={selectedPaths.size === 1 ? ((overrides[singleFile?.path || ""] || {}).confidentiality || "") : bulkForm.confidentiality}
                                         onChange={e => {
@@ -305,15 +307,15 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                         }}
                                         className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
                                     >
-                                        <option value="">- Non défini -</option>
-                                        <option value="public">Publique</option>
-                                        <option value="internal">Interne</option>
-                                        <option value="confidential">Confidentiel</option>
-                                        <option value="secret">Secret</option>
+                                        <option value="">{t('wizard.metadata.confidentialityNone')}</option>
+                                        <option value="public">{t('wizard.metadata.confidentialityPublic')}</option>
+                                        <option value="internal">{t('wizard.metadata.confidentialityInternal')}</option>
+                                        <option value="confidential">{t('wizard.metadata.confidentialityConfidential')}</option>
+                                        <option value="secret">{t('wizard.metadata.confidentialitySecret')}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.status')}</label>
                                     <select
                                         value={selectedPaths.size === 1 ? ((overrides[singleFile?.path || ""] || {}).status || "") : bulkForm.status}
                                         onChange={e => {
@@ -325,11 +327,11 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                         }}
                                         className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
                                     >
-                                        <option value="">- Non défini -</option>
-                                        <option value="draft">Brouillon</option>
-                                        <option value="review">En relecture</option>
-                                        <option value="published">Publié</option>
-                                        <option value="archived">Archivé</option>
+                                        <option value="">{t('wizard.metadata.statusNone')}</option>
+                                        <option value="draft">{t('wizard.metadata.statusDraft')}</option>
+                                        <option value="review">{t('wizard.metadata.statusReview')}</option>
+                                        <option value="published">{t('wizard.metadata.statusPublished')}</option>
+                                        <option value="archived">{t('wizard.metadata.statusArchived')}</option>
                                     </select>
                                 </div>
                             </div>
@@ -338,13 +340,13 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                         {/* Apply / Save Button */}
                         <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20 shrink-0">
                             {selectedPaths.size === 1 ? (
-                                <p className="text-xs text-center text-gray-400">Les modifications sont enregistrées automatiquement.</p>
+                                <p className="text-xs text-center text-gray-400">{t('wizard.metadata.autoSaved')}</p>
                             ) : (
                                 <Button
                                     onClick={handleApplyBulk}
                                     className="w-full flex items-center justify-center gap-2 font-medium"
                                 >
-                                    <Save className="w-4 h-4" /> Appliquer à {selectedPaths.size} fichiers
+                                    <Save className="w-4 h-4" /> {t('wizard.metadata.applyBulk', { count: selectedPaths.size })}
                                 </Button>
                             )}
                         </div>

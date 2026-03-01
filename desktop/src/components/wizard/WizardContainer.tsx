@@ -2,6 +2,7 @@ import { useWizard } from "@/hooks/useWizard";
 import { WizardProgress } from "./WizardProgress";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "react-i18next";
 import {
     SystemCheckStep, ExpertiseStep, ProfileStep, SourceStep,
     IngestionStep, ChunkingStep, EmbeddingStep, VectorStoreStep,
@@ -10,6 +11,7 @@ import {
 } from "./steps";
 
 export function WizardContainer() {
+    const { t } = useTranslation();
     const wizard = useWizard();
     const { state } = wizard;
 
@@ -43,7 +45,7 @@ export function WizardContainer() {
             {state.step > 0 && (
                 <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
                     <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
-                        LOKO <span className="text-gray-400 font-normal text-sm">| Configuration</span>
+                        {t('wizard.container.title')} <span className="text-gray-400 font-normal text-sm">{t('wizard.container.subtitle')}</span>
                     </div>
                     <WizardProgress currentStep={state.step} totalSteps={15} />
                 </header>
@@ -65,11 +67,11 @@ export function WizardContainer() {
                             disabled={state.step === 0 || state.isLoading}
                             className="px-8 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-all"
                         >
-                            Retour
+                            {t('wizard.container.back')}
                         </Button>
 
                         <div className="flex-1 text-center text-xs text-gray-400 px-4">
-                            Toutes vos modifications sont sauvegardées automatiquement.
+                            {t('wizard.container.autoSave')}
                         </div>
 
                         {isLastStep ? (
@@ -78,7 +80,7 @@ export function WizardContainer() {
                                 disabled={state.isLoading}
                                 className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
                             >
-                                {state.isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Terminer la Configuration"}
+                                {state.isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t('wizard.container.finish')}
                             </Button>
                         ) : (
                             <Button
@@ -86,7 +88,7 @@ export function WizardContainer() {
                                 disabled={state.isLoading || !state.stepValid}
                                 className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
                             >
-                                Continuer
+                                {t('wizard.container.continue')}
                             </Button>
                         )}
                     </div>

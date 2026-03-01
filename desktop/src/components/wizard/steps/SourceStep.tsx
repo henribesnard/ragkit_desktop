@@ -4,8 +4,10 @@ import { FolderOpen, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderTree } from "../FolderTree";
+import { useTranslation } from "react-i18next";
 
 export function SourceStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const sourceCfg = state.config?.ingestion?.source || {
         path: "",
@@ -41,7 +43,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
             }
         } catch (err) {
             console.error(err);
-            setError("Erreur lors de la sélection du dossier");
+            setError(t('wizard.source.errorSelect'));
         }
     };
 
@@ -59,11 +61,11 @@ export function SourceStep({ wizard }: { wizard: any }) {
                     setFolderTree(res.tree);
                     setError(null);
                 } else {
-                    setError(res.error || "Dossier invalide");
+                    setError(res.error || t('wizard.source.invalid'));
                     setFolderTree(null);
                 }
             } catch (err) {
-                setError("Erreur de validation: " + err);
+                setError(t('wizard.source.validationError') + ": " + err);
             } finally {
                 setIsValidating(false);
             }
@@ -133,16 +135,16 @@ export function SourceStep({ wizard }: { wizard: any }) {
     return (
         <div className="max-w-3xl mx-auto h-full flex flex-col">
             <div className="flex-1 overflow-y-auto pr-2">
-                <h2 className="text-xl font-bold mb-6 text-center">Sélection de la Source de Documents</h2>
+                <h2 className="text-xl font-bold mb-6 text-center">{t('wizard.source.title')}</h2>
 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
                     <div className="flex gap-4 mb-4">
                         <div className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono truncate flex items-center">
-                            {sourceCfg.path || "Aucun dossier sélectionné"}
+                            {sourceCfg.path || t('wizard.source.noFolder')}
                         </div>
                         <Button onClick={handleSelectFolder} variant="outline" className="flex items-center gap-2">
                             <FolderOpen className="w-4 h-4" />
-                            Parcourir
+                            {t('wizard.source.browse')}
                         </Button>
                     </div>
 
@@ -160,7 +162,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                                 checked={sourceCfg.recursive}
                                 onChange={(e) => updateSource({ recursive: e.target.checked })}
                             />
-                            Inclure les sous-dossiers
+                            {t('wizard.source.includeSubfolders')}
                         </label>
 
                         {sourceCfg.recursive && folderTree && (
@@ -178,7 +180,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                 {(isScanning || scanResult) && !error && (
                     <div className="bg-white dark:bg-gray-800 p-6 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
                         <h3 className="font-semibold flex items-center gap-2">
-                            Types de Fichiers détectés
+                            {t('wizard.source.detectedTypes')}
                             {isScanning && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
                         </h3>
 
@@ -196,7 +198,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                                             {type.display_name}
                                         </span>
                                         <div className="flex-1 flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                                            <span>{type.count} fichiers</span>
+                                            <span>{type.count} {t('wizard.source.files')}</span>
                                             <span>{type.size_mb.toFixed(2)} Mo</span>
                                         </div>
                                     </div>
@@ -204,7 +206,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                             </div>
                         )}
                         {!isScanning && scanResult?.supported_types?.length === 0 && (
-                            <p className="text-sm text-gray-500 italic">Aucun fichier supporté trouvé.</p>
+                            <p className="text-sm text-gray-500 italic">{t('wizard.source.noSupportedFiles')}</p>
                         )}
                     </div>
                 )}

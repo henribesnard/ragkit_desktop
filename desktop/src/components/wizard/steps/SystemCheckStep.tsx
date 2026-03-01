@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const [env, setEnv] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,8 +18,8 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Vérification du système</h1>
-            <p className="text-gray-500 mb-8">Nous analysons votre environnement pour configurer LOKO de manière optimale.</p>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.system.title')}</h1>
+            <p className="text-gray-500 mb-8">{t('wizard.system.subtitle')}</p>
 
             {loading ? (
                 <div className="flex items-center justify-center p-12">
@@ -27,16 +29,16 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
                 <div className="space-y-4 mb-8">
                     <div className="p-4 rounded-lg border flex items-center justify-between">
                         <div>
-                            <h3 className="font-semibold">Ollama (Modèles locaux)</h3>
-                            <p className="text-sm text-gray-500">Permet d'exécuter des modèles d'IA sur votre propre machine de manière sécurisée.</p>
+                            <h3 className="font-semibold">{t('wizard.system.ollama')}</h3>
+                            <p className="text-sm text-gray-500">{t('wizard.system.ollamaDesc')}</p>
                         </div>
                         {env?.ollama_available ? <CheckCircle2 className="text-green-500 w-6 h-6" /> : <XCircle className="text-gray-400 w-6 h-6" />}
                     </div>
 
                     <div className="p-4 rounded-lg border flex items-center justify-between">
                         <div>
-                            <h3 className="font-semibold">Accélération Matérielle (GPU)</h3>
-                            <p className="text-sm text-gray-500">Améliore significativement la vitesse d'ingestion et de génération.</p>
+                            <h3 className="font-semibold">{t('wizard.system.gpu')}</h3>
+                            <p className="text-sm text-gray-500">{t('wizard.system.gpuDesc')}</p>
                         </div>
                         {env?.gpu_available ? <CheckCircle2 className="text-green-500 w-6 h-6" /> : <XCircle className="text-gray-400 w-6 h-6" />}
                     </div>
@@ -45,7 +47,7 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
                         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
                             {env?.ollama_llm_models?.length > 0 && (
                                 <div>
-                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles de Génération (LLM)</h4>
+                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.llmModels')}</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {env.ollama_llm_models.map((m: string) => (
                                             <span key={m} className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-md text-xs">{m}</span>
@@ -56,7 +58,7 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
 
                             {env?.ollama_embedding_models?.length > 0 && (
                                 <div>
-                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles d'Embedding</h4>
+                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.embeddingModels')}</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {env.ollama_embedding_models.map((m: string) => (
                                             <span key={m} className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-md text-xs">{m}</span>
@@ -68,8 +70,8 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
                     ) : (
                         env?.ollama_available && (
                             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">Modèles détectés</h4>
-                                <span className="text-sm text-gray-500 italic">Aucun modèle n'est téléchargé.</span>
+                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.detectedModels')}</h4>
+                                <span className="text-sm text-gray-500 italic">{t('wizard.system.noModels')}</span>
                             </div>
                         )
                     )}

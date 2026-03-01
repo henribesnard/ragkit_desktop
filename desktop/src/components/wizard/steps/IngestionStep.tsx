@@ -1,7 +1,8 @@
-
 import { Eye, Hand } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function IngestionStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const ingCfg = state.config?.ingestion || {};
     const generalCfg = state.config?.general || {};
@@ -61,23 +62,23 @@ export function IngestionStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Ingestion & Pre-traitement</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.ingestion.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Ces parametres definissent comment vos documents sont lus et nettoyes. Les valeurs par defaut sont recommandees.
+                {t('wizard.ingestion.subtitle')}
             </p>
 
             <div className="space-y-6 mb-8">
                 {/* Mode d'ingestion */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">Mode d'ingestion</h3>
+                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.mode')}</h3>
 
                     {expertiseLevel === "simple" ? (
                         /* Debutant: simple toggle avec recommandation */
                         <label className="flex items-center justify-between cursor-pointer">
                             <div>
-                                <span className="block font-medium">Ingestion automatique</span>
+                                <span className="block font-medium">{t('wizard.ingestion.automatic')}</span>
                                 <span className="text-sm text-gray-500">
-                                    Surveille automatiquement votre dossier et indexe les nouveaux documents. <span className="text-blue-600 font-medium">Recommande</span>
+                                    {t('wizard.ingestion.autoRecommended')}
                                 </span>
                             </div>
                             <input
@@ -100,9 +101,9 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                     onClick={() => setIngestionMode("manual")}
                                 >
                                     <Hand className={`w-6 h-6 ${ingestionMode === "manual" ? "text-blue-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "manual" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>Manuel</span>
+                                    <span className={`font-medium text-sm ${ingestionMode === "manual" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.manual')}</span>
                                     <span className="text-xs text-gray-500 text-center">
-                                        Vous lancez l'ingestion depuis le tableau de bord quand vous le souhaitez
+                                        {t('wizard.ingestion.manualDesc')}
                                     </span>
                                 </button>
                                 <button
@@ -114,9 +115,9 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                     onClick={() => setIngestionMode("automatic")}
                                 >
                                     <Eye className={`w-6 h-6 ${ingestionMode === "automatic" ? "text-blue-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>Automatique</span>
+                                    <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.automatic')}</span>
                                     <span className="text-xs text-gray-500 text-center">
-                                        LOKO surveille votre dossier et indexe les changements automatiquement
+                                        {t('wizard.ingestion.autoDesc')}
                                     </span>
                                 </button>
                             </div>
@@ -125,7 +126,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                             {expertiseLevel === "expert" && ingestionMode === "automatic" && (
                                 <div className="pt-3 animate-in fade-in slide-in-from-top-2">
                                     <label className="block font-medium mb-2 text-sm">
-                                        Intervalle de surveillance (secondes)
+                                        {t('wizard.ingestion.watchInterval')}
                                     </label>
                                     <input
                                         type="range"
@@ -148,13 +149,13 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                 </div>
                 {/* Parsing Settings */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">Lecture des Fichiers (Parsing)</h3>
+                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.parsing')}</h3>
 
                     <div className="space-y-4">
                         <label className="flex items-center justify-between">
                             <div>
-                                <span className="block font-medium">Reconnaissance de texte (OCR)</span>
-                                <span className="text-sm text-gray-500">Pour les PDF scannes et les images</span>
+                                <span className="block font-medium">{t('wizard.ingestion.ocr')}</span>
+                                <span className="text-sm text-gray-500">{t('wizard.ingestion.ocrDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -165,16 +166,16 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                         </label>
 
                         <div className="pt-2">
-                            <label className="block font-medium mb-1">Strategie d'extraction des Tableaux</label>
+                            <label className="block font-medium mb-1">{t('wizard.ingestion.tableStrategy')}</label>
                             <select
                                 className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
                                 value={parsing.table_extraction_strategy || "preserve"}
                                 onChange={(e) => updateParsing({ table_extraction_strategy: e.target.value })}
                             >
-                                <option value="markdown">Markdown optimise</option>
-                                <option value="preserve">Preservation Exacte</option>
-                                <option value="separate">Sections separees</option>
-                                <option value="ignore">Ignorer les tableaux</option>
+                                <option value="markdown">{t('wizard.ingestion.tableMarkdown')}</option>
+                                <option value="preserve">{t('wizard.ingestion.tablePreserve')}</option>
+                                <option value="separate">{t('wizard.ingestion.tableSeparate')}</option>
+                                <option value="ignore">{t('wizard.ingestion.tableIgnore')}</option>
                             </select>
                         </div>
                     </div>
@@ -182,13 +183,13 @@ export function IngestionStep({ wizard }: { wizard: any }) {
 
                 {/* Preprocessing Settings */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">Nettoyage (Preprocessing)</h3>
+                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.preprocessing')}</h3>
 
                     <div className="space-y-4">
                         <label className="flex items-center justify-between">
                             <div>
-                                <span className="block font-medium">Nettoyer les caracteres speciaux</span>
-                                <span className="text-sm text-gray-500">Supprime les espaces et retours chariots inutiles</span>
+                                <span className="block font-medium">{t('wizard.ingestion.cleanWhitespace')}</span>
+                                <span className="text-sm text-gray-500">{t('wizard.ingestion.cleanWhitespaceDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -199,8 +200,8 @@ export function IngestionStep({ wizard }: { wizard: any }) {
 
                         <label className="flex items-center justify-between">
                             <div>
-                                <span className="block font-medium">Supprimer les URLs</span>
-                                <span className="text-sm text-gray-500">Peut etre utile si les liens faussent la recherche</span>
+                                <span className="block font-medium">{t('wizard.ingestion.removeUrls')}</span>
+                                <span className="text-sm text-gray-500">{t('wizard.ingestion.removeUrlsDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -210,15 +211,15 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                         </label>
 
                         <div className="pt-2">
-                            <label className="block font-medium mb-1">Deduplication Automatique</label>
+                            <label className="block font-medium mb-1">{t('wizard.ingestion.deduplication')}</label>
                             <select
                                 className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
                                 value={preproc.deduplication_strategy || "fuzzy"}
                                 onChange={(e) => updatePreproc({ deduplication_strategy: e.target.value })}
                             >
-                                <option value="none">Aucune</option>
-                                <option value="exact">Exacte (Hash)</option>
-                                <option value="fuzzy">Floue (Similarite syntaxique)</option>
+                                <option value="none">{t('wizard.ingestion.dedupNone')}</option>
+                                <option value="exact">{t('wizard.ingestion.dedupExact')}</option>
+                                <option value="fuzzy">{t('wizard.ingestion.dedupFuzzy')}</option>
                             </select>
                         </div>
                     </div>

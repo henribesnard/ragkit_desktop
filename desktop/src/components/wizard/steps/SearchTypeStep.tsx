@@ -1,7 +1,8 @@
-
 import { Search, TextSearch, Layers } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function SearchTypeStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const searchType = state.config?.retrieval?.search_type || "hybrid";
 
@@ -15,9 +16,9 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Stratégie de Recherche</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.searchType.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Comment souhaitez-vous que LOKO recherche l'information pour générer ses réponses ?
+                {t('wizard.searchType.subtitle')}
             </p>
 
             <div className="space-y-4 mb-8">
@@ -29,8 +30,8 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
                         <Layers className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">Recherche Hybride (Recommandée)</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">Combine la force de la recherche sémantique (conceptuelle) et de la recherche lexicale (mots-clés exacts).</p>
+                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.hybrid')}</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.hybridDesc')}</p>
                     </div>
                 </button>
 
@@ -42,8 +43,8 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
                         <Search className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">Recherche Sémantique</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">Trouve des documents par leur sens et leurs concepts, même si les mots-clés exacts ne correspondent pas.</p>
+                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.semantic')}</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.semanticDesc')}</p>
                     </div>
                 </button>
 
@@ -55,8 +56,8 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
                         <TextSearch className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">Recherche Lexicale (BM25)</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">Idéal pour trouver des termes techniques précis, des références de produits ou des noms propres par mots-clés.</p>
+                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.lexical')}</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.lexicalDesc')}</p>
                     </div>
                 </button>
             </div>

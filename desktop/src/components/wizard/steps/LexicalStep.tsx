@@ -1,6 +1,7 @@
-
+import { useTranslation } from "react-i18next";
 
 export function LexicalStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const lexicalCfg = state.config?.retrieval?.lexical || {};
 
@@ -17,14 +18,14 @@ export function LexicalStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Paramètres de Recherche Lexicale</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.lexical.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Ajustez comment le système trouve les documents contenant les mots exacts de votre requête (BM25).
+                {t('wizard.lexical.subtitle')}
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
                 <div>
-                    <label className="block font-medium mb-2">Nombre de résultats (Top K)</label>
+                    <label className="block font-medium mb-2">{t('wizard.lexical.topK')}</label>
                     <input
                         type="range"
                         min="1"
@@ -36,10 +37,10 @@ export function LexicalStep({ wizard }: { wizard: any }) {
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-1">
                         <span>1</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{topK} documents</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.lexical.documents')}</span>
                         <span>20</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">Définit combien de blocs de texte le système doit extraire lorsqu'il cherche des correspondances exactes de mots-clés.</p>
+                    <p className="text-xs text-gray-400 mt-2">{t('wizard.lexical.topKDesc')}</p>
                 </div>
             </div>
 

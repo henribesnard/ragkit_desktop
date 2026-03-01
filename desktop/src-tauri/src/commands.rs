@@ -89,6 +89,29 @@ pub async fn list_target_files(app: AppHandle, source: serde_json::Value) -> Res
     request(Method::POST, "/api/wizard/list-target-files", Some(body), &app).await
 }
 
+#[tauri::command]
+pub async fn get_install_language() -> Result<Option<String>, String> {
+    // Read the NSIS install_lang.txt file from $PROFILE\.loko
+    if let Some(mut path) = dirs::home_dir() {
+        path.push(".loko");
+        path.push("install_lang.txt");
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                // Remove the file right after so it only dictates the very first launch
+                let _ = std::fs::remove_file(&path);
+                let lang_id = content.trim();
+                // NSIS LangIDs: 1036 = French, 1033 = English
+                if lang_id == "1036" {
+                    return Ok(Some("fr".to_string()));
+                } else if lang_id == "1033" {
+                    return Ok(Some("en".to_string()));
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
 // --- Ingestion Commands ---
 
 #[tauri::command]

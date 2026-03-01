@@ -48,6 +48,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_install_language,
             commands::health_check,
             commands::validate_folder,
             commands::scan_folder,

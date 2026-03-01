@@ -8,7 +8,8 @@ import { Onboarding } from "./pages/Onboarding";
 import { useTheme } from "./hooks/useTheme";
 import { useSetupStatus } from "./hooks/useSetupStatus";
 import { ConversationsProvider, useConversations } from "./hooks/useConversations";
-import "./i18n";
+import { invoke } from "@tauri-apps/api/core";
+import i18n from "./i18n";
 
 /**
  * Key-based wrapper: remounts Chat when conversation ID changes, resetting all state.
@@ -60,6 +61,24 @@ function SplashScreen() {
 export default function App() {
     useTheme();
     const { hasCompletedSetup, isLoading } = useSetupStatus();
+
+    useEffect(() => {
+        const initLanguage = async () => {
+            if (localStorage.getItem("loko-lang-initialized")) return;
+            try {
+                const lang = await invoke<string | null>("get_install_language");
+                if (lang) {
+                    i18n.changeLanguage(lang);
+                    localStorage.setItem("loko-lang", lang);
+                }
+            } catch (error) {
+                console.error("Failed to fetch install language:", error);
+            } finally {
+                localStorage.setItem("loko-lang-initialized", "true");
+            }
+        };
+        initLanguage();
+    }, []);
 
     if (isLoading) return <SplashScreen />;
 

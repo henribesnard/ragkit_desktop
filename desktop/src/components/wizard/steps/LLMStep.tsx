@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Cloud } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ModelInfo {
     id: string;
@@ -20,6 +21,7 @@ const API_PROVIDERS = [
 ];
 
 export function LLMStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig, setStepValid } = wizard;
     const llmCfg = state.config?.llm || {};
 
@@ -89,7 +91,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
         if (!secretKeyName || !apiKey.trim()) return;
         try {
             await invoke("store_secret", { keyName: secretKeyName, value: apiKey.trim() });
-            setTestResult({ success: true, msg: "Clé API enregistrée !" });
+            setTestResult({ success: true, msg: t('wizard.llm.apiKeySaved') });
             setApiKey("");
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
@@ -104,7 +106,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 await invoke("store_secret", { keyName: secretKeyName, value: apiKey.trim() });
                 setApiKey("");
             }
-            setTestResult({ success: true, msg: "Configuration prête !" });
+            setTestResult({ success: true, msg: t('wizard.llm.configReady') });
             setStepValid(true);
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
@@ -117,9 +119,9 @@ export function LLMStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Générateur de Réponses (LLM)</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.llm.title')}</h1>
             <p className="text-gray-500 mb-8">
-                C'est le "cerveau" qui va lire les documents trouvés et rédiger la réponse finale pour vous.
+                {t('wizard.llm.subtitle')}
             </p>
 
             {/* Provider Category Selection */}
@@ -130,9 +132,9 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <Cpu className={`w-5 h-5 ${isOllama ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">Ollama (Local)</h3>
+                        <h3 className="font-semibold text-lg">{t('wizard.llm.ollamaLocal')}</h3>
                     </div>
-                    <p className="text-sm text-gray-500">100% privé et gratuit. Idéal avec Llama 3, Qwen 3, Mistral.</p>
+                    <p className="text-sm text-gray-500">{t('wizard.llm.ollamaLocalDesc')}</p>
                 </button>
 
                 <button
@@ -141,9 +143,9 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <Cloud className={`w-5 h-5 ${isApiProvider ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">Fournisseur API</h3>
+                        <h3 className="font-semibold text-lg">{t('wizard.llm.apiProvider')}</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Très intelligent et rapide. Nécessite une clé API payante.</p>
+                    <p className="text-sm text-gray-500">{t('wizard.llm.apiProviderDesc')}</p>
                 </button>
             </div>
 
@@ -152,7 +154,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
                     <>
                         {/* API Provider Selector */}
                         <div>
-                            <label className="block font-medium mb-1 text-sm">Fournisseur</label>
+                            <label className="block font-medium mb-1 text-sm">{t('wizard.llm.providerLabel')}</label>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 {API_PROVIDERS.map(p => (
                                     <button
@@ -172,13 +174,13 @@ export function LLMStep({ wizard }: { wizard: any }) {
                         {/* API Key */}
                         <div>
                             <label className="block font-medium mb-1 text-sm">
-                                Clé API {API_PROVIDERS.find(p => p.value === provider)?.label}
+                                {t('wizard.llm.apiKeyLabel')} {API_PROVIDERS.find(p => p.value === provider)?.label}
                             </label>
                             <div className="flex gap-2">
                                 <input
                                     type="password"
                                     className="flex-1 rounded-md border border-gray-300 p-2 dark:bg-gray-700"
-                                    placeholder="Collez votre clé API..."
+                                    placeholder={t('wizard.llm.apiKeyPlaceholder')}
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
                                 />
@@ -191,7 +193,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
                                     <Key className="w-4 h-4" />
                                 </Button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">La clé sera stockée de manière sécurisée dans le trousseau de votre OS.</p>
+                            <p className="text-xs text-gray-500 mt-1">{t('wizard.llm.apiKeyDesc')}</p>
                         </div>
                     </>
                 )}
@@ -199,17 +201,17 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 {/* Model Selector */}
                 <div>
                     <label className="block font-medium mb-1 text-sm">
-                        {isOllama ? "Modèle local Ollama" : "Modèle"}
+                        {isOllama ? t('wizard.llm.localModelLabel') : t('wizard.llm.modelLabel')}
                     </label>
                     {loadingModels ? (
                         <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Chargement des modèles...
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t('wizard.llm.loadingModels')}
                         </div>
                     ) : models.length === 0 ? (
                         <div className="text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
                             {isOllama
-                                ? "Aucun modèle LLM Ollama détecté. Téléchargez un modèle (ex: ollama pull llama3.2)."
-                                : "Aucun modèle disponible pour ce fournisseur."}
+                                ? t('wizard.llm.noOllamaModels')
+                                : t('wizard.llm.noApiModels')}
                         </div>
                     ) : (
                         <select
@@ -227,10 +229,10 @@ export function LLMStep({ wizard }: { wizard: any }) {
                 {/* Model Details */}
                 {selectedModel && (selectedModel.context_window || selectedModel.quality_rating || selectedModel.cost_input) && (
                     <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg space-y-1">
-                        {selectedModel.context_window ? <div>Contexte : {selectedModel.context_window.toLocaleString()} tokens</div> : null}
-                        {selectedModel.quality_rating ? <div>Qualité : {"★".repeat(selectedModel.quality_rating)}{"☆".repeat(5 - selectedModel.quality_rating)}</div> : null}
-                        {selectedModel.cost_input ? <div>Coût : {selectedModel.cost_input}</div> : null}
-                        {selectedModel.latency_hint ? <div>Latence : {selectedModel.latency_hint}</div> : null}
+                        {selectedModel.context_window ? <div>{t('wizard.llm.contextWindow')} : {selectedModel.context_window.toLocaleString()} {t('wizard.llm.tokens')}</div> : null}
+                        {selectedModel.quality_rating ? <div>{t('wizard.llm.quality')} : {"★".repeat(selectedModel.quality_rating)}{"☆".repeat(5 - selectedModel.quality_rating)}</div> : null}
+                        {selectedModel.cost_input ? <div>{t('wizard.llm.cost')} : {selectedModel.cost_input}</div> : null}
+                        {selectedModel.latency_hint ? <div>{t('wizard.llm.latency')} : {selectedModel.latency_hint}</div> : null}
                     </div>
                 )}
 
@@ -242,7 +244,7 @@ export function LLMStep({ wizard }: { wizard: any }) {
                         className="w-full sm:w-auto self-start"
                         disabled={isTesting || (isApiProvider && !apiKey && models.length === 0)}
                     >
-                        {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Validation...</> : "Valider le choix"}
+                        {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.llm.validating')}</> : t('wizard.llm.validateChoice')}
                     </Button>
 
                     {testResult && (

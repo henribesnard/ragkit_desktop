@@ -1,6 +1,8 @@
 import { Bot } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function AgentsStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const agentCfg = state.config?.agents || {};
     const enabled = agentCfg.enabled ?? false;
@@ -15,9 +17,9 @@ export function AgentsStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Agents Intelligents</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.agents.title')}</h1>
             <p className="text-gray-500 mb-8">
-                LOKO peut utiliser une architecture multi-agents pour décomposer des questions complexes et chercher dans plusieurs directions simultanément.
+                {t('wizard.agents.subtitle')}
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
@@ -27,8 +29,8 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                             <Bot className="w-6 h-6" />
                         </div>
                         <div>
-                            <span className="block font-medium text-lg">Activer les Agents</span>
-                            <span className="text-sm text-gray-500 max-w-sm block mt-1">Permet au LLM de réfléchir, de formuler ses propres recherches et d'auto-corriger ses réponses itérativement.</span>
+                            <span className="block font-medium text-lg">{t('wizard.agents.enable')}</span>
+                            <span className="text-sm text-gray-500 max-w-sm block mt-1">{t('wizard.agents.enableDesc')}</span>
                         </div>
                     </div>
                     <input
@@ -42,7 +44,7 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                 {enabled && (
                     <div className="pt-4 border-t border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2">
                         <p className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                            <strong>Note de performance :</strong> L'utilisation d'agents multiplie le nombre de requêtes envoyées au LLM. Si vous utilisez l'API OpenAI, cela augmentera vos coûts. Si vous utilisez Ollama, chaque réponse prendra significativement plus de temps.
+                            <strong>{t('wizard.agents.perfNoteTitle')}</strong> {t('wizard.agents.perfNote')}
                         </p>
                     </div>
                 )}

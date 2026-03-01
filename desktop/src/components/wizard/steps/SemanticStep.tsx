@@ -1,6 +1,7 @@
-
+import { useTranslation } from "react-i18next";
 
 export function SemanticStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const semanticCfg = state.config?.retrieval?.semantic || {};
 
@@ -18,14 +19,14 @@ export function SemanticStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Paramètres de Recherche Sémantique</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.semantic.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Ajustez comment le système récupère les documents basés sur le sens de votre question.
+                {t('wizard.semantic.subtitle')}
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
                 <div>
-                    <label className="block font-medium mb-2">Nombre de résultats (Top K)</label>
+                    <label className="block font-medium mb-2">{t('wizard.semantic.topK')}</label>
                     <input
                         type="range"
                         min="1"
@@ -37,13 +38,13 @@ export function SemanticStep({ wizard }: { wizard: any }) {
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-1">
                         <span>1</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{topK} documents</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.semantic.documents')}</span>
                         <span>20</span>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block font-medium mb-2">Score de similarité minimum</label>
+                    <label className="block font-medium mb-2">{t('wizard.semantic.threshold')}</label>
                     <input
                         type="range"
                         min="0"
@@ -54,11 +55,11 @@ export function SemanticStep({ wizard }: { wizard: any }) {
                         className="w-full cursor-pointer"
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-1">
-                        <span>0.0 (Tout accepter)</span>
+                        <span>0.0 ({t('wizard.semantic.thresholdAll')})</span>
                         <span className="font-bold text-gray-900 dark:text-white">{threshold.toFixed(2)}</span>
-                        <span>1.0 (Exactitude parfaite)</span>
+                        <span>1.0 ({t('wizard.semantic.thresholdPerfect')})</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">Un seuil plus élevé réduit les faux positifs mais risque d'ignorer des documents pertinents.</p>
+                    <p className="text-xs text-gray-400 mt-2">{t('wizard.semantic.thresholdDesc')}</p>
                 </div>
             </div>
 

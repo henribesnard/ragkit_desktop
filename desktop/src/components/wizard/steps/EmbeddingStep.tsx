@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/Button";
 import { ipc } from "@/lib/ipc";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Download } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function EmbeddingStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig, setStepValid } = wizard;
     const embCfg = state.config?.embedding || {};
 
@@ -78,10 +80,10 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
             const res: any = await ipc.testEmbeddingConnection(provider, model);
             if (res.success) {
-                setTestResult({ success: true, msg: "Connexion réussie !" });
+                setTestResult({ success: true, msg: t('wizard.embedding.testSuccess') });
                 setStepValid(true);
             } else {
-                setTestResult({ success: false, msg: res.error || "Échec de la connexion" });
+                setTestResult({ success: false, msg: res.error || t('wizard.embedding.testFailed') });
             }
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
@@ -92,9 +94,9 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Modèle d'Embedding</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.embedding.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Les embeddings convertissent vos textes en vecteurs mathématiques pour permettre la recherche sémantique.
+                {t('wizard.embedding.subtitle')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -104,9 +106,9 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <Download className={`w-5 h-5 ${provider === "huggingface" ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">Local (Recommandé)</h3>
+                        <h3 className="font-semibold text-lg">{t('wizard.embedding.localRecommend')}</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Multilingual E5. Environ 2.2Go seront téléchargés au premier test. Optimisé CPU/GPU.</p>
+                    <p className="text-sm text-gray-500">{t('wizard.embedding.localRecommendDesc')}</p>
                 </button>
 
                 <button
@@ -115,9 +117,9 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <Key className={`w-5 h-5 ${provider === "openai" ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">OpenAI API</h3>
+                        <h3 className="font-semibold text-lg">{t('wizard.embedding.openaiApi')}</h3>
                     </div>
-                    <p className="text-sm text-gray-500">Rapide, performant et précis. Nécessite une clé API OpenAI payante.</p>
+                    <p className="text-sm text-gray-500">{t('wizard.embedding.openaiApiDesc')}</p>
                 </button>
 
                 <button
@@ -126,9 +128,9 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <Cpu className={`w-5 h-5 ${provider === "ollama" ? "text-blue-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">Ollama (Local)</h3>
+                        <h3 className="font-semibold text-lg">{t('wizard.embedding.ollamaLocal')}</h3>
                     </div>
-                    <p className="text-sm text-gray-500">100% privé, gratuit. Idéal si vous avez déjà téléchargé nomic-embed-text.</p>
+                    <p className="text-sm text-gray-500">{t('wizard.embedding.ollamaLocalDesc')}</p>
                 </button>
             </div>
 
@@ -136,18 +138,18 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 {provider === "openai" && (
                     <>
                         <div>
-                            <label className="block font-medium mb-1 text-sm">Modèle OpenAI</label>
+                            <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.openaiModel')}</label>
                             <select
                                 className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
                                 value={model}
                                 onChange={(e) => updateEmbedding({ model: e.target.value })}
                             >
-                                <option value="text-embedding-3-small">text-embedding-3-small (Rapide & Éco)</option>
-                                <option value="text-embedding-3-large">text-embedding-3-large (Haute précision)</option>
+                                <option value="text-embedding-3-small">{t('wizard.embedding.openaiSmall')}</option>
+                                <option value="text-embedding-3-large">{t('wizard.embedding.openaiLarge')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block font-medium mb-1 text-sm">Clé API OpenAI (OPENAI_API_KEY)</label>
+                            <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.openaiKey')}</label>
                             <input
                                 type="password"
                                 className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
@@ -155,21 +157,21 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                             />
-                            <p className="text-xs text-gray-500 mt-1">La clé sera stockée de manière sécurisée dans le trousseau de votre OS.</p>
+                            <p className="text-xs text-gray-500 mt-1">{t('wizard.embedding.openaiKeyDesc')}</p>
                         </div>
                     </>
                 )}
 
                 {provider === "ollama" && (
                     <div>
-                        <label className="block font-medium mb-1 text-sm">Modèle local Ollama</label>
+                        <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.ollamaModel')}</label>
                         {loadingModels ? (
                             <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Chargement des modèles...
+                                <Loader2 className="w-4 h-4 animate-spin" /> {t('wizard.embedding.loadingModels')}
                             </div>
                         ) : ollamaModels.length === 0 ? (
                             <div className="text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
-                                Aucun modèle Ollama détecté. Veuillez installer Ollama et télécharger un modèle d'embedding (ex: nomic-embed-text).
+                                {t('wizard.embedding.noOllamaModels')}
                             </div>
                         ) : (
                             <select
@@ -187,20 +189,20 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
                 {provider === "huggingface" && (
                     <div className="flex flex-col gap-2">
-                        <label className="block font-medium mb-1 text-sm">Modèle SentenceTransformers Local</label>
+                        <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.localModel')}</label>
                         <input
                             type="text"
                             className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700 bg-gray-50 text-gray-600 dark:text-gray-400 cursor-not-allowed"
                             value={model}
                             readOnly
                         />
-                        <p className="text-xs text-gray-500">Ce modèle sera téléchargé et exécuté localement indépendamment de Ollama. Cliquez sur "Tester la connexion" pour forcer le téléchargement si ce n'est pas déjà fait. Cette opération peut prendre quelques minutes.</p>
+                        <p className="text-xs text-gray-500">{t('wizard.embedding.localModelDesc')}</p>
                     </div>
                 )}
 
                 <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3">
                     <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (provider === "openai" && !apiKey)}>
-                        {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Test de connexion...</> : "Tester la connexion"}
+                        {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.embedding.testingConnection')}</> : t('wizard.embedding.testConnection')}
                     </Button>
 
                     {testResult && (

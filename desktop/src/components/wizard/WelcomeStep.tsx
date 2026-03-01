@@ -1,41 +1,43 @@
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "react-i18next";
 
 interface WelcomeStepProps {
     onNext: () => void;
 }
 
 export function WelcomeStep({ onNext }: WelcomeStepProps) {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-col items-center justify-center text-center h-full max-w-2xl mx-auto px-6">
             <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2" style={{ letterSpacing: '0.05em' }}>LOKO</h1>
-                <p className="text-xl text-gray-500 dark:text-gray-400">Votre assistant documentaire intelligent</p>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2" style={{ letterSpacing: '0.05em' }}>{t('wizard.welcome.title')}</h1>
+                <p className="text-xl text-gray-500 dark:text-gray-400">{t('wizard.welcome.subtitle')}</p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 w-full mb-8">
                 <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
-                    LOKO transforme vos documents en une base de connaissances interrogeable par intelligence artificielle.
+                    {t('wizard.welcome.description')}
                 </p>
 
                 <div className="space-y-4 text-left bg-gray-50 dark:bg-gray-900/50 p-6 rounded-xl">
-                    <p className="font-medium text-gray-900 dark:text-white mb-2">En quelques étapes, nous allons :</p>
+                    <p className="font-medium text-gray-900 dark:text-white mb-2">{t('wizard.welcome.stepsTitle')}</p>
                     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                         <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-sm font-bold">1</span>
-                        Analyser votre type de contenu
+                        {t('wizard.welcome.step1')}
                     </div>
                     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                         <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-sm font-bold">2</span>
-                        Sélectionner vos documents
+                        {t('wizard.welcome.step2')}
                     </div>
                     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                         <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-sm font-bold">3</span>
-                        Configurer le système automatiquement
+                        {t('wizard.welcome.step3')}
                     </div>
                 </div>
             </div>
 
             <Button size="lg" onClick={onNext} className="w-full sm:w-auto px-8">
-                Commencer la configuration →
+                {t('wizard.welcome.start')}
             </Button>
         </div>
     );

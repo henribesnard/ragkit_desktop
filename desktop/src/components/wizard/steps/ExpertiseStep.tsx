@@ -1,6 +1,8 @@
 import { User, Settings2, Sliders } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function ExpertiseStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const currentLevel = state.config?.general?.expertise_level || "simple";
 
@@ -14,9 +16,9 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Votre niveau d'expertise</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.expertise.title')}</h1>
             <p className="text-gray-500 mb-8">
-                LOKO s'adapte à vos besoins. Souhaitez-vous une configuration simple ou avoir le contrôle total sur tous les paramètres ?
+                {t('wizard.expertise.subtitle')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -30,9 +32,9 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
                     <div className={`p-3 rounded-lg mb-4 ${currentLevel === "simple" ? "bg-blue-100 dark:bg-blue-900" : "bg-gray-100 dark:bg-gray-800"}`}>
                         <User className={`w-6 h-6 ${currentLevel === "simple" ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400"}`} />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">Interface Débutant</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.simple')}</h3>
                     <p className="text-sm text-gray-500">
-                        Masque les configurations techniques complexes (chunking, vecteurs). Idéal pour commencer rapidement avec les paramètres recommandés.
+                        {t('wizard.expertise.simpleDesc')}
                     </p>
                 </button>
 
@@ -46,9 +48,9 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
                     <div className={`p-3 rounded-lg mb-4 ${currentLevel === "intermediate" ? "bg-blue-100 dark:bg-blue-900" : "bg-gray-100 dark:bg-gray-800"}`}>
                         <Sliders className={`w-6 h-6 ${currentLevel === "intermediate" ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400"}`} />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">Intermédiaire</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.intermediate')}</h3>
                     <p className="text-sm text-gray-500">
-                        Accès aux options principales (modèles) avec des paramètres avancés masqués.
+                        {t('wizard.expertise.intermediateDesc')}
                     </p>
                 </button>
 
@@ -62,9 +64,9 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
                     <div className={`p-3 rounded-lg mb-4 ${currentLevel === "expert" ? "bg-blue-100 dark:bg-blue-900" : "bg-gray-100 dark:bg-gray-800"}`}>
                         <Settings2 className={`w-6 h-6 ${currentLevel === "expert" ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400"}`} />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">Mode Avancé</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.expert')}</h3>
                     <p className="text-sm text-gray-500">
-                        Accès complet aux algorithmes de parsing, dimensions de chunks, sélection des algorithmes de recherche hybride et re-ranking.
+                        {t('wizard.expertise.expertDesc')}
                     </p>
                 </button>
             </div>

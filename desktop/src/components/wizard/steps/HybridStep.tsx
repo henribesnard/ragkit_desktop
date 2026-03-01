@@ -1,6 +1,7 @@
-
+import { useTranslation } from "react-i18next";
 
 export function HybridStep({ wizard }: { wizard: any }) {
+    const { t } = useTranslation();
     const { state, updateConfig } = wizard;
     const hybridCfg = state.config?.retrieval?.hybrid || {};
 
@@ -19,14 +20,14 @@ export function HybridStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">Paramètres de Recherche Hybride</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('wizard.hybrid.title')}</h1>
             <p className="text-gray-500 mb-8">
-                Ajustez comment le système combine les résultats sémantiques et lexicaux.
+                {t('wizard.hybrid.subtitle')}
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
                 <div>
-                    <label className="block font-medium mb-2">Nombre final de résultats (Top K)</label>
+                    <label className="block font-medium mb-2">{t('wizard.hybrid.topK')}</label>
                     <input
                         type="range"
                         min="1"
@@ -38,13 +39,13 @@ export function HybridStep({ wizard }: { wizard: any }) {
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-1">
                         <span>1</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{topK} documents</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.hybrid.documents')}</span>
                         <span>20</span>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block font-medium mb-2">Méthode de Fusion</label>
+                    <label className="block font-medium mb-2">{t('wizard.hybrid.fusionMethod')}</label>
                     <div className="grid grid-cols-2 gap-4">
                         <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'rrf' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                             <input
@@ -56,8 +57,8 @@ export function HybridStep({ wizard }: { wizard: any }) {
                                 className="text-blue-600"
                             />
                             <div>
-                                <span className="block font-medium text-sm">RRF (Reciprocal Rank)</span>
-                                <span className="text-xs text-gray-500">Mélange robuste basé sur les rangs.</span>
+                                <span className="block font-medium text-sm">{t('wizard.hybrid.rrf')}</span>
+                                <span className="text-xs text-gray-500">{t('wizard.hybrid.rrfDesc')}</span>
                             </div>
                         </label>
                         <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'linear' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
@@ -70,8 +71,8 @@ export function HybridStep({ wizard }: { wizard: any }) {
                                 className="text-blue-600"
                             />
                             <div>
-                                <span className="block font-medium text-sm">Combinaison Linéaire</span>
-                                <span className="text-xs text-gray-500">Mélange basé sur les pondérations.</span>
+                                <span className="block font-medium text-sm">{t('wizard.hybrid.linear')}</span>
+                                <span className="text-xs text-gray-500">{t('wizard.hybrid.linearDesc')}</span>
                             </div>
                         </label>
                     </div>
@@ -79,7 +80,7 @@ export function HybridStep({ wizard }: { wizard: any }) {
 
                 {fusion === 'linear' && (
                     <div>
-                        <label className="block font-medium mb-2">Pondération Sémantique vs Lexicale</label>
+                        <label className="block font-medium mb-2">{t('wizard.hybrid.weighting')}</label>
                         <input
                             type="range"
                             min="0"
@@ -90,9 +91,9 @@ export function HybridStep({ wizard }: { wizard: any }) {
                             className="w-full cursor-pointer"
                         />
                         <div className="flex justify-between text-sm text-gray-500 mt-1">
-                            <span>100% Lexical</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{Math.round(semanticWeight * 100)}% Sémantique</span>
-                            <span>100% Sémantique</span>
+                            <span>{t('wizard.hybrid.lexicalOnly')}</span>
+                            <span className="font-bold text-gray-900 dark:text-white">{Math.round(semanticWeight * 100)}% {t('wizard.hybrid.semanticPercent')}</span>
+                            <span>{t('wizard.hybrid.semanticOnly')}</span>
                         </div>
                     </div>
                 )}
