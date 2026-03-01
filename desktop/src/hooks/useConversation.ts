@@ -44,6 +44,7 @@ export function useConversation(conversationId: string | null) {
       setError(null);
       return result;
     } catch (err: any) {
+      console.warn("[useConversation] Failed to load history for", conversationId, err);
       setError(String(err));
       return emptyHistory;
     } finally {

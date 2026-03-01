@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -35,6 +35,14 @@ export function useChatStream() {
       unlistenStatusRef.current = null;
     }
   }, []);
+
+  // Clean up Tauri event listeners when the component unmounts
+  // (e.g. user navigates away during streaming)
+  useEffect(() => {
+    return () => {
+      cleanupListeners();
+    };
+  }, [cleanupListeners]);
 
   const startStream = useCallback(
     async (payload: ChatPayload) => {

@@ -155,8 +155,8 @@ export function Chat() {
           if (title && !cancelled) {
             updateConversationActivity(urlId, updated.messages.length, title);
           }
-        } catch {
-          // Title generation is best-effort
+        } catch (err) {
+          console.warn("[Chat] Title generation failed:", err);
         }
       }
 
@@ -231,6 +231,14 @@ export function Chat() {
     const q = query.trim();
     setQuery("");
     setActiveQuery(q);
+
+    // Immediately set a fallback title from the query text on first message
+    // so the sidebar never stays on "Nouvelle conversation"
+    if (urlId && history.messages.length === 0) {
+      const fallbackTitle = q.length > 40 ? q.slice(0, 37) + "..." : q;
+      updateConversationActivity(urlId, 1, fallbackTitle);
+    }
+
     await startStream(payload);
   };
 
