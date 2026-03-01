@@ -132,12 +132,6 @@ export function Chat() {
   const refreshHistoryRef = useRef(refreshHistory);
   useEffect(() => { refreshHistoryRef.current = refreshHistory; });
 
-  // Reset streaming state when switching conversations
-  useEffect(() => {
-    clearStreamState();
-    setActiveQuery(null);
-  }, [urlId, clearStreamState]);
-
   // Handle streaming completion: fetch history, generate title, then clear stream UI
   // IMPORTANT: title generation MUST run before clearStreamState() because
   // clearStreamState sets finalResponse=null which triggers cleanup → cancelled=true

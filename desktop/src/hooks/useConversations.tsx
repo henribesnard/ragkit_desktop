@@ -197,6 +197,7 @@ export function ConversationsProvider({ children }: { children: ReactNode }) {
     return <ConversationsContext.Provider value={value}>{children}</ConversationsContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useConversations(): ConversationsContextValue {
     const ctx = useContext(ConversationsContext);
     if (!ctx) {

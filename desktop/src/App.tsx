@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Chat } from "./pages/Chat";
 import { Dashboard } from "./pages/Dashboard";
@@ -8,6 +8,12 @@ import { useTheme } from "./hooks/useTheme";
 import { useSetupStatus } from "./hooks/useSetupStatus";
 import { ConversationsProvider } from "./hooks/useConversations";
 import "./i18n";
+
+/** Key-based wrapper: remounts Chat when conversation ID changes, resetting all state. */
+function ChatPage() {
+    const { id } = useParams<{ id: string }>();
+    return <Chat key={id || "new"} />;
+}
 
 function SplashScreen() {
     return (
@@ -41,8 +47,8 @@ export default function App() {
                     <Sidebar />
                     <main className="flex-1 overflow-hidden">
                         <Routes>
-                            <Route path="/chat" element={<Chat />} />
-                            <Route path="/chat/:id" element={<Chat />} />
+                            <Route path="/chat" element={<ChatPage />} />
+                            <Route path="/chat/:id" element={<ChatPage />} />
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route path="/settings/:section" element={<Settings />} />
