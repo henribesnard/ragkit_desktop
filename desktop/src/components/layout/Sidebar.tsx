@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe } from "lucide-react";
+import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe, ChevronDown, ChevronRight } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { useConversations } from "../../hooks/useConversations";
@@ -28,6 +28,7 @@ export function Sidebar() {
     } = useConversations();
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [isConversationsOpen, setIsConversationsOpen] = useState(true);
 
     const toggleLanguage = () => {
         const newLang = i18n.language === "fr" ? "en" : "fr";
@@ -108,13 +109,37 @@ export function Sidebar() {
                 style={{
                     height: 1,
                     background: "var(--border-default)",
-                    margin: "8px 12px",
+                    margin: "12px 12px 4px",
                 }}
             />
 
+            {/* Conversations Header */}
+            <button
+                onClick={() => setIsConversationsOpen(!isConversationsOpen)}
+                className="w-full flex items-center justify-between transition-colors"
+                style={{
+                    padding: "6px 14px",
+                    background: "transparent",
+                    color: "var(--text-tertiary)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                }}
+            >
+                {t("sidebar.conversations", "Conversations")}
+                {isConversationsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+
             {/* Search (if > 5 conversations) */}
-            {showSearch && (
-                <div style={{ padding: "0 0 4px 0" }}>
+            {showSearch && isConversationsOpen && (
+                <div style={{ padding: "4px 0 8px 0" }}>
                     <ConversationSearch
                         value={searchQuery}
                         onChange={setSearchQuery}
@@ -123,77 +148,81 @@ export function Sidebar() {
             )}
 
             {/* Conversations List — Scrollable */}
-            <div
-                className="flex-1 overflow-y-auto"
-                style={{ marginBottom: 8 }}
-            >
-                {filteredConversations ? (
-                    // Search results — flat list
-                    <div className="space-y-0.5">
-                        {filteredConversations.length === 0 ? (
-                            <div
-                                className="text-center py-4 text-xs"
-                                style={{ color: "var(--text-tertiary)" }}
-                            >
-                                {t("chat.emptyResults")}
-                            </div>
-                        ) : (
-                            filteredConversations.map((conv) => (
+            {isConversationsOpen && (
+                <div
+                    className="flex-1 overflow-y-auto"
+                    style={{ marginBottom: 8 }}
+                >
+                    {filteredConversations ? (
+                        // Search results — flat list
+                        <div className="space-y-0.5">
+                            {filteredConversations.length === 0 ? (
                                 <div
-                                    key={conv.id}
-                                    className="cursor-pointer transition-colors"
-                                    style={{
-                                        padding: "8px 12px",
-                                        borderRadius: "var(--radius-md)",
-                                        background: conv.id === activeId ? "var(--bg-hover)" : "transparent",
-                                    }}
-                                    onClick={() => handleSelectConversation(conv.id)}
-                                    onMouseEnter={(e) => {
-                                        (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (conv.id !== activeId) {
-                                            (e.currentTarget as HTMLElement).style.background = "transparent";
-                                        }
-                                    }}
+                                    className="text-center py-4 text-xs"
+                                    style={{ color: "var(--text-tertiary)" }}
                                 >
-                                    <span
-                                        className="text-sm truncate block"
-                                        style={{ color: "var(--text-primary)" }}
-                                    >
-                                        {conv.title || t("sidebar.newChat")}
-                                    </span>
+                                    {t("chat.emptyResults")}
                                 </div>
-                            ))
-                        )}
-                    </div>
-                ) : (
-                    <ConversationList
-                        grouped={grouped}
-                        activeId={activeId}
-                        onSelect={handleSelectConversation}
-                        onRename={renameConversation}
-                        onArchive={archiveConversation}
-                        onDelete={deleteConversation}
-                    />
-                )}
+                            ) : (
+                                filteredConversations.map((conv) => (
+                                    <div
+                                        key={conv.id}
+                                        className="cursor-pointer transition-colors"
+                                        style={{
+                                            padding: "8px 12px",
+                                            borderRadius: "var(--radius-md)",
+                                            background: conv.id === activeId ? "var(--bg-hover)" : "transparent",
+                                        }}
+                                        onClick={() => handleSelectConversation(conv.id)}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (conv.id !== activeId) {
+                                                (e.currentTarget as HTMLElement).style.background = "transparent";
+                                            }
+                                        }}
+                                    >
+                                        <span
+                                            className="text-sm truncate block"
+                                            style={{ color: "var(--text-primary)" }}
+                                        >
+                                            {conv.title || t("sidebar.newChat")}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <ConversationList
+                            grouped={grouped}
+                            activeId={activeId}
+                            onSelect={handleSelectConversation}
+                            onRename={renameConversation}
+                            onArchive={archiveConversation}
+                            onDelete={deleteConversation}
+                        />
+                    )}
 
-                {/* Archives link */}
-                {archivedCount > 0 && !filteredConversations && (
-                    <div
-                        className="text-xs mt-4 px-3 cursor-pointer transition-colors"
-                        style={{ color: "var(--text-tertiary)" }}
-                        onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
-                        }}
-                        onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
-                        }}
-                    >
-                        📁 {t("sidebar.archiveCount", { count: archivedCount })}
-                    </div>
-                )}
-            </div>
+                    {/* Archives link */}
+                    {archivedCount > 0 && !filteredConversations && (
+                        <div
+                            className="text-xs mt-4 px-3 cursor-pointer transition-colors"
+                            style={{ color: "var(--text-tertiary)" }}
+                            onMouseEnter={(e) => {
+                                (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                            }}
+                            onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                            }}
+                        >
+                            📁 {t("sidebar.archiveCount", { count: archivedCount })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {!isConversationsOpen && <div className="flex-1" />}
 
             {/* Separator */}
             <div

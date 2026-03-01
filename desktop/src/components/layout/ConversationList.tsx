@@ -35,14 +35,7 @@ export function ConversationList({
     const { t } = useTranslation();
 
     if (grouped.length === 0) {
-        return (
-            <div
-                className="text-center py-8 text-xs"
-                style={{ color: "var(--text-tertiary)" }}
-            >
-                {t("sidebar.newChat")}
-            </div>
-        );
+        return null;
     }
 
     return (
