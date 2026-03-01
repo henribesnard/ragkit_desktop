@@ -40,8 +40,13 @@ def _result_error(result: Any) -> str | None:
     return text or None
 
 
+import asyncio
+
 async def _call_test_connection(provider: Any) -> Any:
-    result = provider.test_connection()
+    if inspect.iscoroutinefunction(getattr(provider.__class__, "test_connection", None)) or inspect.iscoroutinefunction(provider.test_connection):
+        return await provider.test_connection()
+        
+    result = await asyncio.to_thread(provider.test_connection)
     if inspect.isawaitable(result):
         return await result
     return result

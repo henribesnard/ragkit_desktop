@@ -155,7 +155,8 @@ async def test_embedding_connection(provider: EmbeddingProvider | None = None, m
             api_key = os.getenv("MISTRAL_API_KEY")
             
     engine = EmbeddingEngine(cfg, api_key=api_key)
-    return engine.test_connection()
+    import asyncio
+    return await asyncio.to_thread(engine.test_connection)
 
 
 @router.post("/test-embedding", response_model=EmbeddingTestResult)
