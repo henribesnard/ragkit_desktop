@@ -576,6 +576,12 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
                     .map_err(|e| e.to_string())?;
                 CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
                 return Ok("stream_completed".to_string());
+            } else if event_name == "status" {
+                let parsed: serde_json::Value = serde_json::from_str(&data_payload)
+                    .unwrap_or_else(|_| serde_json::json!({}));
+                window
+                    .emit("chat-stream-status", parsed)
+                    .map_err(|e| e.to_string())?;
             } else if event_name == "error" {
                 let parsed: serde_json::Value = serde_json::from_str(&data_payload)
                     .unwrap_or_else(|_| serde_json::json!({ "error": data_payload }));

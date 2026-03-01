@@ -86,7 +86,12 @@ function useConversationsInternal() {
 
     const createConversation = useCallback(async (): Promise<string> => {
         const id = crypto.randomUUID();
-        await invoke("new_conversation", { conversation_id: id });
+        try {
+            await invoke("new_conversation", { conversation_id: id });
+        } catch {
+            // Best effort — backend may not be ready yet; conversation will
+            // initialise its memory on first message.
+        }
 
         const now = new Date().toISOString();
         const newConv: ConversationListItem = {
@@ -97,7 +102,13 @@ function useConversationsInternal() {
             messageCount: 0,
             archived: false,
         };
-        setConversations((prev) => [newConv, ...prev]);
+        setConversations((prev) => {
+            // Remove empty unused conversations (no messages AND no title)
+            const cleaned = prev.filter(
+                (c) => c.messageCount > 0 || c.title.trim().length > 0,
+            );
+            return [newConv, ...cleaned];
+        });
         setActiveId(id);
         return id;
     }, []);

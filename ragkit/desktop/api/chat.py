@@ -132,6 +132,15 @@ async def chat_stream(payload: ChatQuery):
             orchestrator, include_debug = _build_orchestrator(payload)
             async for event in orchestrator.stream(payload.query, include_debug=include_debug):
                 event_type = str(event.get("type") or "")
+                
+                if event_type == "status":
+                    status_payload = {
+                        "step": str(event.get("step", "")),
+                        "detail": event.get("detail"),
+                    }
+                    yield f"event: status\ndata: {json.dumps(status_payload, ensure_ascii=False)}\n\n"
+                    continue
+                    
                 if event_type == "token":
                     token_payload = {"content": str(event.get("content", ""))}
                     yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"

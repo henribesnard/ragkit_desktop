@@ -65,7 +65,14 @@
     "sources": "Sources",
     "newConversation": "New conversation",
     "aiDisclaimer": "AI can make mistakes. Always verify the provided sources.",
-    "debug": "Debug"
+    "debug": "Debug",
+    "status": {
+      "analyzing": "Analyzing intent",
+      "rewriting": "Rewriting query",
+      "retrieving": "Searching documents",
+      "retrieved": "{{count}} documents found",
+      "generating": "Preparing response"
+    }
   },
   "settings": {
     "title": "Settings",

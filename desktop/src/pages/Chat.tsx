@@ -14,6 +14,7 @@ import { useConversation } from "@/hooks/useConversation";
 import { useFeedback } from "@/hooks/useFeedback";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import { stripSourceTags } from "@/lib/sanitize";
+import { StreamingStatusIndicator } from "@/components/chat/StreamingStatusIndicator";
 
 interface ChatReadyResponse {
   ready: boolean;
@@ -38,6 +39,7 @@ export function Chat() {
     content: streamedAnswer,
     isStreaming,
     finalResponse,
+    status,
     error: streamError,
     startStream,
     clear: clearStreamState,
@@ -418,15 +420,21 @@ export function Chat() {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
-                    {isStreaming && (
-                      <span
-                        className="inline-block w-2 h-4 ml-0.5"
-                        style={{
-                          background: "var(--primary-500)",
-                          animation: "typing-dot 1s infinite",
-                        }}
-                      />
+                    {!streamedAnswer && status ? (
+                      <StreamingStatusIndicator status={status} />
+                    ) : (
+                      <>
+                        <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
+                        {isStreaming && (
+                          <span
+                            className="inline-block w-2 h-4 ml-0.5"
+                            style={{
+                              background: "var(--primary-500)",
+                              animation: "typing-dot 1s infinite",
+                            }}
+                          />
+                        )}
+                      </>
                     )}
 
 

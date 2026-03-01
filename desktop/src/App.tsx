@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Chat } from "./pages/Chat";
 import { Dashboard } from "./pages/Dashboard";
@@ -6,13 +7,43 @@ import { Settings } from "./pages/Settings";
 import { Onboarding } from "./pages/Onboarding";
 import { useTheme } from "./hooks/useTheme";
 import { useSetupStatus } from "./hooks/useSetupStatus";
-import { ConversationsProvider } from "./hooks/useConversations";
+import { ConversationsProvider, useConversations } from "./hooks/useConversations";
 import "./i18n";
 
-/** Key-based wrapper: remounts Chat when conversation ID changes, resetting all state. */
+/**
+ * Key-based wrapper: remounts Chat when conversation ID changes, resetting all state.
+ * Auto-creates a conversation when landing on /chat without an ID so that
+ * every chat session always has a UUID (fixes disappearing conversations & missing titles).
+ */
 function ChatPage() {
     const { id } = useParams<{ id: string }>();
-    return <Chat key={id || "new"} />;
+    const { createConversation } = useConversations();
+    const navigate = useNavigate();
+    const creating = useRef(false);
+
+    useEffect(() => {
+        if (!id && !creating.current) {
+            creating.current = true;
+            let unmounted = false;
+            void (async () => {
+                const newId = await createConversation();
+                if (!unmounted) {
+                    navigate(`/chat/${newId}`, { replace: true });
+                }
+            })();
+            return () => { unmounted = true; };
+        }
+    }, [id, createConversation, navigate]);
+
+    if (!id) {
+        return (
+            <div className="h-full flex items-center justify-center" style={{ background: "var(--bg-primary)" }}>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "var(--primary-500)" }} />
+            </div>
+        );
+    }
+
+    return <Chat key={id} />;
 }
 
 function SplashScreen() {

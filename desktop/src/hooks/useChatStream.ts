@@ -5,14 +5,21 @@ import { listen } from "@tauri-apps/api/event";
 import type { ChatPayload, ChatResponse } from "@/hooks/useChat";
 import { stripSourceTags } from "@/lib/sanitize";
 
+export interface StreamStatus {
+  step: "analyzing" | "rewriting" | "retrieving" | "retrieved" | "generating";
+  detail?: { count?: number; search_type?: string } | null;
+}
+
 export function useChatStream() {
   const [content, setContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [finalResponse, setFinalResponse] = useState<ChatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<StreamStatus | null>(null);
 
   const unlistenChunkRef = useRef<null | (() => void)>(null);
   const unlistenDoneRef = useRef<null | (() => void)>(null);
+  const unlistenStatusRef = useRef<null | (() => void)>(null);
 
   const cleanupListeners = useCallback(() => {
     if (unlistenChunkRef.current) {
@@ -23,6 +30,10 @@ export function useChatStream() {
       unlistenDoneRef.current();
       unlistenDoneRef.current = null;
     }
+    if (unlistenStatusRef.current) {
+      unlistenStatusRef.current();
+      unlistenStatusRef.current = null;
+    }
   }, []);
 
   const startStream = useCallback(
@@ -32,6 +43,12 @@ export function useChatStream() {
       setContent("");
       setFinalResponse(null);
       setIsStreaming(true);
+      setStatus(null);
+
+      const statusUnlisten = await listen<StreamStatus>("chat-stream-status", (event) => {
+        setStatus(event.payload);
+      });
+      unlistenStatusRef.current = statusUnlisten;
 
       const chunkUnlisten = await listen<string>("chat-stream-chunk", (event) => {
         setContent((prev) => stripSourceTags(prev + event.payload));
@@ -74,6 +91,7 @@ export function useChatStream() {
     setIsStreaming(false);
     setFinalResponse(null);
     setError(null);
+    setStatus(null);
   }, [cleanupListeners]);
 
   return {
@@ -81,6 +99,7 @@ export function useChatStream() {
     isStreaming,
     finalResponse,
     error,
+    status,
     startStream,
     stopStream,
     clear,

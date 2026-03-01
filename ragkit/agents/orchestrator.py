@@ -168,19 +168,64 @@ class Orchestrator:
         answer_parts: list[str] = []
         rewritten_query: str | None = None
         try:
+            yield {"type": "status", "step": "analyzing"}
             analysis = await self.analyzer.analyze(query, history)
 
             if analysis.needs_rag:
-                (
-                    retrieval_results,
-                    retrieval_latency_ms,
-                    resolved_search_type,
-                    reranking_applied,
-                    retrieval_debug,
-                    rewrite,
-                    rewritten_query,
-                ) = await self._collect_rag_retrieval(query, history, include_debug=capture_debug)
+                yield {"type": "status", "step": "rewriting"}
+                rewrite = await self.rewriter.rewrite(query, history)
+                queries = rewrite.rewritten_queries or [query]
+                rewritten_query = queries[0] if queries and queries[0] != query else None
+                
+                yield {"type": "status", "step": "retrieving"}
+                merged_results: list[Any] = []
+                retrieval_latency_ms = 0
+                reranking_applied = False
+                resolved_search_type = "hybrid"
+                total_reranking_latency_ms = 0
+                debug_by_query: list[dict[str, Any]] = []
 
+                for rewrite_query in queries:
+                    retrieval_started = time.perf_counter()
+                    response = await self.retrieve_handler(rewrite_query)
+                    retrieval_latency_ms += max(1, int((time.perf_counter() - retrieval_started) * 1000))
+                    merged_results.extend(list(response.results))
+                    resolved_search_type = str(getattr(response.search_type, "value", response.search_type))
+                    reranking_applied = reranking_applied or any(bool(item.is_reranked) for item in response.results)
+                    
+                    raw_response_debug = getattr(response, "debug", None)
+                    response_debug = raw_response_debug if isinstance(raw_response_debug, dict) else {}
+                    rerank_debug = response_debug.get("rerank")
+                    if isinstance(rerank_debug, dict):
+                        total_reranking_latency_ms += int(rerank_debug.get("latency_ms") or 0)
+                    
+                    if capture_debug:
+                        query_debug = response_debug if response_debug else {"debug": raw_response_debug}
+                        debug_by_query.append({"query": rewrite_query, "debug": query_debug})
+
+                retrieval_results = self._deduplicate_results(merged_results)
+                
+                retrieval_debug: dict[str, Any] = {
+                    "queries": queries,
+                    "unique_results": len(retrieval_results),
+                    "results_before_dedup": len(merged_results),
+                    "search_type": resolved_search_type,
+                    "retrieval_latency_ms": retrieval_latency_ms,
+                    "reranking_latency_ms": total_reranking_latency_ms,
+                }
+                if capture_debug:
+                    retrieval_debug["per_query"] = debug_by_query
+                    
+                yield {
+                    "type": "status", 
+                    "step": "retrieved", 
+                    "detail": {
+                        "count": len(retrieval_results),
+                        "search_type": resolved_search_type
+                    }
+                }
+
+                yield {"type": "status", "step": "generating"}
                 async for event in self.response_generator.stream_events(
                     query=query,
                     retrieval_results=retrieval_results,
@@ -203,6 +248,7 @@ class Orchestrator:
                         done_answer = str(event.get("answer") or "".join(answer_parts))
                         answer_parts = [done_answer]
             else:
+                yield {"type": "status", "step": "generating"}
                 messages = self._build_non_rag_messages(query, history, analysis.intent)
                 prompt_tokens = 0
                 completion_tokens = 0
