@@ -8,9 +8,6 @@
   ; Explicitly kill the backend sidecar in case it outlived the parent
   nsExec::Exec 'taskkill /F /IM "ragkit-backend.exe" /T'
 
-  ; PowerShell fallback: wildcard-match any process name containing ragkit or loko
-  nsExec::Exec 'powershell -NoProfile -Command "Get-Process -Name *ragkit*,*loko* -ErrorAction SilentlyContinue | Stop-Process -Force"'
-
   ; Wait for OS to release file locks (5s — the sidecar is ~280 MB)
   Sleep 5000
 !macroend
@@ -19,7 +16,6 @@
   nsExec::Exec 'taskkill /F /IM "ragkit-desktop.exe" /T'
   nsExec::Exec 'taskkill /F /IM "LOKO.exe" /T'
   nsExec::Exec 'taskkill /F /IM "ragkit-backend.exe" /T'
-  nsExec::Exec 'powershell -NoProfile -Command "Get-Process -Name *ragkit*,*loko* -ErrorAction SilentlyContinue | Stop-Process -Force"'
   Sleep 5000
 !macroend
 
