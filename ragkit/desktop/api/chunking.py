@@ -87,7 +87,6 @@ def _compute_overlap_text(before: str, after: str, overlap_tokens: int, token_co
     if overlap_tokens <= 0:
         return None
     before_words = before.split()
-    after_words = after.split()
     common = before_words[-overlap_tokens:]
     if not common:
         return None

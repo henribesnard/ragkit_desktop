@@ -580,12 +580,12 @@ def _extract_doc_legacy(path: Path) -> ParsedContent:
                     for s in utf16_strings:
                         try:
                             decoded.append(s.decode("utf-16le"))
-                        except:
+                        except Exception:
                             pass
                     for s in ascii_strings:
                         try:
                             decoded.append(s.decode("cp1252"))
-                        except:
+                        except Exception:
                             pass
                             
                     text = "\n".join(decoded)
@@ -654,7 +654,7 @@ def _extract_pdf(path: Path) -> ParsedContent:
         try:
             if len(page.images) > 0:
                 has_images = True
-        except:
+        except Exception:
             pass
 
     metadata = reader.metadata or {}

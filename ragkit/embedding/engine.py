@@ -369,7 +369,7 @@ class EmbeddingEngine:
                             success=False, status="model_error",
                             message=f"Modèle '{self.config.model}' non installé dans Ollama.",
                         )
-            except Exception as e:
+            except Exception:
                 return ConnectionTestResult(
                     success=False, status="network_error",
                     message="Impossible de joindre Ollama (assurez-vous qu'il est lancé en arrière-plan).",

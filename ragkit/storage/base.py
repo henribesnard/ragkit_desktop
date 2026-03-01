@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from qdrant_client import QdrantClient
-    from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct
+    from qdrant_client.models import Distance, PointStruct
 except ImportError:
     QdrantClient = None
     PointStruct = None

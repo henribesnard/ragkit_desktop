@@ -7,6 +7,7 @@ import inspect
 from typing import Any
 
 from ragkit.config.monitoring_schema import ServiceHealth, ServiceStatus
+import asyncio
 
 
 def _now_iso() -> str:
@@ -39,8 +40,6 @@ def _result_error(result: Any) -> str | None:
     text = str(error).strip()
     return text or None
 
-
-import asyncio
 
 async def _call_test_connection(provider: Any) -> Any:
     if inspect.iscoroutinefunction(getattr(provider.__class__, "test_connection", None)) or inspect.iscoroutinefunction(provider.test_connection):

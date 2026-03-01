@@ -18,7 +18,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from ragkit.desktop.settings_store import ensure_storage_dirs, get_log_dir
+from ragkit.desktop.settings_store import ensure_storage_dirs, get_log_dir  # noqa: E402
 
 # Ensure directories are created before configuring logging
 ensure_storage_dirs()

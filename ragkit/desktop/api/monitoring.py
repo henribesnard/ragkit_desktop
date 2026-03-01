@@ -10,7 +10,6 @@ from fastapi.responses import PlainTextResponse
 
 import logging
 
-from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.monitoring_schema import (
     ActivityDataPoint,
     FeedbackStats,
@@ -96,7 +95,6 @@ def _build_health_checker() -> HealthChecker:
     try:
         settings = load_settings()
         vector_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
-        embed_cfg = EmbeddingConfig.model_validate(settings.embedding or {})
         vector_store = create_vector_store(vector_cfg)
         vector_name = vector_cfg.provider.value
     except Exception as exc:

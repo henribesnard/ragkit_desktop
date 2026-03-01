@@ -38,13 +38,12 @@ from .config_helpers import (
     get_lexical_config,
     get_semantic_config,
     load_or_create_lexical_index,
-    payload_value,
     resolve_general_settings,
     save_hybrid_config,
     text_preview,
 )
-from .lexical_api import execute_lexical_search, to_lexical_result_item
-from .semantic_api import execute_semantic_search, to_semantic_result_item
+from .lexical_api import execute_lexical_search
+from .semantic_api import execute_semantic_search
 
 router = APIRouter(prefix="/api", tags=["retrieval-unified"])
 

@@ -23,8 +23,6 @@ from ragkit.desktop.llm_service import get_llm_config, resolve_llm_provider
 from ragkit.desktop.monitoring_service import get_query_logger
 from ragkit.llm.response_generator import ResponseGenerator
 from ragkit.desktop.settings_store import get_conversations_dir
-from pathlib import Path
-
 router = APIRouter(prefix="/api", tags=["chat"])
 _MEMORY_CACHE: dict[str, ConversationMemory] = {}
 _DEFAULT_ID = "default"

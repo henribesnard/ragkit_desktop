@@ -11,8 +11,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
 from ragkit.config.embedding_schema import EmbeddingConfig, EmbeddingProvider
@@ -33,6 +31,8 @@ from ragkit.embedding.engine import EmbeddingEngine
 from ragkit.retrieval.lexical_engine import BM25Index
 from ragkit.storage.base import VectorPoint, create_vector_store
 
+
+logger = logging.getLogger(__name__)
 
 class IngestionRuntime:
     def __init__(self) -> None:

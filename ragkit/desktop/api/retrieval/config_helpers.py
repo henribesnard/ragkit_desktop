@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import re
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ragkit.config.embedding_schema import EmbeddingConfig
 from ragkit.config.retrieval_schema import (
     HybridSearchConfig,
     LexicalSearchConfig,
@@ -19,7 +16,6 @@ from ragkit.config.retrieval_schema import (
 from ragkit.config.vector_store_schema import GeneralSettings
 from ragkit.desktop.profiles import build_full_config
 from ragkit.desktop.settings_store import get_data_dir, load_settings, save_settings
-from ragkit.embedding.engine import EmbeddingEngine, cosine_similarity
 from ragkit.retrieval import BM25Index
 from ragkit.storage.base import VectorPoint
 
