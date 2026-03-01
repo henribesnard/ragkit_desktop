@@ -134,9 +134,7 @@ export function Chat() {
   const refreshHistoryRef = useRef(refreshHistory);
   useEffect(() => { refreshHistoryRef.current = refreshHistory; });
 
-  // Handle streaming completion: fetch history, generate title, then clear stream UI
-  // IMPORTANT: title generation MUST run before clearStreamState() because
-  // clearStreamState sets finalResponse=null which triggers cleanup → cancelled=true
+  // Handle streaming completion: fetch history, update activity, generate title, clear UI
   useEffect(() => {
     if (!finalResponse) return;
 
@@ -145,7 +143,12 @@ export function Chat() {
       const updated = await refreshHistoryRef.current();
       if (cancelled) return;
 
-      // Auto-generate title after first exchange (before clearing stream state!)
+      // Always persist messageCount immediately so the conversation survives cleanup
+      if (urlId && updated.messages.length > 0) {
+        updateConversationActivity(urlId, updated.messages.length);
+      }
+
+      // Auto-generate title after first exchange (best-effort, non-blocking)
       if (urlId && updated.messages.length >= 2) {
         try {
           const { title } = await ipc.generateConversationTitle(urlId);

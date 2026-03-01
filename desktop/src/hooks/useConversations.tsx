@@ -103,9 +103,13 @@ function useConversationsInternal() {
             archived: false,
         };
         setConversations((prev) => {
-            // Remove empty unused conversations (no messages AND no title)
+            // Remove stale empty conversations (no messages, no title, older than 1 hour)
+            const oneHourAgo = Date.now() - 3_600_000;
             const cleaned = prev.filter(
-                (c) => c.messageCount > 0 || c.title.trim().length > 0,
+                (c) =>
+                    c.messageCount > 0 ||
+                    c.title.trim().length > 0 ||
+                    new Date(c.createdAt).getTime() > oneHourAgo,
             );
             return [newConv, ...cleaned];
         });
