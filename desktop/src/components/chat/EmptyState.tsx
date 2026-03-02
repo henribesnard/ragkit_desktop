@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 
 interface EmptyStateProps {
     isReady: boolean;
+    isIngesting?: boolean;
 }
 
-export function EmptyState({ isReady }: EmptyStateProps) {
+export function EmptyState({ isReady, isIngesting }: EmptyStateProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const { theme } = useTheme();
@@ -39,6 +41,24 @@ export function EmptyState({ isReady }: EmptyStateProps) {
                         style={{ color: "var(--text-secondary)", maxWidth: 400 }}
                     >
                         {t("chat.emptySubtitle")}
+                    </p>
+                </>
+            ) : isIngesting ? (
+                <>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                        <p
+                            className="text-xl font-semibold"
+                            style={{ color: "var(--text-primary)" }}
+                        >
+                            {t("chat.ingestingTitle")}
+                        </p>
+                    </div>
+                    <p
+                        className="text-sm"
+                        style={{ color: "var(--text-secondary)", maxWidth: 400 }}
+                    >
+                        {t("chat.ingestingSubtitle")}
                     </p>
                 </>
             ) : (

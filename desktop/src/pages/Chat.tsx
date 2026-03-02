@@ -318,7 +318,7 @@ export function Chat() {
           )}
 
           {!hasMessages ? (
-            <EmptyState isReady={chatReady.ready} />
+            <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} />
           ) : (
             <div className="flex flex-col" style={{ gap: 24 }}>
               {/* History messages */}

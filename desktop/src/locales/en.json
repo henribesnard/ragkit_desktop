@@ -59,6 +59,8 @@
     "notConfiguredTitle": "Welcome to LOKO!",
     "notConfiguredSubtitle": "Configure your knowledge base to start asking questions.",
     "notConfiguredAction": "Launch configuration",
+    "ingestingTitle": "Indexing in progress...",
+    "ingestingSubtitle": "Your documents are being indexed. You'll be able to ask questions once ingestion is complete.",
     "stopGeneration": "Stop",
     "generating": "Generating...",
     "response": "Response",
