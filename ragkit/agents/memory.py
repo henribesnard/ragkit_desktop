@@ -6,10 +6,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+import logging
+
 from ragkit.config.agents_schema import AgentsConfig, MemoryStrategy
 from ragkit.llm.base import BaseLLMProvider, LLMMessage
 import json
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now_iso() -> str:
@@ -168,10 +172,15 @@ class ConversationMemory:
             "summary": self.state.summary,
             "total_messages": self.state.total_messages,
         }
-        self.storage_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            self.storage_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            logger.exception("Failed to save conversation %s to %s", self.conversation_id, self.storage_path)
 
     def load(self) -> None:
         if not self.storage_path or not self.storage_path.exists():
+            logger.debug("No conversation file at %s", self.storage_path)
             return
         try:
             data = json.loads(self.storage_path.read_text(encoding="utf-8"))
@@ -180,8 +189,9 @@ class ConversationMemory:
                 summary=data.get("summary"),
                 total_messages=data.get("total_messages", 0),
             )
+            logger.info("Loaded conversation %s (%d messages) from %s", self.conversation_id, len(self.state.messages), self.storage_path)
         except Exception:
-            # If load fails, start fresh
+            logger.exception("Failed to load conversation %s from %s", self.conversation_id, self.storage_path)
             self.state = ConversationState()
 
     def _summary_prefix(self) -> str:
