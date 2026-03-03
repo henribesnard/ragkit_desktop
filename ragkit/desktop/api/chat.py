@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -23,8 +24,12 @@ from ragkit.desktop.llm_service import get_llm_config, resolve_llm_provider
 from ragkit.desktop.monitoring_service import get_query_logger
 from ragkit.llm.response_generator import ResponseGenerator
 from ragkit.desktop.settings_store import get_conversations_dir
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api", tags=["chat"])
 _MEMORY_CACHE: dict[str, ConversationMemory] = {}
+_MAX_CACHE_SIZE = 50
 _DEFAULT_ID = "default"
 
 
@@ -50,12 +55,18 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
     global _MEMORY_CACHE
     cid = conversation_id or _DEFAULT_ID
     if cid not in _MEMORY_CACHE:
+        # Prune oldest entries when cache is full
+        if len(_MEMORY_CACHE) >= _MAX_CACHE_SIZE:
+            oldest_key = next(iter(_MEMORY_CACHE))
+            del _MEMORY_CACHE[oldest_key]
+            logger.debug("Pruned conversation cache entry: %s", oldest_key)
         storage_path = get_conversations_dir() / f"{cid}.json"
         _MEMORY_CACHE[cid] = ConversationMemory(
             get_agents_config(),
             conversation_id=cid,
-            storage_path=storage_path
+            storage_path=storage_path,
         )
+        logger.debug("Loaded conversation memory: %s", cid)
     return _MEMORY_CACHE[cid]
 
 
@@ -160,9 +171,11 @@ async def chat_stream(payload: ChatQuery):
                     done_payload = _build_chat_response(payload=payload, result=result).model_dump(mode="json")
                     yield f"event: done\ndata: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
         except ValueError as exc:
+            logger.warning("Chat stream validation error: %s", exc)
             error_payload = {"error": str(exc)}
             yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
         except Exception as exc:
+            logger.exception("Chat stream error")
             error_payload = {"error": str(exc)}
             yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
 
@@ -171,10 +184,11 @@ async def chat_stream(payload: ChatQuery):
 
 @router.post("/chat/new")
 async def chat_new(conversation_id: str | None = None) -> dict[str, bool]:
-    memory = _get_conversation_memory(conversation_id)
+    cid = conversation_id or _DEFAULT_ID
+    memory = _get_conversation_memory(cid)
     memory.clear()
-    if conversation_id in _MEMORY_CACHE:
-        del _MEMORY_CACHE[conversation_id]
+    _MEMORY_CACHE.pop(cid, None)
+    logger.info("Cleared conversation: %s", cid)
     return {"success": True}
 
 
@@ -213,22 +227,22 @@ async def chat_history(conversation_id: str | None = None) -> ConversationHistor
 async def generate_title(payload: dict) -> dict[str, str]:
     conversation_id = payload.get("conversation_id")
     memory = _get_conversation_memory(conversation_id)
-    
-    if not memory.state.messages:
-        return {"title": "Nouvelle conversation"}
 
-    # Use LLM to generate title from first message
+    if not memory.state.messages:
+        logger.debug("generate_title: no messages for %s", conversation_id)
+        return {"title": "Conversation"}
+
     llm_config = get_llm_config()
     provider = resolve_llm_provider(llm_config)
-    
+
     first_msg = memory.state.messages[0].content[:500]
     prompt = (
-        "Génère un titre très court (3 à 5 mots maximum) pour cette conversation "
-        "en te basant sur ce premier message :\n\n"
+        "Generate a very short title (3 to 5 words maximum) for this conversation "
+        "based on this first message. Reply in the SAME LANGUAGE as the message:\n\n"
         f"\"{first_msg}\"\n\n"
-        "Réponds UNIQUEMENT par le titre, sans ponctuation finale."
+        "Reply ONLY with the title, no final punctuation."
     )
-    
+
     try:
         from ragkit.llm.base import LLMMessage
         response = await provider.generate(
@@ -236,7 +250,9 @@ async def generate_title(payload: dict) -> dict[str, str]:
             temperature=0.3,
             max_tokens=20,
         )
-        title = str(response.content or "").strip().strip('"')
-        return {"title": title or "Sans titre"}
+        title = str(response.content or "").strip().strip('"').strip("'")
+        logger.info("Generated title for %s: %s", conversation_id, title)
+        return {"title": title or "Conversation"}
     except Exception:
+        logger.exception("Failed to generate title for %s", conversation_id)
         return {"title": "Conversation"}

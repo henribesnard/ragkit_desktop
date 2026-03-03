@@ -61,7 +61,16 @@ function groupConversations(conversations: ConversationListItem[]): GroupedConve
 function loadIndex(): ConversationListItem[] {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved) : [];
+        if (!saved) return [];
+        const items: ConversationListItem[] = JSON.parse(saved);
+        // Startup cleanup: remove stale empty conversations (no messages, no title, older than 1 hour)
+        const oneHourAgo = Date.now() - 3_600_000;
+        return items.filter(
+            (c) =>
+                c.messageCount > 0 ||
+                c.title.trim().length > 0 ||
+                new Date(c.createdAt).getTime() > oneHourAgo,
+        );
     } catch {
         return [];
     }
