@@ -1,16 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 
 interface EmptyStateProps {
     isReady: boolean;
     isIngesting?: boolean;
+    isBackendDown?: boolean;
 }
 
-export function EmptyState({ isReady, isIngesting }: EmptyStateProps) {
+export function EmptyState({ isReady, isIngesting, isBackendDown }: EmptyStateProps) {
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const { theme } = useTheme();
 
     return (
@@ -61,33 +60,38 @@ export function EmptyState({ isReady, isIngesting }: EmptyStateProps) {
                         {t("chat.ingestingSubtitle")}
                     </p>
                 </>
+            ) : isBackendDown ? (
+                <>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--text-tertiary)" }} />
+                        <p
+                            className="text-xl font-semibold"
+                            style={{ color: "var(--text-primary)" }}
+                        >
+                            {t("chat.connectingTitle")}
+                        </p>
+                    </div>
+                    <p
+                        className="text-sm"
+                        style={{ color: "var(--text-secondary)", maxWidth: 400 }}
+                    >
+                        {t("chat.connectingSubtitle")}
+                    </p>
+                </>
             ) : (
                 <>
                     <p
                         className="text-xl font-semibold mb-2"
                         style={{ color: "var(--text-primary)" }}
                     >
-                        {t("chat.notConfiguredTitle")}
+                        {t("chat.noDocumentsTitle")}
                     </p>
                     <p
-                        className="text-sm mb-6"
+                        className="text-sm"
                         style={{ color: "var(--text-secondary)", maxWidth: 400 }}
                     >
-                        {t("chat.notConfiguredSubtitle")}
+                        {t("chat.noDocumentsSubtitle")}
                     </p>
-                    <button
-                        onClick={() => navigate("/settings")}
-                        className="px-6 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
-                        style={{ background: "var(--primary-500)" }}
-                        onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.background = "var(--primary-600)";
-                        }}
-                        onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.background = "var(--primary-500)";
-                        }}
-                    >
-                        {t("chat.notConfiguredAction")}
-                    </button>
                 </>
             )}
         </div>

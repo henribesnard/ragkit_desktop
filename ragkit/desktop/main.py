@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 APP_NAME = "LOKO"
-VERSION = "1.3.16"
+VERSION = "1.3.17"
 
 
 def create_app() -> FastAPI:
@@ -83,20 +83,54 @@ def create_app() -> FastAPI:
     @app.post("/shutdown")
     async def shutdown():
         logger.info("Shutdown requested")
-        asyncio.get_event_loop().call_later(0.5, lambda: sys.exit(0))
+        asyncio.get_event_loop().call_later(0.5, lambda: os._exit(0))
         return {"ok": True}
     
     return app
+
+
+def _install_windows_error_handler() -> None:
+    """Suppress ConnectionResetError on Windows ProactorEventLoop.
+
+    Windows raises WinError 10054 when a client disconnects abruptly (e.g.
+    Tauri health-check probes).  Without this handler the unhandled exception
+    crashes the entire uvicorn server.
+    """
+    if sys.platform != "win32":
+        return
+
+    loop = asyncio.get_event_loop()
+    original_handler = loop.get_exception_handler()
+
+    def _handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        exception = context.get("exception")
+        if isinstance(exception, ConnectionResetError):
+            logger.debug("Suppressed ConnectionResetError: %s", exception)
+            return
+        if original_handler:
+            original_handler(loop, context)
+        else:
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(_handler)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8100)
     args = parser.parse_args()
-    
+
+    _install_windows_error_handler()
+
     app = create_app()
     logger.info(f"Starting RAGKIT backend on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=args.port,
+        log_level="info",
+        timeout_keep_alive=30,
+    )
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ import { useChatStream } from "@/hooks/useChatStream";
 import { useConversation } from "@/hooks/useConversation";
 import { useFeedback } from "@/hooks/useFeedback";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
+import { useBackendHealth } from "@/hooks/useBackendHealth";
 import { stripSourceTags } from "@/lib/sanitize";
 import { StreamingStatusIndicator } from "@/components/chat/StreamingStatusIndicator";
 
@@ -57,6 +58,7 @@ export function Chat() {
   const [chatReady, setChatReady] = useState<ChatReadyResponse>({ ready: false, vectors_count: 0, lexical_chunks: 0 });
   const [searchMode, setSearchMode] = useState<ChatSearchMode>("hybrid");
   const { isRunning: isIngesting } = usePersistentIngestion();
+  const { isHealthy: isBackendHealthy } = useBackendHealth();
 
   const [semanticEnabled, setSemanticEnabled] = useState(true);
   const [lexicalEnabled, setLexicalEnabled] = useState(true);
@@ -318,7 +320,7 @@ export function Chat() {
           )}
 
           {!hasMessages ? (
-            <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} />
+            <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} isBackendDown={!isBackendHealthy} />
           ) : (
             <div className="flex flex-col" style={{ gap: 24 }}>
               {/* History messages */}
