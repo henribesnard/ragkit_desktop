@@ -33,7 +33,7 @@
     "title": "Chat",
     "placeholder": "Le chat sera disponible après configuration",
     "inputPlaceholder": "Posez une question sur vos documents...",
-    "inputPlaceholderIngestion": "Ingestion en cours... Vous pouvez déjà poser des questions.",
+    "inputPlaceholderIngestion": "Indexation en cours... Le chat sera disponible après l'ingestion.",
     "inputPlaceholderNotReady": "Configurez votre base de connaissances d'abord.",
     "description": "Configurez votre base de connaissances pour commencer à poser des questions.",
     "semanticDescription": "Posez une question pour lancer la recherche sémantique et afficher les chunks les plus proches.",

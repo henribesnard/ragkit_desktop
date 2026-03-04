@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 APP_NAME = "LOKO"
-VERSION = "1.3.17"
+VERSION = "1.3.18"
 
 
 def create_app() -> FastAPI:
@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def _start_background_tasks():
+        _install_windows_error_handler()
         runtime.ensure_background_tasks()
 
     @app.get("/health")
@@ -99,7 +100,10 @@ def _install_windows_error_handler() -> None:
     if sys.platform != "win32":
         return
 
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
     original_handler = loop.get_exception_handler()
 
     def _handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
@@ -119,8 +123,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8100)
     args = parser.parse_args()
-
-    _install_windows_error_handler()
 
     app = create_app()
     logger.info(f"Starting RAGKIT backend on port {args.port}")

@@ -221,7 +221,7 @@ export function Chat() {
 
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled) return;
+    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
     const payload = {
       query: query.trim(),
       conversation_id: urlId || undefined,
@@ -252,11 +252,12 @@ export function Chat() {
   };
 
   const getPlaceholder = () => {
+    if (isIngesting) return t("chat.inputPlaceholderIngestion");
     if (!chatReady.ready) return t("chat.inputPlaceholderNotReady");
     return t("chat.inputPlaceholder");
   };
 
-  const hasMessages = history.messages.length > 0 || isStreaming || streamedAnswer;
+  const hasMessages = history.messages.length > 0 || isStreaming || streamedAnswer || activeQuery;
 
   return (
     <div className="h-full flex flex-col relative" style={{ background: "var(--bg-primary)" }}>
@@ -558,7 +559,7 @@ export function Chat() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={getPlaceholder()}
-            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
+            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting}
             rows={1}
             className="w-full resize-none outline-none text-sm"
             style={{
@@ -573,7 +574,7 @@ export function Chat() {
           {/* Send Button */}
           <button
             type="submit"
-            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
             className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
             style={{
               width: 36,

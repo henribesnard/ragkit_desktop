@@ -83,7 +83,6 @@ export function useChatStream() {
         setIsStreaming(false);
         cleanupListeners();
         setError(String(err));
-        throw err;
       }
     },
     [cleanupListeners],

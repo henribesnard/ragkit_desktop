@@ -27,19 +27,22 @@ export function EmptyState({ isReady, isIngesting, isBackendDown }: EmptyStatePr
                 LOKO
             </h1>
 
-            {isReady ? (
+            {isBackendDown ? (
                 <>
-                    <p
-                        className="text-xl font-semibold mb-2"
-                        style={{ color: "var(--text-primary)" }}
-                    >
-                        {t("chat.emptyTitle")}
-                    </p>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--text-tertiary)" }} />
+                        <p
+                            className="text-xl font-semibold"
+                            style={{ color: "var(--text-primary)" }}
+                        >
+                            {t("chat.connectingTitle")}
+                        </p>
+                    </div>
                     <p
                         className="text-sm"
                         style={{ color: "var(--text-secondary)", maxWidth: 400 }}
                     >
-                        {t("chat.emptySubtitle")}
+                        {t("chat.connectingSubtitle")}
                     </p>
                 </>
             ) : isIngesting ? (
@@ -60,22 +63,19 @@ export function EmptyState({ isReady, isIngesting, isBackendDown }: EmptyStatePr
                         {t("chat.ingestingSubtitle")}
                     </p>
                 </>
-            ) : isBackendDown ? (
+            ) : isReady ? (
                 <>
-                    <div className="flex items-center gap-2 mb-2">
-                        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--text-tertiary)" }} />
-                        <p
-                            className="text-xl font-semibold"
-                            style={{ color: "var(--text-primary)" }}
-                        >
-                            {t("chat.connectingTitle")}
-                        </p>
-                    </div>
+                    <p
+                        className="text-xl font-semibold mb-2"
+                        style={{ color: "var(--text-primary)" }}
+                    >
+                        {t("chat.emptyTitle")}
+                    </p>
                     <p
                         className="text-sm"
                         style={{ color: "var(--text-secondary)", maxWidth: 400 }}
                     >
-                        {t("chat.connectingSubtitle")}
+                        {t("chat.emptySubtitle")}
                     </p>
                 </>
             ) : (

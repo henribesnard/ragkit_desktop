@@ -33,7 +33,7 @@
     "title": "Chat",
     "placeholder": "Chat will be available after configuration",
     "inputPlaceholder": "Ask a question about your documents...",
-    "inputPlaceholderIngestion": "Ingestion in progress... You can already ask questions.",
+    "inputPlaceholderIngestion": "Indexing in progress... Chat will be available after ingestion.",
     "inputPlaceholderNotReady": "Configure your knowledge base first.",
     "description": "Configure your knowledge base to start asking questions.",
     "semanticDescription": "Ask a question to run semantic retrieval and display the most relevant chunks.",
