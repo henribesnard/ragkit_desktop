@@ -131,6 +131,65 @@ pub async fn stop_backend(app: &AppHandle) {
     }
 }
 
+/// Background watchdog: monitors backend health and restarts it if dead.
+pub async fn monitor_backend(app: AppHandle) {
+    // Wait after startup before starting to monitor
+    tokio::time::sleep(Duration::from_secs(30)).await;
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap();
+    let mut consecutive_failures: u32 = 0;
+    const MAX_FAILURES: u32 = 3;
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(15)).await;
+
+        let port_value = app
+            .try_state::<BackendState>()
+            .map(|s| *s.port.lock().unwrap());
+
+        let Some(Some(p)) = port_value else { continue };
+        let url = format!("http://127.0.0.1:{}/health", p);
+
+        match client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                if consecutive_failures > 0 {
+                    tracing::info!("Backend recovered after {} failures", consecutive_failures);
+                }
+                consecutive_failures = 0;
+            }
+            _ => {
+                consecutive_failures += 1;
+                tracing::warn!(
+                    "Backend health check failed ({}/{})",
+                    consecutive_failures,
+                    MAX_FAILURES
+                );
+                if consecutive_failures >= MAX_FAILURES {
+                    tracing::error!("Backend appears dead, attempting restart...");
+                    stop_backend(&app).await;
+                    let restart_ok = match start_backend(&app).await {
+                        Ok(()) => {
+                            tracing::info!("Backend restarted successfully");
+                            true
+                        }
+                        Err(e) => {
+                            tracing::error!("Backend restart failed: {}", e);
+                            false
+                        }
+                    };
+                    consecutive_failures = 0;
+                    if !restart_ok {
+                        tokio::time::sleep(Duration::from_secs(30)).await;
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub async fn request(
     method: reqwest::Method,
     endpoint: &str,

@@ -44,6 +44,8 @@ fn main() {
                 if let Err(e) = backend::start_backend(&app_handle).await {
                     tracing::error!("Failed to start backend: {}", e);
                 }
+                // Start watchdog to auto-restart backend if it crashes
+                backend::monitor_backend(app_handle).await;
             });
             Ok(())
         })
