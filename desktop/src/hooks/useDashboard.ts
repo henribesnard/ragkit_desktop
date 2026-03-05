@@ -133,17 +133,7 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
 
   const refresh = useCallback(async () => {
     try {
-      const [
-        health,
-        ingestion,
-        metrics,
-        activity,
-        intents,
-        feedback,
-        latency,
-        alerts,
-        recent,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         ipc.getDashboardHealth(),
         ipc.getDashboardIngestion(),
         ipc.getDashboardMetrics(24),
@@ -155,16 +145,19 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
         ipc.getQueryLogs({ page: 1, page_size: 5, since_days: 7 }),
       ]);
 
+      const val = <T,>(r: PromiseSettledResult<unknown>, fallback: T): T =>
+        r.status === "fulfilled" ? (r.value as T) ?? fallback : fallback;
+
       setState({
-        health: (health as ServiceHealth[]) || [],
-        ingestion: (ingestion as IngestionStats) || defaultState.ingestion,
-        metrics: (metrics as QueryMetrics) || defaultState.metrics,
-        activity: (activity as ActivityDataPoint[]) || [],
-        intents: (intents as IntentDistribution) || defaultState.intents,
-        feedback: (feedback as FeedbackStats) || defaultState.feedback,
-        latency: (latency as LatencyBreakdown) || defaultState.latency,
-        alerts: (alerts as AlertItem[]) || [],
-        recentQueries: ((recent as any)?.entries || []) as QueryLogEntry[],
+        health: val(results[0], [] as ServiceHealth[]),
+        ingestion: val(results[1], defaultState.ingestion),
+        metrics: val(results[2], defaultState.metrics),
+        activity: val(results[3], [] as ActivityDataPoint[]),
+        intents: val(results[4], defaultState.intents),
+        feedback: val(results[5], defaultState.feedback),
+        latency: val(results[6], defaultState.latency),
+        alerts: val(results[7], [] as AlertItem[]),
+        recentQueries: val(results[8], { entries: [] } as any)?.entries || [],
       });
       setError(null);
     } catch (err: any) {
@@ -176,16 +169,7 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
 
   const refreshDashboard = useCallback(async () => {
     try {
-      const [
-        ingestion,
-        metrics,
-        activity,
-        intents,
-        feedback,
-        latency,
-        alerts,
-        recent,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         ipc.getDashboardIngestion(),
         ipc.getDashboardMetrics(24),
         ipc.getDashboardActivity(7),
@@ -196,16 +180,19 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
         ipc.getQueryLogs({ page: 1, page_size: 5, since_days: 7 }),
       ]);
 
+      const val = <T,>(r: PromiseSettledResult<unknown>, fallback: T): T =>
+        r.status === "fulfilled" ? (r.value as T) ?? fallback : fallback;
+
       setState((prev) => ({
         ...prev,
-        ingestion: (ingestion as IngestionStats) || defaultState.ingestion,
-        metrics: (metrics as QueryMetrics) || defaultState.metrics,
-        activity: (activity as ActivityDataPoint[]) || [],
-        intents: (intents as IntentDistribution) || defaultState.intents,
-        feedback: (feedback as FeedbackStats) || defaultState.feedback,
-        latency: (latency as LatencyBreakdown) || defaultState.latency,
-        alerts: (alerts as AlertItem[]) || [],
-        recentQueries: ((recent as any)?.entries || []) as QueryLogEntry[],
+        ingestion: val(results[0], defaultState.ingestion),
+        metrics: val(results[1], defaultState.metrics),
+        activity: val(results[2], [] as ActivityDataPoint[]),
+        intents: val(results[3], defaultState.intents),
+        feedback: val(results[4], defaultState.feedback),
+        latency: val(results[5], defaultState.latency),
+        alerts: val(results[6], [] as AlertItem[]),
+        recentQueries: val(results[7], { entries: [] } as any)?.entries || [],
       }));
       setError(null);
     } catch (err: any) {
@@ -219,9 +206,8 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
     try {
       const health = await ipc.getDashboardHealth();
       setState((prev) => ({ ...prev, health: (health as ServiceHealth[]) || [] }));
-      setError(null);
-    } catch (err: any) {
-      setError(String(err));
+    } catch {
+      // Health check failures are non-critical — don't show error toast
     }
   }, []);
 

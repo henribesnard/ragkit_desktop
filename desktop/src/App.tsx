@@ -18,13 +18,24 @@ import i18n from "./i18n";
  */
 function ChatPage() {
     const { id } = useParams<{ id: string }>();
-    const { createConversation } = useConversations();
+    const { createConversation, conversations } = useConversations();
     const navigate = useNavigate();
     const creating = useRef(false);
 
     useEffect(() => {
         if (!id && !creating.current) {
             creating.current = true;
+
+            // Resume the most recent conversation with messages instead of creating a new one
+            const recent = conversations
+                .filter((c) => !c.archived && c.messageCount > 0)
+                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+            if (recent.length > 0) {
+                navigate(`/chat/${recent[0].id}`, { replace: true });
+                return;
+            }
+
             let unmounted = false;
             void (async () => {
                 const newId = await createConversation();
@@ -34,7 +45,7 @@ function ChatPage() {
             })();
             return () => { unmounted = true; };
         }
-    }, [id, createConversation, navigate]);
+    }, [id, createConversation, navigate, conversations]);
 
     if (!id) {
         return (
