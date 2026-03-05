@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { ipc } from "@/lib/ipc";
 
 export interface ConversationListItem {
     id: string;
@@ -16,8 +16,6 @@ interface GroupedConversations {
     group: TemporalGroup;
     conversations: ConversationListItem[];
 }
-
-const STORAGE_KEY = "loko-conversations-index";
 
 function getTemporalGroup(dateStr: string): TemporalGroup {
     const date = new Date(dateStr);
@@ -58,104 +56,87 @@ function groupConversations(conversations: ConversationListItem[]): GroupedConve
         .map((g) => ({ group: g, conversations: groups[g] }));
 }
 
-function loadIndex(): ConversationListItem[] {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) return [];
-        const items: ConversationListItem[] = JSON.parse(saved);
-        // Startup cleanup: remove stale empty conversations (no messages, no title, older than 1 hour)
-        const oneHourAgo = Date.now() - 3_600_000;
-        return items.filter(
-            (c) =>
-                c.messageCount > 0 ||
-                c.title.trim().length > 0 ||
-                new Date(c.createdAt).getTime() > oneHourAgo,
-        );
-    } catch {
-        return [];
-    }
-}
-
-function saveIndex(items: ConversationListItem[]) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
 // ---------------------------------------------------------------------------
-// Internal hook — actual logic
+// Internal hook — actual logic (backed by SQLite via backend API)
 // ---------------------------------------------------------------------------
 
 function useConversationsInternal() {
-    const [conversations, setConversations] = useState<ConversationListItem[]>(loadIndex);
+    const [conversations, setConversations] = useState<ConversationListItem[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Persist changes
+    const refreshList = useCallback(async () => {
+        try {
+            const list = await ipc.listConversations() as ConversationListItem[];
+            setConversations(Array.isArray(list) ? list : []);
+        } catch {
+            // Backend may not be ready yet — keep current state
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch conversation list from backend on mount
     useEffect(() => {
-        saveIndex(conversations);
-    }, [conversations]);
+        void refreshList();
+    }, [refreshList]);
 
     const createConversation = useCallback(async (): Promise<string> => {
         const id = crypto.randomUUID();
         try {
-            await invoke("new_conversation", { conversation_id: id });
+            await ipc.newConversation(id);
         } catch {
-            // Best effort — backend may not be ready yet; conversation will
-            // initialise its memory on first message.
+            // Best effort — backend may not be ready yet
         }
-
+        // Optimistic update
         const now = new Date().toISOString();
-        const newConv: ConversationListItem = {
-            id,
-            title: "",
-            createdAt: now,
-            updatedAt: now,
-            messageCount: 0,
-            archived: false,
-        };
-        setConversations((prev) => {
-            // Remove stale empty conversations (no messages, no title, older than 1 hour)
-            const oneHourAgo = Date.now() - 3_600_000;
-            const cleaned = prev.filter(
-                (c) =>
-                    c.messageCount > 0 ||
-                    c.title.trim().length > 0 ||
-                    new Date(c.createdAt).getTime() > oneHourAgo,
-            );
-            return [newConv, ...cleaned];
-        });
+        setConversations((prev) => [
+            { id, title: "", createdAt: now, updatedAt: now, messageCount: 0, archived: false },
+            ...prev,
+        ]);
         setActiveId(id);
         return id;
     }, []);
 
     const deleteConversation = useCallback(async (id: string) => {
-        // Clear backend memory + conversation file
         try {
-            await invoke("new_conversation", { conversation_id: id });
+            await ipc.deleteConversation(id);
         } catch {
-            // best-effort cleanup
+            // best-effort
         }
         setConversations((prev) => prev.filter((c) => c.id !== id));
         setActiveId((prev) => (prev === id ? null : prev));
     }, []);
 
-    const archiveConversation = useCallback((id: string) => {
+    const archiveConversation = useCallback(async (id: string) => {
+        try {
+            await ipc.archiveConversation(id, true);
+        } catch { /* best-effort */ }
         setConversations((prev) =>
             prev.map((c) => (c.id === id ? { ...c, archived: true } : c))
         );
     }, []);
 
-    const unarchiveConversation = useCallback((id: string) => {
+    const unarchiveConversation = useCallback(async (id: string) => {
+        try {
+            await ipc.archiveConversation(id, false);
+        } catch { /* best-effort */ }
         setConversations((prev) =>
             prev.map((c) => (c.id === id ? { ...c, archived: false } : c))
         );
     }, []);
 
-    const renameConversation = useCallback((id: string, title: string) => {
+    const renameConversation = useCallback(async (id: string, title: string) => {
+        try {
+            await ipc.renameConversation(id, title);
+        } catch { /* best-effort */ }
         setConversations((prev) =>
             prev.map((c) => (c.id === id ? { ...c, title } : c))
         );
     }, []);
 
     const updateConversationActivity = useCallback((id: string, messageCount: number, title?: string) => {
+        // Optimistic local update — backend updates automatically when messages are added
         setConversations((prev) =>
             prev.map((c) => {
                 if (c.id !== id) return c;
@@ -167,6 +148,10 @@ function useConversationsInternal() {
                 };
             })
         );
+        // If title was provided, persist it to backend
+        if (title !== undefined) {
+            ipc.renameConversation(id, title).catch(() => {});
+        }
     }, []);
 
     const openConversation = useCallback(async (id: string) => {
@@ -194,6 +179,7 @@ function useConversationsInternal() {
         conversations,
         grouped,
         activeId,
+        loading,
         archivedCount,
         archivedConversations,
         createConversation,
@@ -205,6 +191,7 @@ function useConversationsInternal() {
         updateConversationActivity,
         searchConversations,
         setActiveId,
+        refreshList,
     };
 }
 

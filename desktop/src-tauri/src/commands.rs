@@ -663,6 +663,31 @@ pub async fn generate_title(app: AppHandle, payload: serde_json::Value) -> Resul
     request(Method::POST, "/api/chat/generate_title", Some(payload), &app).await
 }
 
+#[tauri::command]
+pub async fn list_conversations(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/chat/conversations", None, &app).await
+}
+
+#[tauri::command]
+pub async fn rename_conversation(app: AppHandle, conversation_id: String, title: String) -> Result<serde_json::Value, String> {
+    let payload = serde_json::json!({ "title": title });
+    let endpoint = format!("/api/chat/conversations/{}/title", _encode_query_value(&conversation_id));
+    request(Method::PUT, &endpoint, Some(payload), &app).await
+}
+
+#[tauri::command]
+pub async fn archive_conversation(app: AppHandle, conversation_id: String, archived: bool) -> Result<serde_json::Value, String> {
+    let payload = serde_json::json!({ "archived": archived });
+    let endpoint = format!("/api/chat/conversations/{}/archive", _encode_query_value(&conversation_id));
+    request(Method::PUT, &endpoint, Some(payload), &app).await
+}
+
+#[tauri::command]
+pub async fn delete_conversation(app: AppHandle, conversation_id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/chat/conversations/{}", _encode_query_value(&conversation_id));
+    request(Method::DELETE, &endpoint, None, &app).await
+}
+
 // --- Monitoring config commands ---
 
 #[tauri::command]

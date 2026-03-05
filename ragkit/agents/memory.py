@@ -78,8 +78,6 @@ class ConversationMemory:
             )
         )
         self.state.total_messages += 1
-        if self.storage_path:
-            self.save()
 
     def get_history_for_llm(self) -> list[dict[str, str]]:
         if self.config.max_history_messages <= 0:

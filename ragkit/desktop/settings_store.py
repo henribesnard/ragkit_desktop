@@ -36,6 +36,10 @@ def get_conversations_dir() -> Path:
     return get_data_root() / "conversations"
 
 
+def get_conversations_db_path() -> Path:
+    return get_data_root() / "data" / "conversations.db"
+
+
 def ensure_storage_dirs() -> None:
     get_config_dir().mkdir(parents=True, exist_ok=True)
     get_data_dir().mkdir(parents=True, exist_ok=True)

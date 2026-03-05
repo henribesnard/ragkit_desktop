@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 APP_NAME = "LOKO"
-VERSION = "1.3.19"
+VERSION = "1.4.0"
 
 
 def create_app() -> FastAPI:
@@ -75,6 +75,10 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def _start_background_tasks():
         _install_windows_error_handler()
+        # Initialize conversations DB and migrate existing JSON files
+        from ragkit.desktop.conversation_db import get_conversation_db
+        db = get_conversation_db()
+        db.migrate_json_files()
         runtime.ensure_background_tasks()
 
     @app.get("/health")

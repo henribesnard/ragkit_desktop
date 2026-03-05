@@ -18,34 +18,34 @@ import i18n from "./i18n";
  */
 function ChatPage() {
     const { id } = useParams<{ id: string }>();
-    const { createConversation, conversations } = useConversations();
+    const { createConversation, conversations, loading: convLoading } = useConversations();
     const navigate = useNavigate();
     const creating = useRef(false);
 
     useEffect(() => {
-        if (!id && !creating.current) {
-            creating.current = true;
+        // Wait for the conversation list to load from backend before deciding
+        if (convLoading || id || creating.current) return;
+        creating.current = true;
 
-            // Resume the most recent conversation with messages instead of creating a new one
-            const recent = conversations
-                .filter((c) => !c.archived && c.messageCount > 0)
-                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        // Resume the most recent conversation with messages instead of creating a new one
+        const recent = conversations
+            .filter((c) => !c.archived && c.messageCount > 0)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-            if (recent.length > 0) {
-                navigate(`/chat/${recent[0].id}`, { replace: true });
-                return;
-            }
-
-            let unmounted = false;
-            void (async () => {
-                const newId = await createConversation();
-                if (!unmounted) {
-                    navigate(`/chat/${newId}`, { replace: true });
-                }
-            })();
-            return () => { unmounted = true; };
+        if (recent.length > 0) {
+            navigate(`/chat/${recent[0].id}`, { replace: true });
+            return;
         }
-    }, [id, createConversation, navigate, conversations]);
+
+        let unmounted = false;
+        void (async () => {
+            const newId = await createConversation();
+            if (!unmounted) {
+                navigate(`/chat/${newId}`, { replace: true });
+            }
+        })();
+        return () => { unmounted = true; };
+    }, [convLoading, id, createConversation, navigate, conversations]);
 
     if (!id) {
         return (
