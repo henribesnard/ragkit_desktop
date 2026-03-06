@@ -232,9 +232,13 @@ pub async fn request(
 
         let status = resp.status();
         if status.is_success() {
-            resp.json::<serde_json::Value>()
-                .await
-                .map_err(|e| e.to_string())
+            let text = resp.text().await.map_err(|e| e.to_string())?;
+            if text.is_empty() {
+                Ok(serde_json::json!(null))
+            } else {
+                serde_json::from_str(&text)
+                    .map_err(|e| format!("Invalid JSON from backend ({}): {}", endpoint, e))
+            }
         } else {
             let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             Err(format!("Request failed with status {}: {}", status, error_text))

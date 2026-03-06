@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ipc } from "@/lib/ipc";
 import { useTranslation } from "react-i18next";
 
 const RERANK_DEFAULTS = { provider: "huggingface", top_n: 3 };
 
 export function RerankingStep({ wizard }: { wizard: any }) {
     const { t } = useTranslation();
-    const { state, updateConfig } = wizard;
+    const { state, updateConfig, setStepValid } = wizard;
     const rerankCfg = state.config?.rerank || {};
 
     const [apiKey, setApiKey] = useState("");
@@ -25,6 +26,8 @@ export function RerankingStep({ wizard }: { wizard: any }) {
         if (enabled && !rerankCfg.provider) {
             updateRerank({ ...RERANK_DEFAULTS });
         }
+        // Set initial validation state
+        setStepValid(!enabled);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -40,6 +43,12 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             return cfg;
         });
         setTestResult(null);
+        // Disabled → can continue freely; enabled → must test first
+        if (patch.enabled === false) {
+            setStepValid(true);
+        } else {
+            setStepValid(false);
+        }
     };
 
     const handleTest = async () => {
@@ -49,7 +58,15 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             if (provider === "cohere" && apiKey) {
                 await invoke("store_secret", { keyName: "loko.rerank.cohere.api_key", value: apiKey });
             }
-            setTestResult({ success: true, msg: t('wizard.reranking.readyToSave') });
+            // Persist current wizard config so the backend tests the right provider/model
+            await ipc.updateRerankConfig({ enabled: true, provider, top_n: topN });
+            const res: any = await ipc.testRerankConnection();
+            if (res.success) {
+                setTestResult({ success: true, msg: t('wizard.reranking.testSuccess') });
+                setStepValid(true);
+            } else {
+                setTestResult({ success: false, msg: res.error || t('wizard.reranking.testFailed') });
+            }
         } catch (e: any) {
             setTestResult({ success: false, msg: e.toString() });
         } finally {
@@ -130,7 +147,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 {enabled && (
                     <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
                         <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (provider === "cohere" && !apiKey)}>
-                            {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.reranking.validating')}</> : t('wizard.reranking.validateChoice')}
+                            {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.reranking.testingConnection')}</> : t('wizard.reranking.testConnection')}
                         </Button>
 
                         {testResult && (

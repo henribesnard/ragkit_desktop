@@ -557,7 +557,17 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
         if CHAT_STREAM_STOP.load(Ordering::SeqCst) {
             break;
         }
-        let bytes = next.map_err(|e| e.to_string())?;
+        let bytes = match next {
+            Ok(b) => b,
+            Err(e) => {
+                let error_msg = format!("Connection to backend lost: {}", e);
+                window
+                    .emit("chat-stream-done", serde_json::json!({ "error": error_msg }))
+                    .ok();
+                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                return Ok("stream_error".to_string());
+            }
+        };
         buffer.push_str(&String::from_utf8_lossy(&bytes));
 
         while let Some(delim_pos) = buffer.find("\n\n") {
@@ -625,6 +635,10 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
         return Ok("stream_stopped".to_string());
     }
 
+    // Stream ended without a "done" event — notify the frontend
+    window
+        .emit("chat-stream-done", serde_json::json!({"error": "Connection to backend lost unexpectedly"}))
+        .ok();
     CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
     Ok("stream_ended".to_string())
 }

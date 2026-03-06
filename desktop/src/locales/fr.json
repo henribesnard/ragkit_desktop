@@ -564,9 +564,10 @@
       "topN": "Nombre final de documents envoyés au LLM (Top N)",
       "documents": "documents",
       "topNDesc": "Plus ce nombre est élevé, plus le LLM aura de contexte, mais plus l'inférence sera lente et coûteuse (si via API).",
-      "validateChoice": "Valider le choix",
-      "validating": "Validation...",
-      "readyToSave": "Prêt à être sauvegardé !"
+      "testConnection": "Tester la connexion",
+      "testingConnection": "Test en cours...",
+      "testSuccess": "Connexion réussie !",
+      "testFailed": "Échec du test de connexion"
     },
     "llm": {
       "title": "Générateur de Réponses (LLM)",
