@@ -1,5 +1,7 @@
 use tauri::{AppHandle, Manager};
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::ShellExt;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::process::CommandChild;
 use std::sync::Mutex;
 #[cfg(debug_assertions)]
@@ -16,8 +18,8 @@ pub struct BackendState {
 }
 
 pub enum ChildProcess {
-    #[allow(dead_code)]
     Std(std::process::Child),
+    #[cfg(not(debug_assertions))]
     Sidecar(CommandChild),
 }
 
@@ -103,31 +105,43 @@ pub async fn stop_backend(app: &AppHandle) {
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
+    let mut pid_to_kill = None;
+
     // Force kill the child process
     if let Some(state) = app.try_state::<BackendState>() {
          let mut child_guard = state.child.lock().unwrap();
          if let Some(child) = child_guard.take() {
              tracing::info!("Force killing backend process...");
              match child {
-                 ChildProcess::Std(mut c) => { let _ = c.kill(); let _ = c.wait(); }
-                 ChildProcess::Sidecar(c) => { let _ = c.kill(); }
+                 ChildProcess::Std(mut c) => { 
+                     pid_to_kill = Some(c.id());
+                     let _ = c.kill(); 
+                     let _ = c.wait(); 
+                 }
+                 #[cfg(not(debug_assertions))]
+                 ChildProcess::Sidecar(c) => { 
+                     pid_to_kill = Some(c.pid());
+                     let _ = c.kill(); 
+                 }
              }
          }
     }
 
-    // Last resort: kill any remaining ragkit-backend processes by name
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "ragkit-backend.exe"])
-            .creation_flags(0x08000000) // CREATE_NO_WINDOW
-            .output();
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = std::process::Command::new("pkill")
-            .args(["-f", "ragkit-backend"])
-            .output();
+    // Last resort: kill the specific PID if we have it
+    if let Some(pid) = pid_to_kill {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/F"])
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                .output();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = std::process::Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .output();
+        }
     }
 }
 

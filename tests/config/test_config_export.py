@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from ragkit.config.config_export import ConfigExporter, ConfigImporter
 from ragkit.desktop.models import SettingsPayload
-from ragkit.desktop.settings_store import save_settings, load_settings, get_settings_path, ensure_storage_dirs
+from ragkit.desktop.settings_store import save_settings, load_settings
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +44,7 @@ def test_export_creates_file(tmp_path) -> None:
     with open(result, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    assert "ragkit_version" in data
+    assert "loko_version" in data
     assert "config" in data
     assert "export_date" in data
     assert data["profile"] == "general"
@@ -74,7 +73,7 @@ def test_export_strips_api_keys(tmp_path) -> None:
 
 def test_importer_validate(tmp_path) -> None:
     export_data = {
-        "ragkit_version": "12.0.0",
+        "loko_version": "12.0.0",
         "export_date": "2026-02-18T14:30:00Z",
         "profile": "technical_documentation",
         "config": {"profile": "technical_documentation"},
@@ -105,7 +104,7 @@ def test_import_replace(tmp_path) -> None:
 
     # Create import file
     export_data = {
-        "ragkit_version": "12.0.0",
+        "loko_version": "12.0.0",
         "config": {"profile": "technical_documentation", "setup_completed": True},
     }
     path = str(tmp_path / "import.ragkit-config")
@@ -127,7 +126,7 @@ def test_import_merge(tmp_path) -> None:
 
     # Create import file with only embedding
     export_data = {
-        "ragkit_version": "12.0.0",
+        "loko_version": "12.0.0",
         "config": {"embedding": {"provider": "openai"}},
     }
     path = str(tmp_path / "merge.ragkit-config")

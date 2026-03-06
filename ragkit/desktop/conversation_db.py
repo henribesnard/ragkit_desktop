@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ragkit.desktop.settings_store import get_conversations_dir, get_data_root
+from ragkit.desktop import settings_store
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class ConversationDB:
     """
 
     def __init__(self, db_path: Path | None = None):
-        self.db_path = db_path or (get_data_root() / "data" / "conversations.db")
+        self.db_path = db_path or (settings_store.get_data_root() / "data" / "conversations.db")
         self._ensure_db()
 
     # ------------------------------------------------------------------
@@ -274,7 +274,7 @@ class ConversationDB:
         Renames successfully imported files to ``*.json.migrated``.
         Returns the number of conversations migrated.
         """
-        conversations_dir = get_conversations_dir()
+        conversations_dir = settings_store.get_conversations_dir()
         if not conversations_dir.exists():
             return 0
 
@@ -363,6 +363,7 @@ _db: ConversationDB | None = None
 
 def get_conversation_db() -> ConversationDB:
     global _db
-    if _db is None:
-        _db = ConversationDB()
+    expected_path = settings_store.get_data_root() / "data" / "conversations.db"
+    if _db is None or _db.db_path != expected_path:
+        _db = ConversationDB(db_path=expected_path)
     return _db

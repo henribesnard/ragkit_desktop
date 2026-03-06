@@ -26,7 +26,7 @@ from ragkit.desktop.models import (
     SettingsPayload,
 )
 from ragkit.desktop.profiles import build_full_config
-from ragkit.desktop.settings_store import get_data_dir, load_settings
+from ragkit.desktop import settings_store
 from ragkit.embedding.engine import EmbeddingEngine
 from ragkit.retrieval.lexical_engine import BM25Index
 from ragkit.storage.base import VectorPoint, create_vector_store
@@ -46,7 +46,7 @@ class IngestionRuntime:
         self._cancelled = False
         self._pending_auto_trigger_at: float | None = None
         self._last_auto_signature: str | None = None
-        self._registry = get_data_dir() / "ingestion_registry.db"
+        self._registry = settings_store.get_data_dir() / "ingestion_registry.db"
         self._ensure_db()
 
     def _count_source_documents_fast(self, settings: SettingsPayload) -> int:
@@ -151,7 +151,7 @@ class IngestionRuntime:
         }
 
     def _bm25_index_dir(self) -> Path:
-        return get_data_dir() / "bm25_index"
+        return settings_store.get_data_dir() / "bm25_index"
 
     def _resolve_lexical_config(self, settings: SettingsPayload) -> LexicalSearchConfig:
         retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
@@ -218,7 +218,7 @@ class IngestionRuntime:
         while True:
             try:
                 # Run settings load in thread to avoid any I/O blocking
-                settings = await asyncio.to_thread(load_settings)
+                settings = await asyncio.to_thread(settings_store.load_settings)
                 general_settings = self._resolve_general_settings(settings)
 
                 if general_settings.ingestion_mode != IngestionMode.AUTOMATIC:
@@ -268,7 +268,7 @@ class IngestionRuntime:
             await asyncio.sleep(30)
 
     def detect_changes(self, settings: SettingsPayload | None = None) -> ChangeDetectionResult:
-        settings = settings or load_settings()
+        settings = settings or settings_store.load_settings()
         if not settings.ingestion or not settings.ingestion.source.path:
             return ChangeDetectionResult()
         root = Path(settings.ingestion.source.path).expanduser()
@@ -276,6 +276,8 @@ class IngestionRuntime:
             return ChangeDetectionResult()
         current: dict[str, dict] = {}
         selected = set(settings.ingestion.source.file_types)
+        previous = self._load_registry()
+        
         for file_path in documents._iter_files(
             root,
             recursive=settings.ingestion.source.recursive,
@@ -286,15 +288,25 @@ class IngestionRuntime:
             ext = documents._normalize_extension(file_path.suffix)
             if ext not in selected:
                 continue
+                
             rel = file_path.relative_to(root).as_posix()
-            payload = file_path.read_bytes()
+            stat = file_path.stat()
+            size = stat.st_size
+            mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+            
+            # Optimization: only hash if size or mtime changed, or if it's new
+            if rel not in previous or previous[rel]["file_size"] != size or previous[rel]["last_modified"] != mtime:
+                payload = file_path.read_bytes()
+                file_hash = hashlib.sha256(payload).hexdigest()
+            else:
+                file_hash = previous[rel]["file_hash"]
+                
             current[rel] = {
-                "hash": hashlib.sha256(payload).hexdigest(),
-                "size": file_path.stat().st_size,
-                "mtime": datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc).isoformat(),
+                "hash": file_hash,
+                "size": size,
+                "mtime": mtime,
             }
 
-        previous = self._load_registry()
         changes: list[IngestionChange] = []
         for rel, info in current.items():
             if rel not in previous:
@@ -345,7 +357,7 @@ class IngestionRuntime:
 
     async def _run(self, incremental: bool) -> None:
         self.ensure_background_tasks()
-        settings = load_settings()
+        settings = settings_store.load_settings()
         if not settings.ingestion:
             logger.warning("Ingestion skipped: no ingestion config in settings")
             self.progress.status = "failed"

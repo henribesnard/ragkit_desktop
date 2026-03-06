@@ -20,27 +20,29 @@ if project_root not in sys.path:
 
 from ragkit.desktop.settings_store import ensure_storage_dirs, get_log_dir  # noqa: E402
 
-# Ensure directories are created before configuring logging
-ensure_storage_dirs()
-
-log_file = get_log_dir() / "ragkit-backend.log"
-file_handler = RotatingFileHandler(
-    log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
-)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-file_handler.setFormatter(formatter)
-
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[
-        file_handler,
-        logging.StreamHandler(sys.stdout)
-    ]
-)
 logger = logging.getLogger(__name__)
 
+def setup_logging() -> None:
+    # Ensure directories are created before configuring logging
+    ensure_storage_dirs()
+
+    log_file = get_log_dir() / "ragkit-backend.log"
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[
+            file_handler,
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
 APP_NAME = "LOKO"
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 
 def create_app() -> FastAPI:
@@ -127,6 +129,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8100)
     args = parser.parse_args()
+
+    setup_logging()
 
     app = create_app()
     logger.info(f"Starting RAGKIT backend on port {args.port}")

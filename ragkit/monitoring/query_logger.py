@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover - defensive at runtime
     _np = None
 
 from ragkit.config.monitoring_schema import MonitoringConfig, QueryLogEntryModel
-from ragkit.desktop.settings_store import get_data_root
+from ragkit.desktop import settings_store
 
 _RAG_INTENTS = {"question", "clarification"}
 
@@ -109,7 +109,7 @@ class QueryLogger:
 
     def __init__(self, config: MonitoringConfig, db_path: Path | None = None):
         self.config = config
-        self.db_path = db_path or (get_data_root() / "logs" / "queries.db")
+        self.db_path = db_path or (settings_store.get_data_root() / "logs" / "queries.db")
         self._ensure_db()
 
     def set_config(self, config: MonitoringConfig) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -10,6 +11,7 @@ from ragkit.config.security_schema import APIKeyStatus, SecurityConfig
 from ragkit.desktop.settings_store import load_settings, save_settings
 
 router = APIRouter(prefix="/api", tags=["security"])
+logger = logging.getLogger(__name__)
 
 _SECURITY_CONFIG: SecurityConfig | None = None
 
@@ -92,7 +94,7 @@ async def purge_all_data() -> dict[str, Any]:
     data_root = get_data_root()
     deleted: list[str] = []
 
-    # Delete logs
+    # Delete logs (also covers queries.db)
     logs_dir = data_root / "logs"
     if logs_dir.exists():
         shutil.rmtree(logs_dir, ignore_errors=True)
@@ -103,12 +105,6 @@ async def purge_all_data() -> dict[str, Any]:
     if data_dir.exists():
         shutil.rmtree(data_dir, ignore_errors=True)
         deleted.append("data")
-
-    # Delete query logs DB
-    db_path = data_root / "query_logs.db"
-    if db_path.exists():
-        db_path.unlink(missing_ok=True)
-        deleted.append("query_logs")
 
     return {"success": True, "deleted": deleted}
 
@@ -173,13 +169,14 @@ async def import_config(payload: dict[str, str]) -> dict[str, bool]:
 async def export_conversation(payload: dict[str, str]) -> dict[str, Any]:
     fmt = payload.get("format", "md")
     path = payload.get("path", "")
+    conversation_id = payload.get("conversation_id")
     if not path:
         raise HTTPException(status_code=400, detail="Export path is required")
 
     from ragkit.desktop.api.chat import _get_conversation_memory
     from ragkit.export.conversation_export import ConversationExporter
 
-    memory = _get_conversation_memory()
+    memory = _get_conversation_memory(conversation_id)
     messages = [
         {"role": msg.role, "content": msg.content, "sources": msg.sources}
         for msg in memory.list_messages()
@@ -216,17 +213,18 @@ async def generate_test_question() -> dict[str, str]:
         # Generate a relevant test question from document metadata
         settings = load_settings()
         if settings.ingestion and settings.ingestion.source.path:
+            from ragkit.llm.base import LLMMessage
             prompt = (
                 "Generate a single relevant test question in French for a RAG system "
                 "that indexes documents. The question should test basic retrieval. "
                 "Reply with ONLY the question, no other text."
             )
-            response = await provider.generate(prompt)
-            question = response.strip().strip('"')
+            response = await provider.generate(messages=[LLMMessage(role="user", content=prompt)])
+            question = response.content.strip().strip('"')
             if question:
                 return {"question": question}
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to generate test question: %s", exc, exc_info=True)
     return {"question": default_question}
 
 

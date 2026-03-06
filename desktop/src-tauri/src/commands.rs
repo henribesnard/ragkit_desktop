@@ -903,8 +903,8 @@ pub async fn import_config(app: AppHandle, path: String, mode: String) -> Result
 }
 
 #[tauri::command]
-pub async fn export_conversation(app: AppHandle, format: String, path: String) -> Result<serde_json::Value, String> {
-    let body = serde_json::json!({ "format": format, "path": path });
+pub async fn export_conversation(app: AppHandle, format: String, path: String, conversation_id: Option<String>) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "format": format, "path": path, "conversation_id": conversation_id });
     request(Method::POST, "/api/conversation/export", Some(body), &app).await
 }
 

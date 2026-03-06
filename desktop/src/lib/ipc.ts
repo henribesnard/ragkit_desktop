@@ -84,7 +84,7 @@ export const ipc = {
   exportConfig: (path: string) => invoke("export_config", { path }),
   validateImport: (path: string) => invoke("validate_import", { path }),
   importConfig: (path: string, mode: string) => invoke("import_config", { path, mode }),
-  exportConversation: (format: string, path: string) => invoke("export_conversation", { format, path }),
+  exportConversation: (format: string, path: string, conversationId?: string) => invoke("export_conversation", { format, path, conversation_id: conversationId }),
   // UX
   generateTestQuestion: () => invoke("generate_test_question"),
   getExpertiseLevel: () => invoke("get_expertise_level"),

@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 _MEMORY_CACHE: dict[str, ConversationMemory] = {}
+# Backward-compatibility alias used by older integration tests.
+_CONVERSATION_MEMORY: ConversationMemory | None = None
 _MAX_CACHE_SIZE = 50
 _DEFAULT_ID = "default"
 
@@ -53,8 +55,13 @@ def _build_chat_response(
 
 def _get_conversation_memory(conversation_id: str | None = None) -> ConversationMemory:
     """Load or create an in-memory ConversationMemory backed by SQLite."""
-    global _MEMORY_CACHE
+    global _MEMORY_CACHE, _CONVERSATION_MEMORY
     cid = conversation_id or _DEFAULT_ID
+
+    if cid == _DEFAULT_ID and _CONVERSATION_MEMORY is not None:
+        _MEMORY_CACHE[cid] = _CONVERSATION_MEMORY
+        return _CONVERSATION_MEMORY
+
     if cid not in _MEMORY_CACHE:
         if len(_MEMORY_CACHE) >= _MAX_CACHE_SIZE:
             oldest_key = next(iter(_MEMORY_CACHE))
@@ -79,8 +86,13 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
             total_messages=len(messages_data),
         )
         _MEMORY_CACHE[cid] = memory
+        if cid == _DEFAULT_ID:
+            _CONVERSATION_MEMORY = memory
         logger.debug("Loaded conversation memory from DB: %s (%d messages)", cid, len(messages_data))
-    return _MEMORY_CACHE[cid]
+    memory = _MEMORY_CACHE[cid]
+    if cid == _DEFAULT_ID:
+        _CONVERSATION_MEMORY = memory
+    return memory
 
 
 def _persist_new_messages(conversation_id: str, memory: ConversationMemory, prev_count: int) -> None:
@@ -229,6 +241,7 @@ async def chat_stream(payload: ChatQuery):
 
 @router.post("/chat/new")
 async def chat_new(conversation_id: str | None = None) -> dict[str, bool]:
+    global _CONVERSATION_MEMORY
     cid = conversation_id or _DEFAULT_ID
     db = get_conversation_db()
     # If conversation exists, clear its messages; otherwise create it
@@ -237,6 +250,8 @@ async def chat_new(conversation_id: str | None = None) -> dict[str, bool]:
     else:
         db.create_conversation(cid)
     _MEMORY_CACHE.pop(cid, None)
+    if cid == _DEFAULT_ID:
+        _CONVERSATION_MEMORY = None
     logger.info("Created/cleared conversation: %s", cid)
     return {"success": True}
 
@@ -299,9 +314,12 @@ async def update_conversation_archive(conversation_id: str, payload: dict) -> di
 
 @router.delete("/chat/conversations/{conversation_id}")
 async def delete_conversation_endpoint(conversation_id: str) -> dict[str, bool]:
+    global _CONVERSATION_MEMORY
     db = get_conversation_db()
     db.delete_conversation(conversation_id)
     _MEMORY_CACHE.pop(conversation_id, None)
+    if conversation_id == _DEFAULT_ID:
+        _CONVERSATION_MEMORY = None
     logger.info("Deleted conversation: %s", conversation_id)
     return {"success": True}
 

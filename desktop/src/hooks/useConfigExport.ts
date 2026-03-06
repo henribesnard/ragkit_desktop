@@ -54,11 +54,11 @@ export function useConfigExport() {
     }
   };
 
-  const exportConversation = async (format: "md" | "pdf", path: string) => {
+  const exportConversation = async (format: "md" | "pdf", path: string, conversationId?: string) => {
     setExporting(true);
     setError(null);
     try {
-      const result = await ipc.exportConversation(format, path) as any;
+      const result = await ipc.exportConversation(format, path, conversationId) as any;
       return result.path as string;
     } catch (err: any) {
       setError(String(err));

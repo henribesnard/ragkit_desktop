@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useConfigExport } from "@/hooks/useConfigExport";
 import { save } from "@tauri-apps/plugin-dialog";
 
-export function ConversationExportMenu() {
+export function ConversationExportMenu({ conversationId }: { conversationId?: string }) {
   const { t } = useTranslation();
   const { exporting, exportConversation } = useConfigExport();
   const [showMenu, setShowMenu] = useState(false);
@@ -18,7 +18,7 @@ export function ConversationExportMenu() {
         filters: [{ name: format === "pdf" ? "PDF" : "Markdown", extensions: [ext] }],
       });
       if (!path) return;
-      await exportConversation(format, path);
+      await exportConversation(format, path, conversationId);
       setMsg(t("chat.exportSuccess", "Conversation exportee"));
       setTimeout(() => setMsg(null), 3000);
     } catch { /* error set by hook */ }

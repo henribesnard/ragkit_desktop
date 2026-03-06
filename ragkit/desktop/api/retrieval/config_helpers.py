@@ -15,7 +15,7 @@ from ragkit.config.retrieval_schema import (
 )
 from ragkit.config.vector_store_schema import GeneralSettings
 from ragkit.desktop.profiles import build_full_config
-from ragkit.desktop.settings_store import get_data_dir, load_settings, save_settings
+from ragkit.desktop import settings_store
 from ragkit.retrieval import BM25Index
 from ragkit.storage.base import VectorPoint
 
@@ -62,7 +62,7 @@ class HybridSourceCandidate:
 # ------------------------------------------------------------------ #
 
 def profile_retrieval_payload() -> dict[str, Any]:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     profile_name = settings.profile or "general"
     full_config = build_full_config(profile_name, settings.calibration_answers)
     retrieval_payload = full_config.get("retrieval", {})
@@ -96,7 +96,7 @@ def default_search_type_from_profile() -> SearchType:
 
 
 def resolve_general_settings() -> GeneralSettings:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     payload = settings.general if isinstance(settings.general, dict) else {}
     if payload:
         try:
@@ -117,7 +117,7 @@ def default_semantic_config() -> SemanticSearchConfig:
 
 
 def get_semantic_config() -> SemanticSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     semantic_payload = retrieval_payload.get("semantic", {}) if isinstance(retrieval_payload, dict) else {}
     if semantic_payload:
@@ -126,11 +126,11 @@ def get_semantic_config() -> SemanticSearchConfig:
 
 
 def save_semantic_config(config: SemanticSearchConfig) -> SemanticSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     retrieval_payload["semantic"] = config.model_dump(mode="json")
     settings.retrieval = retrieval_payload
-    save_settings(settings)
+    settings_store.save_settings(settings)
     return config
 
 
@@ -145,7 +145,7 @@ def default_lexical_config() -> LexicalSearchConfig:
 
 
 def get_lexical_config() -> LexicalSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     lexical_payload = retrieval_payload.get("lexical", {}) if isinstance(retrieval_payload, dict) else {}
     if lexical_payload:
@@ -154,11 +154,11 @@ def get_lexical_config() -> LexicalSearchConfig:
 
 
 def save_lexical_config(config: LexicalSearchConfig) -> LexicalSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     retrieval_payload["lexical"] = config.model_dump(mode="json")
     settings.retrieval = retrieval_payload
-    save_settings(settings)
+    settings_store.save_settings(settings)
     if _LEXICAL_INDEX is not None:
         _LEXICAL_INDEX.configure_preprocessor(config)
     return config
@@ -175,7 +175,7 @@ def default_hybrid_config() -> HybridSearchConfig:
 
 
 def get_hybrid_config() -> HybridSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     hybrid_payload = retrieval_payload.get("hybrid", {}) if isinstance(retrieval_payload, dict) else {}
     if hybrid_payload:
@@ -184,11 +184,11 @@ def get_hybrid_config() -> HybridSearchConfig:
 
 
 def save_hybrid_config(config: HybridSearchConfig) -> HybridSearchConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     retrieval_payload = settings.retrieval if isinstance(settings.retrieval, dict) else {}
     retrieval_payload["hybrid"] = config.model_dump(mode="json")
     settings.retrieval = retrieval_payload
-    save_settings(settings)
+    settings_store.save_settings(settings)
     return config
 
 
@@ -281,7 +281,7 @@ def text_preview(text: str) -> str:
 # ------------------------------------------------------------------ #
 
 def bm25_index_dir() -> Path:
-    return get_data_dir() / "bm25_index"
+    return settings_store.get_data_dir() / "bm25_index"
 
 
 def bm25_index_path() -> Path:

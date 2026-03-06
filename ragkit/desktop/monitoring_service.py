@@ -6,14 +6,14 @@ from typing import Any
 
 from ragkit.config.monitoring_schema import MonitoringConfig
 from ragkit.desktop.profiles import build_full_config
-from ragkit.desktop.settings_store import get_data_root, load_settings, save_settings
+from ragkit.desktop import settings_store
 from ragkit.monitoring.query_logger import QueryLogger
 
 _QUERY_LOGGER: QueryLogger | None = None
 
 
 def _profile_monitoring_payload() -> dict[str, Any]:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     profile_name = settings.profile or "general"
     full_config = build_full_config(profile_name, settings.calibration_answers)
     payload = full_config.get("monitoring", {})
@@ -26,15 +26,15 @@ def default_monitoring_config() -> MonitoringConfig:
 
 
 def get_monitoring_config() -> MonitoringConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     payload = settings.monitoring if isinstance(settings.monitoring, dict) else {}
     return MonitoringConfig.model_validate(payload) if payload else default_monitoring_config()
 
 
 def save_monitoring_config(config: MonitoringConfig) -> MonitoringConfig:
-    settings = load_settings()
+    settings = settings_store.load_settings()
     settings.monitoring = config.model_dump(mode="json")
-    save_settings(settings)
+    settings_store.save_settings(settings)
     if _QUERY_LOGGER is not None:
         _QUERY_LOGGER.set_config(config)
     return config
@@ -47,9 +47,9 @@ def reset_monitoring_config() -> MonitoringConfig:
 def get_query_logger() -> QueryLogger:
     global _QUERY_LOGGER
     config = get_monitoring_config()
-    expected_path = get_data_root() / "logs" / "queries.db"
+    expected_path = settings_store.get_data_root() / "logs" / "queries.db"
     if _QUERY_LOGGER is None or _QUERY_LOGGER.db_path != expected_path:
-        _QUERY_LOGGER = QueryLogger(config=config)
+        _QUERY_LOGGER = QueryLogger(config=config, db_path=expected_path)
     else:
         _QUERY_LOGGER.set_config(config)
     return _QUERY_LOGGER

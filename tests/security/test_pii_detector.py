@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ragkit.config.security_schema import PIIAction, PIIType, SecurityConfig
-from ragkit.security.pii_detector import PIIDetector, PIIMatch
+from ragkit.security.pii_detector import PIIDetector
 
 
 def _make_detector(
