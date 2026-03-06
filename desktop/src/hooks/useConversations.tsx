@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ipc } from "@/lib/ipc";
 
 export interface ConversationListItem {
@@ -69,16 +69,34 @@ function useConversationsInternal() {
         try {
             const list = await ipc.listConversations() as ConversationListItem[];
             setConversations(Array.isArray(list) ? list : []);
+            setLoading(false);
+            return true;
         } catch {
             // Backend may not be ready yet — keep current state
-        } finally {
-            setLoading(false);
+            return false;
         }
     }, []);
 
-    // Fetch conversation list from backend on mount
+    // Fetch conversation list from backend on mount, with retries while backend starts
+    const retryRef = useRef(0);
     useEffect(() => {
-        void refreshList();
+        let active = true;
+        const maxRetries = 15;
+        const retryDelayMs = 2000;
+
+        const tryLoad = async () => {
+            const ok = await refreshList();
+            if (ok || !active) return;
+            retryRef.current++;
+            if (retryRef.current < maxRetries && active) {
+                setTimeout(tryLoad, retryDelayMs);
+            } else if (active) {
+                setLoading(false);
+            }
+        };
+
+        void tryLoad();
+        return () => { active = false; };
     }, [refreshList]);
 
     const createConversation = useCallback(async (): Promise<string> => {

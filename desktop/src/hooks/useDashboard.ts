@@ -126,9 +126,13 @@ const defaultState: DashboardState = {
   recentQueries: [],
 };
 
+// Module-level cache: survives component unmount so the dashboard
+// shows previous data instantly when the user navigates back.
+let _cachedState: DashboardState | null = null;
+
 export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 60) {
-  const [state, setState] = useState<DashboardState>(defaultState);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<DashboardState>(_cachedState ?? defaultState);
+  const [loading, setLoading] = useState(_cachedState === null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -148,7 +152,7 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
       const val = <T,>(r: PromiseSettledResult<unknown>, fallback: T): T =>
         r.status === "fulfilled" ? (r.value as T) ?? fallback : fallback;
 
-      setState({
+      const next: DashboardState = {
         health: val(results[0], [] as ServiceHealth[]),
         ingestion: val(results[1], defaultState.ingestion),
         metrics: val(results[2], defaultState.metrics),
@@ -158,7 +162,9 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
         latency: val(results[6], defaultState.latency),
         alerts: val(results[7], [] as AlertItem[]),
         recentQueries: val(results[8], { entries: [] } as any)?.entries || [],
-      });
+      };
+      _cachedState = next;
+      setState(next);
       setError(null);
     } catch (err: any) {
       setError(String(err));
@@ -183,17 +189,21 @@ export function useDashboard(refreshIntervalSec = 30, serviceCheckIntervalSec = 
       const val = <T,>(r: PromiseSettledResult<unknown>, fallback: T): T =>
         r.status === "fulfilled" ? (r.value as T) ?? fallback : fallback;
 
-      setState((prev) => ({
-        ...prev,
-        ingestion: val(results[0], defaultState.ingestion),
-        metrics: val(results[1], defaultState.metrics),
-        activity: val(results[2], [] as ActivityDataPoint[]),
-        intents: val(results[3], defaultState.intents),
-        feedback: val(results[4], defaultState.feedback),
-        latency: val(results[5], defaultState.latency),
-        alerts: val(results[6], [] as AlertItem[]),
-        recentQueries: val(results[7], { entries: [] } as any)?.entries || [],
-      }));
+      setState((prev) => {
+        const next = {
+          ...prev,
+          ingestion: val(results[0], defaultState.ingestion),
+          metrics: val(results[1], defaultState.metrics),
+          activity: val(results[2], [] as ActivityDataPoint[]),
+          intents: val(results[3], defaultState.intents),
+          feedback: val(results[4], defaultState.feedback),
+          latency: val(results[5], defaultState.latency),
+          alerts: val(results[6], [] as AlertItem[]),
+          recentQueries: val(results[7], { entries: [] } as any)?.entries || [],
+        };
+        _cachedState = next;
+        return next;
+      });
       setError(null);
     } catch (err: any) {
       setError(String(err));
