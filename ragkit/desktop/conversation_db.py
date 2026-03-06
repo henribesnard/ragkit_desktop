@@ -84,6 +84,7 @@ class ConversationDB:
                 """
                 SELECT id, title, created_at, updated_at, total_messages, archived
                 FROM conversations
+                WHERE id != 'default'
                 ORDER BY updated_at DESC
                 """
             ).fetchall()
@@ -126,10 +127,15 @@ class ConversationDB:
             conn.commit()
 
     def update_title(self, conversation_id: str, title: str) -> None:
+        now = _utc_now_iso()
         with self._connect() as conn:
             conn.execute(
-                "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
-                (title, _utc_now_iso(), conversation_id),
+                """
+                INSERT INTO conversations (id, title, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+                """,
+                (conversation_id, title, now, now),
             )
             conn.commit()
 

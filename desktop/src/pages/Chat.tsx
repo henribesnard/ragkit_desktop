@@ -45,7 +45,7 @@ export function Chat() {
     startStream,
     clear: clearStreamState,
   } = useChatStream();
-  const { history, refresh: refreshHistory } = useConversation(urlId || null);
+  const { history, loading: historyLoading, refresh: refreshHistory } = useConversation(urlId || null);
   const {
     submit: submitFeedback,
     error: feedbackError,
@@ -320,7 +320,11 @@ export function Chat() {
             </div>
           )}
 
-          {!hasMessages ? (
+          {historyLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "var(--primary-500)" }} />
+            </div>
+          ) : !hasMessages ? (
             <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} isBackendDown={!isBackendHealthy} />
           ) : (
             <div className="flex flex-col" style={{ gap: 24 }}>

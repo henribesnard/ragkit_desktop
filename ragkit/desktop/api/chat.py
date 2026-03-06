@@ -328,25 +328,26 @@ async def delete_conversation_endpoint(conversation_id: str) -> dict[str, bool]:
 async def generate_title(payload: dict) -> dict[str, str]:
     conversation_id = payload.get("conversation_id")
     cid = conversation_id or _DEFAULT_ID
-    db = get_conversation_db()
-    messages_data = db.get_messages(cid)
-
-    if not messages_data:
-        logger.debug("generate_title: no messages for %s", cid)
-        return {"title": "Conversation"}
-
-    llm_config = get_llm_config()
-    provider = resolve_llm_provider(llm_config)
-
-    first_msg = messages_data[0]["content"][:500]
-    prompt = (
-        "Generate a very short title (3 to 5 words maximum) for this conversation "
-        "based on this first message. Reply in the SAME LANGUAGE as the message:\n\n"
-        f"\"{first_msg}\"\n\n"
-        "Reply ONLY with the title, no final punctuation."
-    )
-
     try:
+        db = get_conversation_db()
+        messages_data = db.get_messages(cid)
+
+        if not messages_data:
+            logger.debug("generate_title: no messages for %s", cid)
+            return {"title": "Conversation"}
+
+        first_msg = messages_data[0]["content"][:500]
+
+        llm_config = get_llm_config()
+        provider = resolve_llm_provider(llm_config)
+
+        prompt = (
+            "Generate a very short title (3 to 5 words maximum) for this conversation "
+            "based on this first message. Reply in the SAME LANGUAGE as the message:\n\n"
+            f"\"{first_msg}\"\n\n"
+            "Reply ONLY with the title, no final punctuation."
+        )
+
         from ragkit.llm.base import LLMMessage
         response = await provider.generate(
             messages=[LLMMessage(role="user", content=prompt)],
@@ -354,10 +355,22 @@ async def generate_title(payload: dict) -> dict[str, str]:
             max_tokens=20,
         )
         title = str(response.content or "").strip().strip('"').strip("'")
-        if title:
-            db.update_title(cid, title)
+        if not title:
+            # Fallback: use truncated first message as title
+            title = first_msg[:40].strip()
+        db.update_title(cid, title)
         logger.info("Generated title for %s: %s", cid, title)
-        return {"title": title or "Conversation"}
+        return {"title": title}
     except Exception:
         logger.exception("Failed to generate title for %s", cid)
+        # Last-resort fallback: use first message content from DB
+        try:
+            db = get_conversation_db()
+            msgs = db.get_messages(cid)
+            if msgs:
+                fallback = msgs[0]["content"][:40].strip()
+                db.update_title(cid, fallback)
+                return {"title": fallback}
+        except Exception:
+            pass
         return {"title": "Conversation"}
