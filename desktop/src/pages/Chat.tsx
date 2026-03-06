@@ -546,58 +546,71 @@ export function Chat() {
           padding: "16px 20px 24px",
         }}
       >
-        <form
-          onSubmit={onSearch}
-          className="relative"
-          style={{
-            background: "var(--bg-tertiary)",
-            borderRadius: "var(--radius-xl)",
-            boxShadow: "var(--shadow-sm)",
-            padding: "14px 16px",
-            paddingRight: 96,
-          }}
-        >
-          <textarea
-            ref={textareaRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={getPlaceholder()}
-            disabled={isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting}
-            rows={1}
-            className="w-full resize-none outline-none text-sm"
+        {isIngesting ? (
+          <div
+            className="flex items-center justify-center gap-2 text-sm"
             style={{
-              background: "transparent",
-              color: "var(--text-primary)",
-              minHeight: 24,
-              maxHeight: 200,
-              fontFamily: "var(--font-sans)",
-            }}
-          />
-
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
-            className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "var(--radius-full)",
-              background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
-              color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
-              cursor: query.trim() && chatReady.ready ? "pointer" : "default",
+              padding: "14px 16px",
+              borderRadius: "var(--radius-xl)",
+              background: "var(--bg-tertiary)",
+              color: "var(--text-secondary)",
             }}
           >
-            {isStreaming ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <ArrowUp size={18} />
-            )}
-          </button>
-        </form>
+            <Loader2 size={16} className="animate-spin" style={{ color: "var(--primary-500)" }} />
+            {t("chat.inputPlaceholderIngestion")}
+          </div>
+        ) : (
+          <form
+            onSubmit={onSearch}
+            className="relative"
+            style={{
+              background: "var(--bg-tertiary)",
+              borderRadius: "var(--radius-xl)",
+              boxShadow: "var(--shadow-sm)",
+              padding: "14px 16px",
+              paddingRight: 96,
+            }}
+          >
+            <textarea
+              ref={textareaRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={getPlaceholder()}
+              disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
+              rows={1}
+              className="w-full resize-none outline-none text-sm"
+              style={{
+                background: "transparent",
+                color: "var(--text-primary)",
+                minHeight: 24,
+                maxHeight: 200,
+                fontFamily: "var(--font-sans)",
+              }}
+            />
 
-
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+              className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "var(--radius-full)",
+                background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
+                color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
+                cursor: query.trim() && chatReady.ready ? "pointer" : "default",
+              }}
+            >
+              {isStreaming ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ArrowUp size={18} />
+              )}
+            </button>
+          </form>
+        )}
 
         {/* Disclaimer */}
         <div

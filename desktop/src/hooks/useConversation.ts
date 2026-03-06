@@ -25,8 +25,7 @@ const emptyHistory: ConversationHistory = {
   has_summary: false,
 };
 
-const MAX_RETRIES = 3;
-const RETRY_DELAYS = [1000, 2000, 4000];
+const RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 5000];
 
 export function useConversation(conversationId: string | null) {
   const [history, setHistory] = useState<ConversationHistory>(emptyHistory);
@@ -57,7 +56,7 @@ export function useConversation(conversationId: string | null) {
 
   const resetConversation = async () => {
     if (!conversationId) return;
-    await invoke("new_conversation", { conversation_id: conversationId });
+    await invoke("new_conversation", { conversation_id: conversationId, clear: true });
     setHistory(emptyHistory);
   };
 
@@ -90,15 +89,14 @@ export function useConversation(conversationId: string | null) {
         setLoading(false);
       } catch (err: any) {
         if (cancelled) return;
-        attempt++;
-        if (attempt < MAX_RETRIES) {
-          console.warn(`[useConversation] Load attempt ${attempt} failed, retrying in ${RETRY_DELAYS[attempt - 1]}ms...`, err);
-          retryTimerRef.current = setTimeout(() => void tryLoad(), RETRY_DELAYS[attempt - 1]);
-        } else {
-          console.warn("[useConversation] All retries exhausted for", conversationId, err);
-          setError(String(err));
-          setLoading(false);
-        }
+        const delay = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+        attempt += 1;
+        console.warn(
+          `[useConversation] Load attempt ${attempt} failed, retrying in ${delay}ms...`,
+          err,
+        );
+        setError(String(err));
+        retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
       }
     };
 

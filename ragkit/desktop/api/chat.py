@@ -240,19 +240,29 @@ async def chat_stream(payload: ChatQuery):
 # ---------------------------------------------------------------------------
 
 @router.post("/chat/new")
-async def chat_new(conversation_id: str | None = None) -> dict[str, bool]:
+async def chat_new(
+    conversation_id: str | None = None,
+    clear: bool | None = None,
+) -> dict[str, bool]:
     global _CONVERSATION_MEMORY
     cid = conversation_id or _DEFAULT_ID
     db = get_conversation_db()
-    # If conversation exists, clear its messages; otherwise create it
-    if db.get_conversation(cid):
+
+    # Backward compatibility:
+    # - /chat/new without conversation_id keeps legacy reset behavior for "default".
+    # - /chat/new with explicit conversation_id is non-destructive by default.
+    should_clear = bool(clear) if clear is not None else conversation_id is None
+
+    if should_clear and db.get_conversation(cid):
         db.clear_conversation(cid)
+        logger.info("Cleared conversation: %s", cid)
     else:
         db.create_conversation(cid)
+        logger.info("Ensured conversation exists: %s", cid)
+
     _MEMORY_CACHE.pop(cid, None)
     if cid == _DEFAULT_ID:
         _CONVERSATION_MEMORY = None
-    logger.info("Created/cleared conversation: %s", cid)
     return {"success": True}
 
 

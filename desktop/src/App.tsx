@@ -23,9 +23,8 @@ function ChatPage() {
     const creating = useRef(false);
 
     useEffect(() => {
-        // Wait for the conversation list to load from backend before deciding
+        // Wait for the conversation list to load from backend before deciding.
         if (convLoading || id || creating.current) return;
-        creating.current = true;
 
         // Resume the most recent conversation with messages instead of creating a new one
         const nonArchived = conversations.filter((c) => !c.archived);
@@ -45,11 +44,18 @@ function ChatPage() {
             return;
         }
 
+        creating.current = true;
         let unmounted = false;
         void (async () => {
-            const newId = await createConversation();
-            if (!unmounted) {
-                navigate(`/chat/${newId}`, { replace: true });
+            try {
+                const newId = await createConversation();
+                if (!unmounted) {
+                    navigate(`/chat/${newId}`, { replace: true });
+                }
+            } catch (error) {
+                console.warn("[ChatPage] Failed to create conversation, retrying...", error);
+            } finally {
+                creating.current = false;
             }
         })();
         return () => { unmounted = true; };

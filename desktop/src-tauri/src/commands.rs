@@ -641,10 +641,22 @@ pub async fn chat_orchestrated(window: Window, query: serde_json::Value) -> Resu
 }
 
 #[tauri::command]
-pub async fn new_conversation(app: AppHandle, conversation_id: Option<String>) -> Result<serde_json::Value, String> {
-    let endpoint = match &conversation_id {
-        Some(cid) => format!("/api/chat/new?conversation_id={}", _encode_query_value(cid)),
-        None => "/api/chat/new".to_string(),
+pub async fn new_conversation(
+    app: AppHandle,
+    conversation_id: Option<String>,
+    clear: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    let mut params: Vec<String> = Vec::new();
+    if let Some(cid) = &conversation_id {
+        params.push(format!("conversation_id={}", _encode_query_value(cid)));
+    }
+    if let Some(clear_value) = clear {
+        params.push(format!("clear={}", if clear_value { "true" } else { "false" }));
+    }
+    let endpoint = if params.is_empty() {
+        "/api/chat/new".to_string()
+    } else {
+        format!("/api/chat/new?{}", params.join("&"))
     };
     request(Method::POST, &endpoint, None, &app).await
 }

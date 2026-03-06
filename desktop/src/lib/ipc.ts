@@ -50,7 +50,8 @@ export const ipc = {
   startChatStream: (query: any) => invoke("chat_stream", { query }),
   stopChatStream: () => invoke("chat_stream_stop"),
   startOrchestratedChat: (query: any) => invoke("chat_orchestrated", { query }),
-  newConversation: (conversationId?: string) => invoke("new_conversation", { conversation_id: conversationId }),
+  newConversation: (conversationId?: string, clear?: boolean) =>
+    invoke("new_conversation", { conversation_id: conversationId, clear }),
   getConversationHistory: (conversationId?: string) => invoke("get_conversation_history", { conversation_id: conversationId }),
   generateConversationTitle: (conversationId: string) => invoke<{ title: string }>("generate_title", { payload: { conversation_id: conversationId } }),
   listConversations: () => invoke("list_conversations"),

@@ -57,13 +57,14 @@ function groupConversations(conversations: ConversationListItem[]): GroupedConve
 }
 
 // ---------------------------------------------------------------------------
-// Internal hook — actual logic (backed by SQLite via backend API)
+// Internal hook - actual logic (backed by SQLite via backend API)
 // ---------------------------------------------------------------------------
 
 function useConversationsInternal() {
     const [conversations, setConversations] = useState<ConversationListItem[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const refreshList = useCallback(async () => {
         try {
@@ -72,45 +73,42 @@ function useConversationsInternal() {
             setLoading(false);
             return true;
         } catch {
-            // Backend may not be ready yet — keep current state
+            // Backend may not be ready yet - keep current state
             return false;
         }
     }, []);
 
-    // Fetch conversation list from backend on mount, with retries while backend starts
-    const retryRef = useRef(0);
+    // Keep retrying until first successful load so startup race conditions
+    // never create a phantom empty conversation.
     useEffect(() => {
         let active = true;
-        const maxRetries = 15;
-        const retryDelayMs = 2000;
+        let attempt = 0;
 
         const tryLoad = async () => {
             const ok = await refreshList();
             if (ok || !active) return;
-            retryRef.current++;
-            if (retryRef.current < maxRetries && active) {
-                setTimeout(tryLoad, retryDelayMs);
-            } else if (active) {
-                setLoading(false);
-            }
+            attempt += 1;
+            const delay = Math.min(5000, 500 + attempt * 500);
+            retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
         };
 
         void tryLoad();
-        return () => { active = false; };
+        return () => {
+            active = false;
+            if (retryTimerRef.current) {
+                clearTimeout(retryTimerRef.current);
+                retryTimerRef.current = null;
+            }
+        };
     }, [refreshList]);
 
     const createConversation = useCallback(async (): Promise<string> => {
         const id = crypto.randomUUID();
-        try {
-            await ipc.newConversation(id);
-        } catch {
-            // Best effort — backend may not be ready yet
-        }
-        // Optimistic update
+        await ipc.newConversation(id, false);
         const now = new Date().toISOString();
         setConversations((prev) => [
             { id, title: "", createdAt: now, updatedAt: now, messageCount: 0, archived: false },
-            ...prev,
+            ...prev.filter((item) => item.id !== id),
         ]);
         setActiveId(id);
         return id;
@@ -154,7 +152,7 @@ function useConversationsInternal() {
     }, []);
 
     const updateConversationActivity = useCallback((id: string, messageCount: number, title?: string) => {
-        // Optimistic local update — backend updates automatically when messages are added
+        // Optimistic local update - backend updates automatically when messages are added
         setConversations((prev) =>
             prev.map((c) => {
                 if (c.id !== id) return c;
@@ -214,7 +212,7 @@ function useConversationsInternal() {
 }
 
 // ---------------------------------------------------------------------------
-// Context — shared singleton between Sidebar and Chat
+// Context - shared singleton between Sidebar and Chat
 // ---------------------------------------------------------------------------
 
 type ConversationsContextValue = ReturnType<typeof useConversationsInternal>;

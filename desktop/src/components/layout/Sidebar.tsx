@@ -44,8 +44,12 @@ export function Sidebar() {
     const showSearch = conversations.filter((c) => !c.archived).length > 5;
 
     const handleNewConversation = async () => {
-        const id = await createConversation();
-        navigate(`/chat/${id}`);
+        try {
+            const id = await createConversation();
+            navigate(`/chat/${id}`);
+        } catch (error) {
+            console.warn("[Sidebar] Failed to create conversation:", error);
+        }
     };
 
     const handleSelectConversation = (id: string) => {
