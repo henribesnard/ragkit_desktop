@@ -152,18 +152,28 @@ function useConversationsInternal() {
     }, []);
 
     const updateConversationActivity = useCallback((id: string, messageCount: number, title?: string) => {
-        // Optimistic local update - backend updates automatically when messages are added
-        setConversations((prev) =>
-            prev.map((c) => {
-                if (c.id !== id) return c;
-                return {
-                    ...c,
-                    updatedAt: new Date().toISOString(),
-                    messageCount,
-                    ...(title !== undefined ? { title } : {}),
-                };
-            })
-        );
+        // Upsert: update if the conversation exists, otherwise add it so the
+        // sidebar always reflects the active chat even if refreshList hasn't
+        // returned this conversation yet (e.g. after a backend restart).
+        setConversations((prev) => {
+            const exists = prev.some((c) => c.id === id);
+            if (exists) {
+                return prev.map((c) => {
+                    if (c.id !== id) return c;
+                    return {
+                        ...c,
+                        updatedAt: new Date().toISOString(),
+                        messageCount,
+                        ...(title !== undefined ? { title } : {}),
+                    };
+                });
+            }
+            const now = new Date().toISOString();
+            return [
+                { id, title: title ?? "", createdAt: now, updatedAt: now, messageCount, archived: false },
+                ...prev,
+            ];
+        });
         // If title was provided, persist it to backend
         if (title !== undefined) {
             ipc.renameConversation(id, title).catch(() => {});

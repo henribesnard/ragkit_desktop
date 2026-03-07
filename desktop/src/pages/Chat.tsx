@@ -162,6 +162,9 @@ export function Chat() {
         }
       }
 
+      // Sync sidebar with backend so any conversation created server-side appears
+      await refreshList();
+
       // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
       if (updated.messages.length > 0 && !cancelled) {
         clearStreamState();
@@ -170,7 +173,7 @@ export function Chat() {
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, urlId, updateConversationActivity]);
+  }, [finalResponse, clearStreamState, urlId, updateConversationActivity, refreshList]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
