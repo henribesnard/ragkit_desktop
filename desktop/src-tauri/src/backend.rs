@@ -155,7 +155,10 @@ pub async fn monitor_backend(app: AppHandle) {
         .build()
         .unwrap();
     let mut consecutive_failures: u32 = 0;
-    const MAX_FAILURES: u32 = 3;
+    // Allow up to 6 failures (6 × 15s = 90s) before restarting.
+    // Heavy operations like loading ML models (reranker, embeddings) can
+    // block the event loop for 60+ seconds, causing health check timeouts.
+    const MAX_FAILURES: u32 = 6;
 
     loop {
         tokio::time::sleep(Duration::from_secs(15)).await;

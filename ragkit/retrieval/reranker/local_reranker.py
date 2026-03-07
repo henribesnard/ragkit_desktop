@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,7 @@ from ragkit.config.rerank_schema import (
 )
 from ragkit.retrieval.reranker.base import BaseReranker, RerankCandidate, RerankResult
 
+logger = logging.getLogger(__name__)
 
 _LOCAL_RERANKER_MODEL_CACHE: dict[str, Any] = {}
 
@@ -49,6 +52,7 @@ class LocalReranker(BaseReranker):
                 except Exception as exc:  # pragma: no cover - environment dependent
                     raise RuntimeError("sentence-transformers is required for local reranking") from exc
 
+                logger.info("Loading reranker model %s (this may take a while)...", self.config.model)
                 self._model = CrossEncoder(
                     self.config.model,
                     max_length=512,
@@ -56,7 +60,17 @@ class LocalReranker(BaseReranker):
                     cache_folder=str(self.MODELS_DIR),
                 )
                 _LOCAL_RERANKER_MODEL_CACHE[cache_key] = self._model
+                logger.info("Reranker model %s loaded successfully", self.config.model)
         return self._model
+
+    def _predict(self, pairs: list[tuple[str, str]]) -> Any:
+        """Run model.predict synchronously (called from thread pool)."""
+        model = self._load_model()
+        return model.predict(
+            pairs,
+            batch_size=self.config.batch_size,
+            show_progress_bar=False,
+        )
 
     async def rerank(
         self,
@@ -68,14 +82,12 @@ class LocalReranker(BaseReranker):
         if not candidates:
             return []
 
-        model = self._load_model()
         pairs = [(query, candidate.text) for candidate in candidates]
 
-        raw_scores = model.predict(
-            pairs,
-            batch_size=self.config.batch_size,
-            show_progress_bar=False,
-        )
+        # Run model loading and prediction in a thread pool to avoid blocking
+        # the FastAPI event loop (which would prevent health checks from
+        # responding, triggering the Tauri watchdog to kill the backend).
+        raw_scores = await asyncio.to_thread(self._predict, pairs)
 
         # Convert logits to [0, 1] scores with sigmoid.
         try:
