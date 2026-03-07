@@ -29,7 +29,10 @@ const RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 5000];
 
 export function useConversation(conversationId: string | null) {
   const [history, setHistory] = useState<ConversationHistory>(emptyHistory);
-  const [loading, setLoading] = useState(false);
+  // Start in loading state when a conversationId is provided so the first
+  // render shows a spinner instead of flashing the EmptyState before the
+  // useEffect fires (React 18 defers effects until after paint).
+  const [loading, setLoading] = useState(!!conversationId);
   const [error, setError] = useState<string | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,7 +73,10 @@ export function useConversation(conversationId: string | null) {
     setHistory(emptyHistory);
     setError(null);
 
-    if (!conversationId) return;
+    if (!conversationId) {
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
     let attempt = 0;

@@ -34,7 +34,7 @@ interface GeneralSettingsPayload {
 
 export function Chat() {
   const { id: urlId } = useParams<{ id: string }>();
-  const { updateConversationActivity, openConversation } = useConversations();
+  const { updateConversationActivity, openConversation, conversations, refreshList } = useConversations();
   const { t } = useTranslation();
   const {
     content: streamedAnswer,
@@ -196,8 +196,28 @@ export function Chat() {
   useEffect(() => {
     if (urlId) {
       void openConversation(urlId);
+      // Refresh conversations list to ensure sidebar data is fresh
+      void refreshList();
     }
-  }, [urlId, openConversation]);
+  }, [urlId, openConversation, refreshList]);
+
+  // Recovery: if history loaded empty but conversation should have messages, re-fetch once
+  const recoveryAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (historyLoading || !urlId || isStreaming) return;
+    if (history.messages.length > 0) {
+      recoveryAttemptedRef.current = false;
+      return;
+    }
+    if (recoveryAttemptedRef.current) return;
+    // Check if the conversation is known to have messages
+    const conv = conversations.find((c) => c.id === urlId);
+    if (conv && conv.messageCount > 0) {
+      recoveryAttemptedRef.current = true;
+      console.warn("[Chat] History loaded empty but conversation has", conv.messageCount, "messages — retrying");
+      void refreshHistory();
+    }
+  }, [historyLoading, urlId, history.messages.length, conversations, isStreaming, refreshHistory]);
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;
