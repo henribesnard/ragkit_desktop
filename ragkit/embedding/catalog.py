@@ -17,6 +17,7 @@ MODEL_CATALOG: dict[EmbeddingProvider, list[ModelInfo]] = {
     ],
     EmbeddingProvider.COHERE: [
         ModelInfo(provider=EmbeddingProvider.COHERE, id="embed-multilingual-v3.0", display_name="embed-multilingual-v3.0", dimensions_default=1024, description="API Cohere multilingue", local=False),
+        ModelInfo(provider=EmbeddingProvider.COHERE, id="embed-multilingual-light-v3.0", display_name="embed-multilingual-light-v3.0", dimensions_default=384, description="API Cohere multilingue leger (rapide)", local=False),
     ],
     EmbeddingProvider.VOYAGEAI: [
         ModelInfo(provider=EmbeddingProvider.VOYAGEAI, id="voyage-3-large", display_name="voyage-3-large", dimensions_default=1024, description="Haute qualité retrieval", local=False),
