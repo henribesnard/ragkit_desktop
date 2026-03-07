@@ -21,7 +21,7 @@ from ragkit.security.secrets import secrets_manager
 
 def api_key_secret_name(provider: LLMProvider) -> str | None:
     if provider in {LLMProvider.OPENAI, LLMProvider.ANTHROPIC, LLMProvider.MISTRAL, LLMProvider.DEEPSEEK}:
-        return f"ragkit.llm.{provider.value}.api_key"
+        return f"loko.llm.{provider.value}.api_key"
     return None
 
 

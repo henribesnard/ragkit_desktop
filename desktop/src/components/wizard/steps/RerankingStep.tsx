@@ -58,8 +58,10 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             if (provider === "cohere" && apiKey) {
                 await invoke("store_secret", { keyName: "loko.rerank.cohere.api_key", value: apiKey });
             }
-            // Persist current wizard config so the backend tests the right provider/model
-            await ipc.updateRerankConfig({ enabled: true, provider, top_n: topN });
+            // Persist current wizard config so the backend tests the right provider/model.
+            // Send model: null to force the backend to use the default model for the chosen provider
+            // (otherwise the merge keeps the old model from a different provider).
+            await ipc.updateRerankConfig({ enabled: true, provider, model: null, top_n: topN });
             const res: any = await ipc.testRerankConnection();
             if (res.success) {
                 setTestResult({ success: true, msg: t('wizard.reranking.testSuccess') });

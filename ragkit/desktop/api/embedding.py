@@ -58,7 +58,7 @@ def _model_id(config: EmbeddingConfig) -> str:
 
 
 def _api_key_name(provider: EmbeddingProvider, query: bool = False) -> str:
-    return f"ragkit.embedding{'.query' if query else ''}.{provider.value}.api_key"
+    return f"loko.embedding{'.query' if query else ''}.{provider.value}.api_key"
 
 
 def _get_cache(config: EmbeddingConfig) -> BaseEmbeddingCache:
