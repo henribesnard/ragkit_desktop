@@ -27,7 +27,25 @@ const emptyHistory: ConversationHistory = {
 
 const RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 5000];
 
-export function useConversation(conversationId: string | null) {
+function parseHistory(payload: unknown): ConversationHistory {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    Array.isArray((payload as ConversationHistory).messages)
+  ) {
+    return payload as ConversationHistory;
+  }
+  return emptyHistory;
+}
+
+function shouldRetryForUnexpectedEmptyHistory(
+  history: ConversationHistory,
+  minExpectedMessages: number,
+): boolean {
+  return minExpectedMessages > 0 && history.messages.length === 0;
+}
+
+export function useConversation(conversationId: string | null, minExpectedMessages = 0) {
   const [history, setHistory] = useState<ConversationHistory>(emptyHistory);
   // Start in loading state when a conversationId is provided so the first
   // render shows a spinner instead of flashing the EmptyState before the
@@ -35,24 +53,47 @@ export function useConversation(conversationId: string | null) {
   const [loading, setLoading] = useState(!!conversationId);
   const [error, setError] = useState<string | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Use a ref so that changes to minExpectedMessages don't re-trigger the
+  // load effect (which would reset history to empty and cause a content flash).
+  const minExpectedRef = useRef(minExpectedMessages);
+  minExpectedRef.current = minExpectedMessages;
 
   const refresh = useCallback(async (): Promise<ConversationHistory> => {
     if (!conversationId) return emptyHistory;
     setLoading(true);
+    const expectedCount = Math.max(0, minExpectedRef.current);
     try {
-      const payload = await invoke<ConversationHistory>("get_conversation_history", {
-        conversation_id: conversationId,
-      });
-      const result =
-        payload && Array.isArray(payload.messages) ? payload : emptyHistory;
-      setHistory(result);
-      setError(null);
-      return result;
-    } catch (err: any) {
-      console.warn("[useConversation] Failed to load history for", conversationId, err);
-      setError(String(err));
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+        try {
+          const payload = await invoke<ConversationHistory>("get_conversation_history", {
+            conversation_id: conversationId,
+          });
+          const result = parseHistory(payload);
+          if (
+            shouldRetryForUnexpectedEmptyHistory(result, expectedCount) &&
+            attempt < RETRY_DELAYS_MS.length
+          ) {
+            const delay = RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+            await new Promise<void>((resolve) => {
+              retryTimerRef.current = setTimeout(resolve, delay);
+            });
+            continue;
+          }
+          setHistory(result);
+          setError(null);
+          return result;
+        } catch (err: any) {
+          console.warn("[useConversation] Failed to load history for", conversationId, err);
+          setError(String(err));
+          return emptyHistory;
+        }
+      }
       return emptyHistory;
     } finally {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
       setLoading(false);
     }
   }, [conversationId]);
@@ -80,6 +121,7 @@ export function useConversation(conversationId: string | null) {
 
     let cancelled = false;
     let attempt = 0;
+    const expectedCount = Math.max(0, minExpectedRef.current);
 
     const tryLoad = async () => {
       if (cancelled) return;
@@ -88,8 +130,19 @@ export function useConversation(conversationId: string | null) {
           conversation_id: conversationId,
         });
         if (cancelled) return;
-        const result =
-          payload && Array.isArray(payload.messages) ? payload : emptyHistory;
+        const result = parseHistory(payload);
+        if (
+          shouldRetryForUnexpectedEmptyHistory(result, expectedCount) &&
+          attempt < RETRY_DELAYS_MS.length
+        ) {
+          const delay = RETRY_DELAYS_MS[attempt];
+          attempt += 1;
+          console.warn(
+            `[useConversation] Empty history for ${conversationId} but ${expectedCount} message(s) expected; retrying in ${delay}ms...`,
+          );
+          retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
+          return;
+        }
         setHistory(result);
         setError(null);
         setLoading(false);
@@ -116,6 +169,7 @@ export function useConversation(conversationId: string | null) {
         retryTimerRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
   return {

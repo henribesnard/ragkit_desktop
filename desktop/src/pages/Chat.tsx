@@ -34,7 +34,7 @@ interface GeneralSettingsPayload {
 
 export function Chat() {
   const { id: urlId } = useParams<{ id: string }>();
-  const { updateConversationActivity, openConversation, conversations } = useConversations();
+  const { updateConversationActivity, openConversation, conversations, refreshList } = useConversations();
   const { t } = useTranslation();
   const {
     content: streamedAnswer,
@@ -45,7 +45,10 @@ export function Chat() {
     startStream,
     clear: clearStreamState,
   } = useChatStream();
-  const { history, loading: historyLoading, refresh: refreshHistory } = useConversation(urlId || null);
+  const expectedMessageCount = urlId
+    ? (conversations.find((conversation) => conversation.id === urlId)?.messageCount ?? 0)
+    : 0;
+  const { history, loading: historyLoading, refresh: refreshHistory } = useConversation(urlId || null, expectedMessageCount);
   const {
     submit: submitFeedback,
     error: feedbackError,
@@ -167,10 +170,12 @@ export function Chat() {
         clearStreamState();
         setActiveQuery(null);
       }
+
+      void refreshList();
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, urlId, updateConversationActivity]);
+  }, [finalResponse, clearStreamState, refreshList, urlId, updateConversationActivity]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -198,6 +203,17 @@ export function Chat() {
       void openConversation(urlId);
     }
   }, [urlId, openConversation]);
+
+  // Keep sidebar counters aligned with actually loaded history.
+  useEffect(() => {
+    if (!urlId || historyLoading) return;
+    const actualCount = history.messages.length;
+    if (actualCount <= 0) return;
+    const conv = conversations.find((c) => c.id === urlId);
+    if (!conv || conv.messageCount !== actualCount) {
+      updateConversationActivity(urlId, actualCount);
+    }
+  }, [history.messages.length, historyLoading, conversations, updateConversationActivity, urlId]);
 
   // Recovery: if history loaded empty but conversation should have messages, re-fetch once
   const recoveryAttemptedRef = useRef(false);

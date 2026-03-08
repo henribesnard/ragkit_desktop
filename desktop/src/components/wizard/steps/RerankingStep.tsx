@@ -19,19 +19,6 @@ export function RerankingStep({ wizard }: { wizard: any }) {
     const enabled = rerankCfg.enabled ?? false;
     const provider = rerankCfg.provider || RERANK_DEFAULTS.provider;
     const topN = rerankCfg.top_n || RERANK_DEFAULTS.top_n;
-    const embeddingProvider = state.config?.embedding?.provider;
-    const embeddingProviderLabel = embeddingProvider === "huggingface"
-        ? "HuggingFace (Local)"
-        : embeddingProvider === "ollama"
-            ? "Ollama (Local)"
-            : embeddingProvider === "openai"
-                ? "OpenAI (API)"
-                : embeddingProvider === "cohere"
-                    ? "Cohere (API)"
-                    : embeddingProvider
-                        ? `${embeddingProvider.charAt(0).toUpperCase()}${embeddingProvider.slice(1)} (API)`
-                        : null;
-
     // Si le reranking est activé (ex: via analyze_profile) mais que
     // le provider n'est pas encore défini, écrire les valeurs par défaut.
     useEffect(() => {
@@ -94,12 +81,6 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             <p className="text-gray-500 mb-8">
                 {t('wizard.reranking.subtitle')}
             </p>
-
-            {embeddingProviderLabel && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6 text-sm text-blue-800 dark:text-blue-200">
-                    <p>{t('wizard.reranking.embeddingProviderInfo', { provider: embeddingProviderLabel })}</p>
-                </div>
-            )}
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
                 <label className="flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-700 pb-4">

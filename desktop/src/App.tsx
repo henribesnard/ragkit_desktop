@@ -16,11 +16,17 @@ import i18n from "./i18n";
  * Auto-creates a conversation when landing on /chat without an ID so that
  * every chat session always has a UUID (fixes disappearing conversations & missing titles).
  */
-function ChatPage() {
+export function ChatPage() {
     const { id } = useParams<{ id: string }>();
-    const { createConversation, conversations, loading: convLoading } = useConversations();
+    const { createConversation, conversations, loading: convLoading, refreshList } = useConversations();
     const navigate = useNavigate();
     const creating = useRef(false);
+
+    useEffect(() => {
+        if (!id) {
+            void refreshList();
+        }
+    }, [id, refreshList]);
 
     useEffect(() => {
         // Wait for the conversation list to load from backend before deciding.
