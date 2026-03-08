@@ -66,15 +66,16 @@ function useConversationsInternal() {
     const [loading, setLoading] = useState(true);
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const refreshList = useCallback(async () => {
+    const refreshList = useCallback(async (): Promise<ConversationListItem[] | null> => {
         try {
             const list = await ipc.listConversations() as ConversationListItem[];
-            setConversations(Array.isArray(list) ? list : []);
+            const normalized = Array.isArray(list) ? list : [];
+            setConversations(normalized);
             setLoading(false);
-            return true;
+            return normalized;
         } catch {
             // Backend may not be ready yet - keep current state
-            return false;
+            return null;
         }
     }, []);
 
@@ -85,8 +86,8 @@ function useConversationsInternal() {
         let attempt = 0;
 
         const tryLoad = async () => {
-            const ok = await refreshList();
-            if (ok || !active) return;
+            const list = await refreshList();
+            if (list !== null || !active) return;
             attempt += 1;
             const delay = Math.min(5000, 500 + attempt * 500);
             retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
@@ -174,10 +175,6 @@ function useConversationsInternal() {
                 ...prev,
             ];
         });
-        // If title was provided, persist it to backend
-        if (title !== undefined) {
-            ipc.renameConversation(id, title).catch(() => {});
-        }
     }, []);
 
     const openConversation = useCallback(async (id: string) => {

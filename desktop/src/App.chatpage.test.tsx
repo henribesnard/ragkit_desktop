@@ -16,7 +16,16 @@ type ConversationsState = {
   }>;
   loading: boolean;
   createConversation: () => Promise<string>;
-  refreshList: () => Promise<boolean>;
+  refreshList: () => Promise<
+    Array<{
+      id: string;
+      title: string;
+      createdAt: string;
+      updatedAt: string;
+      messageCount: number;
+      archived: boolean;
+    }> | null
+  >;
 };
 
 const { mockState } = vi.hoisted(() => ({
@@ -77,31 +86,32 @@ describe("ChatPage routing recovery", () => {
   });
 
   it("resumes the most recent conversation with messages", async () => {
-    const refreshList = vi.fn().mockResolvedValue(true);
+    const refreshed = [
+      {
+        id: "empty-conv",
+        title: "Vide",
+        createdAt: "2026-03-07T10:00:00.000Z",
+        updatedAt: "2026-03-07T10:00:00.000Z",
+        messageCount: 0,
+        archived: false,
+      },
+      {
+        id: "recent-conv",
+        title: "Persisted",
+        createdAt: "2026-03-08T09:00:00.000Z",
+        updatedAt: "2026-03-08T10:00:00.000Z",
+        messageCount: 4,
+        archived: false,
+      },
+    ];
+    const refreshList = vi.fn().mockResolvedValue(refreshed);
     const createConversation = vi.fn().mockResolvedValue("new-conv");
 
     mockState.current = {
       loading: false,
       createConversation,
       refreshList,
-      conversations: [
-        {
-          id: "empty-conv",
-          title: "Vide",
-          createdAt: "2026-03-07T10:00:00.000Z",
-          updatedAt: "2026-03-07T10:00:00.000Z",
-          messageCount: 0,
-          archived: false,
-        },
-        {
-          id: "recent-conv",
-          title: "Persisted",
-          createdAt: "2026-03-08T09:00:00.000Z",
-          updatedAt: "2026-03-08T10:00:00.000Z",
-          messageCount: 4,
-          archived: false,
-        },
-      ],
+      conversations: [],
     };
 
     renderChatPage("/chat");
@@ -113,23 +123,23 @@ describe("ChatPage routing recovery", () => {
   });
 
   it("reuses an existing empty conversation when no conversation has messages", async () => {
-    const refreshList = vi.fn().mockResolvedValue(true);
+    const refreshList = vi.fn().mockResolvedValue([
+      {
+        id: "empty-conv",
+        title: "Nouvelle conversation",
+        createdAt: "2026-03-08T09:00:00.000Z",
+        updatedAt: "2026-03-08T09:00:00.000Z",
+        messageCount: 0,
+        archived: false,
+      },
+    ]);
     const createConversation = vi.fn().mockResolvedValue("new-conv");
 
     mockState.current = {
       loading: false,
       createConversation,
       refreshList,
-      conversations: [
-        {
-          id: "empty-conv",
-          title: "Nouvelle conversation",
-          createdAt: "2026-03-08T09:00:00.000Z",
-          updatedAt: "2026-03-08T09:00:00.000Z",
-          messageCount: 0,
-          archived: false,
-        },
-      ],
+      conversations: [],
     };
 
     renderChatPage("/chat");
@@ -140,7 +150,7 @@ describe("ChatPage routing recovery", () => {
   });
 
   it("creates a new conversation when no reusable conversation exists", async () => {
-    const refreshList = vi.fn().mockResolvedValue(true);
+    const refreshList = vi.fn().mockResolvedValue([]);
     const createConversation = vi.fn().mockResolvedValue("fresh-conv");
 
     mockState.current = {

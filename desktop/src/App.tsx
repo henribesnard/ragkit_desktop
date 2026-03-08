@@ -23,37 +23,37 @@ export function ChatPage() {
     const creating = useRef(false);
 
     useEffect(() => {
-        if (!id) {
-            void refreshList();
-        }
-    }, [id, refreshList]);
-
-    useEffect(() => {
         // Wait for the conversation list to load from backend before deciding.
         if (convLoading || id || creating.current) return;
-
-        // Resume the most recent conversation with messages instead of creating a new one
-        const nonArchived = conversations.filter((c) => !c.archived);
-        const recent = nonArchived
-            .filter((c) => c.messageCount > 0)
-            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-        if (recent.length > 0) {
-            navigate(`/chat/${recent[0].id}`, { replace: true });
-            return;
-        }
-
-        // Reuse an existing empty conversation instead of creating a duplicate
-        const emptyConv = nonArchived.find((c) => c.messageCount === 0);
-        if (emptyConv) {
-            navigate(`/chat/${emptyConv.id}`, { replace: true });
-            return;
-        }
 
         creating.current = true;
         let unmounted = false;
         void (async () => {
             try {
+                // Always decide from a fresh backend snapshot to avoid stale local state.
+                const latest = await refreshList();
+                const source = latest ?? conversations;
+                const nonArchived = source.filter((c) => !c.archived);
+                const recent = nonArchived
+                    .filter((c) => c.messageCount > 0)
+                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+                if (recent.length > 0) {
+                    if (!unmounted) {
+                        navigate(`/chat/${recent[0].id}`, { replace: true });
+                    }
+                    return;
+                }
+
+                // Reuse an existing empty conversation instead of creating a duplicate
+                const emptyConv = nonArchived.find((c) => c.messageCount === 0);
+                if (emptyConv) {
+                    if (!unmounted) {
+                        navigate(`/chat/${emptyConv.id}`, { replace: true });
+                    }
+                    return;
+                }
+
                 const newId = await createConversation();
                 if (!unmounted) {
                     navigate(`/chat/${newId}`, { replace: true });
@@ -65,7 +65,7 @@ export function ChatPage() {
             }
         })();
         return () => { unmounted = true; };
-    }, [convLoading, id, createConversation, navigate, conversations]);
+    }, [convLoading, id, createConversation, navigate, conversations, refreshList]);
 
     if (!id) {
         return (

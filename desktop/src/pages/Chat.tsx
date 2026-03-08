@@ -34,7 +34,7 @@ interface GeneralSettingsPayload {
 
 export function Chat() {
   const { id: urlId } = useParams<{ id: string }>();
-  const { updateConversationActivity, openConversation, conversations, refreshList } = useConversations();
+  const { updateConversationActivity, openConversation, conversations, renameConversation } = useConversations();
   const { t } = useTranslation();
   const {
     content: streamedAnswer,
@@ -159,6 +159,7 @@ export function Chat() {
           const { title } = await ipc.generateConversationTitle(urlId);
           if (title && !cancelled) {
             updateConversationActivity(urlId, updated.messages.length, title);
+            await renameConversation(urlId, title);
           }
         } catch (err) {
           console.warn("[Chat] Title generation failed:", err);
@@ -170,12 +171,10 @@ export function Chat() {
         clearStreamState();
         setActiveQuery(null);
       }
-
-      void refreshList();
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, refreshList, urlId, updateConversationActivity]);
+  }, [finalResponse, clearStreamState, renameConversation, urlId, updateConversationActivity]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -273,6 +272,7 @@ export function Chat() {
     if (urlId && history.messages.length === 0) {
       const fallbackTitle = q.length > 40 ? q.slice(0, 37) + "..." : q;
       updateConversationActivity(urlId, 1, fallbackTitle);
+      void renameConversation(urlId, fallbackTitle);
     }
 
     await startStream(payload);

@@ -134,7 +134,10 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool, str, in
     provider = resolve_llm_provider(llm_config)
     analyzer_provider = resolve_llm_provider(_analyzer_llm_config(llm_config, agents_config.analyzer_model))
 
-    cid = (payload.conversation_id if hasattr(payload, "conversation_id") else None) or _DEFAULT_ID
+    requested_cid = payload.conversation_id if hasattr(payload, "conversation_id") else None
+    cid = requested_cid or _DEFAULT_ID
+    if not requested_cid:
+        logger.debug("chat request without conversation_id; using default conversation")
     memory = _get_conversation_memory(cid)
     prev_count = len(memory.state.messages)
     memory.config = agents_config
@@ -337,7 +340,11 @@ async def delete_conversation_endpoint(conversation_id: str) -> dict[str, bool]:
 @router.post("/chat/generate_title")
 async def generate_title(payload: dict) -> dict[str, str]:
     conversation_id = payload.get("conversation_id")
+    if not conversation_id and isinstance(payload.get("payload"), dict):
+        conversation_id = payload["payload"].get("conversation_id")
     cid = conversation_id or _DEFAULT_ID
+    if not conversation_id:
+        logger.warning("generate_title called without explicit conversation_id; payload keys=%s", list(payload.keys()))
     try:
         db = get_conversation_db()
         messages_data = db.get_messages(cid)

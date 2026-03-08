@@ -42,7 +42,9 @@ function shouldRetryForUnexpectedEmptyHistory(
   history: ConversationHistory,
   minExpectedMessages: number,
 ): boolean {
-  return minExpectedMessages > 0 && history.messages.length === 0;
+  const knownTotal = typeof history.total_messages === "number" ? history.total_messages : 0;
+  const expected = Math.max(minExpectedMessages, knownTotal);
+  return expected > 0 && history.messages.length === 0;
 }
 
 export function useConversation(conversationId: string | null, minExpectedMessages = 0) {
