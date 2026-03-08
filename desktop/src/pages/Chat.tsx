@@ -34,7 +34,7 @@ interface GeneralSettingsPayload {
 
 export function Chat() {
   const { id: urlId } = useParams<{ id: string }>();
-  const { updateConversationActivity, openConversation, conversations, refreshList } = useConversations();
+  const { updateConversationActivity, openConversation, conversations } = useConversations();
   const { t } = useTranslation();
   const {
     content: streamedAnswer,
@@ -162,9 +162,6 @@ export function Chat() {
         }
       }
 
-      // Sync sidebar with backend so any conversation created server-side appears
-      await refreshList();
-
       // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
       if (updated.messages.length > 0 && !cancelled) {
         clearStreamState();
@@ -173,7 +170,7 @@ export function Chat() {
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, urlId, updateConversationActivity, refreshList]);
+  }, [finalResponse, clearStreamState, urlId, updateConversationActivity]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -199,10 +196,8 @@ export function Chat() {
   useEffect(() => {
     if (urlId) {
       void openConversation(urlId);
-      // Refresh conversations list to ensure sidebar data is fresh
-      void refreshList();
     }
-  }, [urlId, openConversation, refreshList]);
+  }, [urlId, openConversation]);
 
   // Recovery: if history loaded empty but conversation should have messages, re-fetch once
   const recoveryAttemptedRef = useRef(false);
