@@ -47,6 +47,11 @@ function shouldRetryForUnexpectedEmptyHistory(
   return expected > 0 && history.messages.length === 0;
 }
 
+/**
+ * Single retry mechanism: the useEffect handles both initial load and
+ * refresh-triggered reloads.  `refresh()` bumps `retryTrigger` to re-enter
+ * the effect, so there is only ONE retry implementation.
+ */
 export function useConversation(conversationId: string | null, minExpectedMessages = 0) {
   const [history, setHistory] = useState<ConversationHistory>(emptyHistory);
   // Start in loading state when a conversationId is provided so the first
@@ -54,70 +59,33 @@ export function useConversation(conversationId: string | null, minExpectedMessag
   // useEffect fires (React 18 defers effects until after paint).
   const [loading, setLoading] = useState(!!conversationId);
   const [error, setError] = useState<string | null>(null);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Use a ref so that changes to minExpectedMessages don't re-trigger the
   // load effect (which would reset history to empty and cause a content flash).
   const minExpectedRef = useRef(minExpectedMessages);
   minExpectedRef.current = minExpectedMessages;
 
-  const refresh = useCallback(async (): Promise<ConversationHistory> => {
-    if (!conversationId) return emptyHistory;
-    setLoading(true);
-    const expectedCount = Math.max(0, minExpectedRef.current);
-    try {
-      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
-        try {
-          const payload = await invoke<ConversationHistory>("get_conversation_history", {
-            conversation_id: conversationId,
-          });
-          const result = parseHistory(payload);
-          if (
-            shouldRetryForUnexpectedEmptyHistory(result, expectedCount) &&
-            attempt < RETRY_DELAYS_MS.length
-          ) {
-            const delay = RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
-            await new Promise<void>((resolve) => {
-              retryTimerRef.current = setTimeout(resolve, delay);
-            });
-            continue;
-          }
-          setHistory(result);
-          setError(null);
-          return result;
-        } catch (err: any) {
-          console.warn("[useConversation] Failed to load history for", conversationId, err);
-          setError(String(err));
-          return emptyHistory;
-        }
-      }
-      return emptyHistory;
-    } finally {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      setLoading(false);
-    }
-  }, [conversationId]);
+  // Resolve ref: allows the effect to resolve the refresh() promise when done
+  const resolveRef = useRef<((h: ConversationHistory) => void) | null>(null);
+  const historyRef = useRef(history);
+  historyRef.current = history;
 
-  const resetConversation = async () => {
-    if (!conversationId) return;
-    await invoke("new_conversation", { conversation_id: conversationId, clear: true });
-    setHistory(emptyHistory);
-  };
-
-  // Reset history immediately when conversationId changes, then fetch with retry
+  // Unified load effect — handles both initial load and refresh()-triggered reloads
   useEffect(() => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
 
-    setHistory(emptyHistory);
+    // Do NOT reset history here — old content stays visible while loading
     setError(null);
 
     if (!conversationId) {
+      setHistory(emptyHistory);
       setLoading(false);
+      resolveRef.current?.(emptyHistory);
+      resolveRef.current = null;
       return;
     }
 
@@ -148,16 +116,26 @@ export function useConversation(conversationId: string | null, minExpectedMessag
         setHistory(result);
         setError(null);
         setLoading(false);
+        resolveRef.current?.(result);
+        resolveRef.current = null;
       } catch (err: any) {
         if (cancelled) return;
-        const delay = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
-        attempt += 1;
-        console.warn(
-          `[useConversation] Load attempt ${attempt} failed, retrying in ${delay}ms...`,
-          err,
-        );
-        setError(String(err));
-        retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
+        if (attempt < RETRY_DELAYS_MS.length) {
+          const delay = RETRY_DELAYS_MS[attempt];
+          attempt += 1;
+          console.warn(
+            `[useConversation] Load attempt ${attempt} failed, retrying in ${delay}ms...`,
+            err,
+          );
+          setError(String(err));
+          retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
+        } else {
+          // Max retries exhausted — keep old content, report error
+          setError(String(err));
+          setLoading(false);
+          resolveRef.current?.(historyRef.current);
+          resolveRef.current = null;
+        }
       }
     };
 
@@ -170,9 +148,27 @@ export function useConversation(conversationId: string | null, minExpectedMessag
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      // If refresh() is waiting, resolve with current history
+      resolveRef.current?.(historyRef.current);
+      resolveRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, retryTrigger]);
+
+  // refresh() re-enters the effect via retryTrigger and returns when done
+  const refresh = useCallback(async (): Promise<ConversationHistory> => {
+    if (!conversationId) return emptyHistory;
+    return new Promise<ConversationHistory>((resolve) => {
+      resolveRef.current = resolve;
+      setRetryTrigger((prev) => prev + 1);
+    });
   }, [conversationId]);
+
+  const resetConversation = async () => {
+    if (!conversationId) return;
+    await invoke("new_conversation", { conversation_id: conversationId, clear: true });
+    setHistory(emptyHistory);
+  };
 
   return {
     history,

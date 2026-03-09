@@ -12,9 +12,9 @@ import { invoke } from "@tauri-apps/api/core";
 import i18n from "./i18n";
 
 /**
- * Key-based wrapper: remounts Chat when conversation ID changes, resetting all state.
- * Auto-creates a conversation when landing on /chat without an ID so that
- * every chat session always has a UUID (fixes disappearing conversations & missing titles).
+ * Chat page wrapper: auto-creates a conversation when landing on /chat without
+ * an ID so that every chat session always has a UUID.
+ * Chat handles conversation switches internally via urlId (no key-based remount).
  */
 export function ChatPage() {
     const { id } = useParams<{ id: string }>();
@@ -75,7 +75,7 @@ export function ChatPage() {
         );
     }
 
-    return <Chat key={id} />;
+    return <Chat />;
 }
 
 function SplashScreen() {

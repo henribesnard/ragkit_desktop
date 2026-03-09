@@ -43,7 +43,11 @@ function groupConversations(conversations: ConversationListItem[]): GroupedConve
 
     const sorted = [...conversations]
         .filter((c) => !c.archived)
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        .sort((a, b) => {
+            const timeDiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return a.id.localeCompare(b.id);  // Tie-breaker for stable sort
+        });
 
     for (const conv of sorted) {
         const group = getTemporalGroup(conv.updatedAt);
@@ -74,9 +78,9 @@ function useConversationsInternal() {
             setLoading(false);
             return normalized;
         } catch {
-            // Backend busy or not ready — preserve current conversation list
-            // and stop the loading spinner so the UI doesn't stay stuck.
-            setLoading(false);
+            // Backend busy or not ready — preserve current conversation list.
+            // Do NOT set loading=false here: the retry loop will keep trying
+            // and loading will turn false on first success or after max retries.
             return null;
         }
     }, []);

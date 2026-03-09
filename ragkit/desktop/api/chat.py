@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -29,8 +30,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 _MEMORY_CACHE: dict[str, ConversationMemory] = {}
-# Backward-compatibility alias used by older integration tests.
-_CONVERSATION_MEMORY: ConversationMemory | None = None
+_CACHE_LOCK = threading.Lock()
 _MAX_CACHE_SIZE = 50
 _DEFAULT_ID = "default"
 
@@ -55,17 +55,14 @@ def _build_chat_response(
 
 def _get_conversation_memory(conversation_id: str | None = None) -> ConversationMemory:
     """Load or create an in-memory ConversationMemory backed by SQLite."""
-    global _MEMORY_CACHE, _CONVERSATION_MEMORY
     cid = conversation_id or _DEFAULT_ID
 
-    if cid == _DEFAULT_ID and _CONVERSATION_MEMORY is not None:
-        _MEMORY_CACHE[cid] = _CONVERSATION_MEMORY
-        return _CONVERSATION_MEMORY
+    with _CACHE_LOCK:
+        if cid in _MEMORY_CACHE:
+            # Move to end so the eviction below removes least-recently-used
+            _MEMORY_CACHE[cid] = _MEMORY_CACHE.pop(cid)
+            return _MEMORY_CACHE[cid]
 
-    if cid in _MEMORY_CACHE:
-        # Move to end so the eviction below removes least-recently-used
-        _MEMORY_CACHE[cid] = _MEMORY_CACHE.pop(cid)
-    else:
         if len(_MEMORY_CACHE) >= _MAX_CACHE_SIZE:
             oldest_key = next(iter(_MEMORY_CACHE))
             del _MEMORY_CACHE[oldest_key]
@@ -83,18 +80,20 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
             conversation_id=cid,
             storage_path=None,  # No JSON file I/O
         )
+        # Robust deserialization: skip malformed messages instead of crashing
+        messages: list[ConversationMessage] = []
+        for m in messages_data:
+            try:
+                messages.append(ConversationMessage(**m))
+            except (TypeError, ValueError) as exc:
+                logger.warning("Skipping malformed message in %s: %s", cid, exc)
         memory.state = ConversationState(
-            messages=[ConversationMessage(**m) for m in messages_data],
+            messages=messages,
             summary=summary,
-            total_messages=len(messages_data),
+            total_messages=len(messages),
         )
         _MEMORY_CACHE[cid] = memory
-        if cid == _DEFAULT_ID:
-            _CONVERSATION_MEMORY = memory
-        logger.debug("Loaded conversation memory from DB: %s (%d messages)", cid, len(messages_data))
-    memory = _MEMORY_CACHE[cid]
-    if cid == _DEFAULT_ID:
-        _CONVERSATION_MEMORY = memory
+        logger.debug("Loaded conversation memory from DB: %s (%d messages)", cid, len(messages))
     return memory
 
 
@@ -256,7 +255,6 @@ async def chat_new(
     conversation_id: str | None = None,
     clear: bool | None = None,
 ) -> dict[str, bool]:
-    global _CONVERSATION_MEMORY
     cid = conversation_id or _DEFAULT_ID
     db = get_conversation_db()
 
@@ -272,9 +270,8 @@ async def chat_new(
         db.create_conversation(cid)
         logger.info("Ensured conversation exists: %s", cid)
 
-    _MEMORY_CACHE.pop(cid, None)
-    if cid == _DEFAULT_ID:
-        _CONVERSATION_MEMORY = None
+    with _CACHE_LOCK:
+        _MEMORY_CACHE.pop(cid, None)
     return {"success": True}
 
 
@@ -307,7 +304,7 @@ async def chat_history(conversation_id: str | None = None) -> ConversationHistor
         )
     return ConversationHistory(
         messages=messages,
-        total_messages=conv["total_messages"] if conv else len(messages),
+        total_messages=len(messages),  # Actual count of returned messages
         has_summary=bool(conv.get("summary")) if conv else False,
     )
 
@@ -336,12 +333,10 @@ async def update_conversation_archive(conversation_id: str, payload: dict) -> di
 
 @router.delete("/chat/conversations/{conversation_id}")
 async def delete_conversation_endpoint(conversation_id: str) -> dict[str, bool]:
-    global _CONVERSATION_MEMORY
     db = get_conversation_db()
     db.delete_conversation(conversation_id)
-    _MEMORY_CACHE.pop(conversation_id, None)
-    if conversation_id == _DEFAULT_ID:
-        _CONVERSATION_MEMORY = None
+    with _CACHE_LOCK:
+        _MEMORY_CACHE.pop(conversation_id, None)
     logger.info("Deleted conversation: %s", conversation_id)
     return {"success": True}
 

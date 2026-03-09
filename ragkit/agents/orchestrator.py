@@ -117,7 +117,10 @@ class Orchestrator:
             query_log_id=query_log_id,
             feedback=None,
         )
-        await self.memory.update_summary_if_needed()
+        try:
+            await self.memory.update_summary_if_needed()
+        except Exception:
+            logger.exception("Summary update failed, continuing")
 
         total_latency_ms = max(1, int((time.perf_counter() - started) * 1000))
         self._log_query(
@@ -293,7 +296,10 @@ class Orchestrator:
                 query_log_id=query_log_id,
                 feedback=None,
             )
-            await self.memory.update_summary_if_needed()
+            try:
+                await self.memory.update_summary_if_needed()
+            except Exception:
+                logger.exception("Summary update failed, continuing")
 
             self._log_query(
                 query_log_id=query_log_id,

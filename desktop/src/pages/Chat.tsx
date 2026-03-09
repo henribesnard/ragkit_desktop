@@ -203,6 +203,13 @@ export function Chat() {
     }
   }, [urlId, openConversation]);
 
+  // C2: Since Chat is no longer remounted via key={id}, clean up stream state
+  // when switching conversations so stale streaming data doesn't bleed across.
+  useEffect(() => {
+    clearStreamState();
+    setActiveQuery(null);
+  }, [urlId, clearStreamState]);
+
   // Keep sidebar counters aligned with actually loaded history.
   // Use refs to avoid re-render cascade: updateConversationActivity updates
   // the conversations context which would re-trigger this effect endlessly.
@@ -221,22 +228,17 @@ export function Chat() {
     }
   }, [history.messages.length, historyLoading, urlId]);
 
-  // Recovery: if history loaded empty but conversation should have messages, re-fetch once
-  const recoveryAttemptedRef = useRef(false);
+  // Recovery: if history loaded empty but conversation should have messages, re-fetch
   useEffect(() => {
     if (historyLoading || !urlId || isStreaming) return;
-    if (history.messages.length > 0) {
-      recoveryAttemptedRef.current = false;
-      return;
-    }
-    if (recoveryAttemptedRef.current) return;
-    // Check if the conversation is known to have messages
+    if (history.messages.length > 0) return;
+
     const conv = conversations.find((c) => c.id === urlId);
-    if (conv && conv.messageCount > 0) {
-      recoveryAttemptedRef.current = true;
-      console.warn("[Chat] History loaded empty but conversation has", conv.messageCount, "messages — retrying");
-      void refreshHistory();
-    }
+    if (!conv || conv.messageCount === 0) return;
+
+    // Retry without limit — this effect only re-fires when deps change
+    console.warn("[Chat] History empty but conversation has", conv.messageCount, "messages — retrying");
+    void refreshHistory();
   }, [historyLoading, urlId, history.messages.length, conversations, isStreaming, refreshHistory]);
 
   const handleScroll = useCallback(() => {
