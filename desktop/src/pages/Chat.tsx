@@ -204,15 +204,22 @@ export function Chat() {
   }, [urlId, openConversation]);
 
   // Keep sidebar counters aligned with actually loaded history.
+  // Use refs to avoid re-render cascade: updateConversationActivity updates
+  // the conversations context which would re-trigger this effect endlessly.
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+  const updateActivityRef = useRef(updateConversationActivity);
+  updateActivityRef.current = updateConversationActivity;
+
   useEffect(() => {
     if (!urlId || historyLoading) return;
     const actualCount = history.messages.length;
     if (actualCount <= 0) return;
-    const conv = conversations.find((c) => c.id === urlId);
+    const conv = conversationsRef.current.find((c) => c.id === urlId);
     if (!conv || conv.messageCount !== actualCount) {
-      updateConversationActivity(urlId, actualCount);
+      updateActivityRef.current(urlId, actualCount);
     }
-  }, [history.messages.length, historyLoading, conversations, updateConversationActivity, urlId]);
+  }, [history.messages.length, historyLoading, urlId]);
 
   // Recovery: if history loaded empty but conversation should have messages, re-fetch once
   const recoveryAttemptedRef = useRef(false);

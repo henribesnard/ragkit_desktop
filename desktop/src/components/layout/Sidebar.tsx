@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe, ChevronDown, ChevronRight } from "lucide-react";
+import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { useConversations } from "../../hooks/useConversations";
+import { usePersistentIngestion } from "../../hooks/usePersistentIngestion";
 import { ConversationList } from "./ConversationList";
 import { ConversationSearch } from "./ConversationSearch";
 
@@ -26,6 +27,7 @@ export function Sidebar() {
         renameConversation,
         searchConversations,
     } = useConversations();
+    const { isRunning: isIngesting, progress: ingestionProgress } = usePersistentIngestion();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [isConversationsOpen, setIsConversationsOpen] = useState(true);
@@ -227,6 +229,27 @@ export function Sidebar() {
             )}
 
             {!isConversationsOpen && <div className="flex-1" />}
+
+            {/* Ingestion Status */}
+            {isIngesting && (
+                <div
+                    className="flex items-center gap-2 mx-1 mb-2"
+                    style={{
+                        padding: "8px 10px",
+                        borderRadius: "var(--radius-md)",
+                        background: theme === "dark" ? "rgba(6, 78, 59, 0.25)" : "var(--primary-50)",
+                        color: theme === "dark" ? "var(--primary-300)" : "var(--primary-700)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                    }}
+                >
+                    <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                    <span className="truncate">
+                        {t("chat.ingestionInProgress")}
+                        {ingestionProgress > 0 && ` (${ingestionProgress}%)`}
+                    </span>
+                </div>
+            )}
 
             {/* Separator */}
             <div
