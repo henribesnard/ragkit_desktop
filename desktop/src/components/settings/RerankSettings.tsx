@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
 import { useHybridSearchConfig } from "@/hooks/useHybridSearchConfig";
 import { RerankModelInfo, useRerankTest } from "@/hooks/useRerankTest";
-import { useRerankConfig } from "@/hooks/useRerankConfig";
+import { type RerankProvider, useRerankConfig } from "@/hooks/useRerankConfig";
 
 function ModifiedBadge({ dirty }: { dirty: boolean }) {
   return dirty ? <Badge className="ml-2">Modifie</Badge> : null;
@@ -22,7 +22,7 @@ function scoreLabel(score: number): string {
 }
 
 export function RerankSettings() {
-  const { config, loading, error, dirtyKeys, updateConfig, reset, setCohereApiKey, deleteCohereApiKey } = useRerankConfig();
+  const { config, loading, error, dirtyKeys, updateConfig, reset, setApiKey, deleteApiKey } = useRerankConfig();
   const { config: hybridConfig } = useHybridSearchConfig();
   const { loading: testing, error: testError, testConnection, testRerank, getModels } = useRerankTest();
 
@@ -39,11 +39,20 @@ export function RerankSettings() {
   const providerOptions = [
     { value: "none", label: "Desactive" },
     { value: "cohere", label: "Cohere (cloud)" },
+    { value: "jina", label: "Jina AI (cloud)" },
+    { value: "voyage", label: "Voyage AI (cloud)" },
     { value: "local", label: "Local (HuggingFace)" },
   ];
 
+  const isCloudProvider = config.provider === "cohere" || config.provider === "jina" || config.provider === "voyage";
+  const providerLabel: Record<string, string> = {
+    cohere: "Cohere",
+    jina: "Jina AI",
+    voyage: "Voyage AI",
+  };
+
   useEffect(() => {
-    if (config.provider !== "cohere" && config.provider !== "local") {
+    if (config.provider === "none") {
       setModels([]);
       return;
     }
@@ -119,7 +128,7 @@ export function RerankSettings() {
             options={providerOptions}
             value={config.provider}
             onChange={(event) => {
-              const provider = event.target.value as "none" | "cohere" | "local";
+              const provider = event.target.value as RerankProvider;
               setConnectionMessage(null);
               void updateConfig({
                 provider,
@@ -156,11 +165,11 @@ export function RerankSettings() {
           </div>
         )}
 
-        {config.provider === "cohere" && (
+        {isCloudProvider && (
           <div className="space-y-2 rounded-md border p-3">
             <label className="text-sm font-medium flex items-center gap-2">
               <KeyRound className="w-4 h-4" />
-              Cle API Cohere
+              Cle API {providerLabel[config.provider] || config.provider}
             </label>
             <div className="flex gap-2">
               <input
@@ -175,7 +184,7 @@ export function RerankSettings() {
                 onClick={() => {
                   if (!apiKeyInput.trim()) return;
                   void (async () => {
-                    await setCohereApiKey(apiKeyInput.trim());
+                    await setApiKey(config.provider, apiKeyInput.trim());
                     setApiKeyInput("");
                     setConnectionMessage("Cle API enregistree.");
                   })();
@@ -187,7 +196,7 @@ export function RerankSettings() {
                 variant="ghost"
                 onClick={() => {
                   void (async () => {
-                    await deleteCohereApiKey();
+                    await deleteApiKey(config.provider);
                     setConnectionMessage("Cle API supprimee.");
                   })();
                 }}

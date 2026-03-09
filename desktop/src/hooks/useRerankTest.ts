@@ -18,7 +18,7 @@ export interface RerankTestResult {
 export interface RerankModelInfo {
   id: string;
   name: string;
-  provider: "none" | "cohere" | "local";
+  provider: "none" | "cohere" | "jina" | "voyage" | "local";
   max_context: number;
   languages: string;
   quality_rating: number;
@@ -64,7 +64,7 @@ export function useRerankTest() {
     }
   };
 
-  const getModels = async (provider: "cohere" | "local"): Promise<RerankModelInfo[]> => {
+  const getModels = async (provider: string): Promise<RerankModelInfo[]> => {
     return await invoke<RerankModelInfo[]>("get_rerank_models", { provider });
   };
 

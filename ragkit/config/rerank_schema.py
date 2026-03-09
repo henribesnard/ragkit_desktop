@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, model_validator
 class RerankProvider(str, Enum):
     NONE = "none"
     COHERE = "cohere"
+    JINA = "jina"
+    VOYAGE = "voyage"
     LOCAL = "local"
 
 
@@ -43,6 +45,8 @@ class RerankConfig(BaseModel):
             "none": RerankProvider.NONE.value,
             "disabled": RerankProvider.NONE.value,
             "cohere": RerankProvider.COHERE.value,
+            "jina": RerankProvider.JINA.value,
+            "voyage": RerankProvider.VOYAGE.value,
             "local": RerankProvider.LOCAL.value,
             "huggingface": RerankProvider.LOCAL.value,
         }
@@ -174,16 +178,52 @@ COHERE_RERANK_MODELS: list[RerankModelInfo] = [
     ),
 ]
 
-LOCAL_RERANK_MODELS: list[RerankModelInfo] = [
+JINA_RERANK_MODELS: list[RerankModelInfo] = [
     RerankModelInfo(
-        id="BAAI/bge-reranker-v2-m3",
-        name="BGE Reranker v2 m3",
-        provider=RerankProvider.LOCAL,
-        max_context=512,
+        id="jina-reranker-v2-base-multilingual",
+        name="Jina Reranker v2 Base",
+        provider=RerankProvider.JINA,
+        max_context=1024,
         languages="multilingual",
         quality_rating=4,
-        size_mb=600,
-        latency_hint="~500-2000 ms CPU, ~100-300 ms GPU",
+        cost_per_1k="~$0.02 / 1k queries",
+        latency_hint="~100-300 ms",
+    ),
+]
+
+VOYAGE_RERANK_MODELS: list[RerankModelInfo] = [
+    RerankModelInfo(
+        id="rerank-2",
+        name="Voyage Rerank 2",
+        provider=RerankProvider.VOYAGE,
+        max_context=8000,
+        languages="multilingual",
+        quality_rating=5,
+        cost_per_1k="~$0.05 / 1M tokens",
+        latency_hint="~200-400 ms",
+    ),
+    RerankModelInfo(
+        id="rerank-lite-2",
+        name="Voyage Rerank Lite 2",
+        provider=RerankProvider.VOYAGE,
+        max_context=4000,
+        languages="multilingual",
+        quality_rating=4,
+        cost_per_1k="~$0.02 / 1M tokens",
+        latency_hint="~100-300 ms",
+    ),
+]
+
+LOCAL_RERANK_MODELS: list[RerankModelInfo] = [
+    RerankModelInfo(
+        id="cross-encoder/ms-marco-TinyBERT-L-2-v2",
+        name="MS MARCO TinyBERT L2 (Ultra-light)",
+        provider=RerankProvider.LOCAL,
+        max_context=512,
+        languages="english",
+        quality_rating=2,
+        size_mb=17,
+        latency_hint="~50-200 ms CPU",
     ),
     RerankModelInfo(
         id="cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -195,20 +235,73 @@ LOCAL_RERANK_MODELS: list[RerankModelInfo] = [
         size_mb=90,
         latency_hint="~200-1000 ms CPU",
     ),
+    RerankModelInfo(
+        id="jinaai/jina-reranker-v1-turbo-en",
+        name="Jina Reranker v1 Turbo (Local)",
+        provider=RerankProvider.LOCAL,
+        max_context=8192,
+        languages="english",
+        quality_rating=3,
+        size_mb=130,
+        latency_hint="~200-800 ms CPU",
+    ),
+    RerankModelInfo(
+        id="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        name="MS MARCO MiniLM L12 v2",
+        provider=RerankProvider.LOCAL,
+        max_context=512,
+        languages="english",
+        quality_rating=4,
+        size_mb=130,
+        latency_hint="~300-1500 ms CPU",
+    ),
+    RerankModelInfo(
+        id="BAAI/bge-reranker-base",
+        name="BGE Reranker Base",
+        provider=RerankProvider.LOCAL,
+        max_context=512,
+        languages="multilingual",
+        quality_rating=3,
+        size_mb=400,
+        latency_hint="~400-1500 ms CPU",
+    ),
+    RerankModelInfo(
+        id="BAAI/bge-reranker-v2-m3",
+        name="BGE Reranker v2 M3",
+        provider=RerankProvider.LOCAL,
+        max_context=512,
+        languages="multilingual",
+        quality_rating=4,
+        size_mb=600,
+        latency_hint="~500-2000 ms CPU, ~100-300 ms GPU",
+    ),
+    RerankModelInfo(
+        id="BAAI/bge-reranker-large",
+        name="BGE Reranker Large",
+        provider=RerankProvider.LOCAL,
+        max_context=512,
+        languages="multilingual",
+        quality_rating=5,
+        size_mb=1300,
+        latency_hint="~1000-4000 ms CPU, ~200-500 ms GPU",
+    ),
 ]
 
 
+_PROVIDER_CATALOGS: dict[RerankProvider, list[RerankModelInfo]] = {
+    RerankProvider.COHERE: COHERE_RERANK_MODELS,
+    RerankProvider.JINA: JINA_RERANK_MODELS,
+    RerankProvider.VOYAGE: VOYAGE_RERANK_MODELS,
+    RerankProvider.LOCAL: LOCAL_RERANK_MODELS,
+}
+
+
 def default_model_for_provider(provider: RerankProvider) -> str | None:
-    if provider == RerankProvider.COHERE:
-        return COHERE_RERANK_MODELS[0].id
-    if provider == RerankProvider.LOCAL:
-        return LOCAL_RERANK_MODELS[0].id
+    catalog = _PROVIDER_CATALOGS.get(provider)
+    if catalog:
+        return catalog[0].id
     return None
 
 
 def model_catalog_for_provider(provider: RerankProvider) -> list[RerankModelInfo]:
-    if provider == RerankProvider.COHERE:
-        return COHERE_RERANK_MODELS
-    if provider == RerankProvider.LOCAL:
-        return LOCAL_RERANK_MODELS
-    return []
+    return _PROVIDER_CATALOGS.get(provider, [])

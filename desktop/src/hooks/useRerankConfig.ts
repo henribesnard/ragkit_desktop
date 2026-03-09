@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-export type RerankProvider = "none" | "cohere" | "local";
+export type RerankProvider = "none" | "cohere" | "jina" | "voyage" | "local";
 
 export interface RerankConfig {
   enabled: boolean;
@@ -46,7 +46,11 @@ function normalizeConfig(config: Partial<RerankConfig> | undefined): RerankConfi
   return normalized;
 }
 
-const COHERE_SECRET_KEY = "loko.rerank.cohere.api_key";
+const API_KEY_SECRETS: Record<string, string> = {
+  cohere: "loko.rerank.cohere.api_key",
+  jina: "loko.rerank.jina.api_key",
+  voyage: "loko.rerank.voyage.api_key",
+};
 
 export function useRerankConfig() {
   const [config, setConfig] = useState<RerankConfig>(defaultConfig);
@@ -84,22 +88,25 @@ export function useRerankConfig() {
     setBaseline(normalized);
   };
 
-  const setCohereApiKey = async (apiKey: string) => {
-    await invoke("store_secret", { keyName: COHERE_SECRET_KEY, value: apiKey });
+  const setApiKey = async (provider: string, apiKey: string) => {
+    const keyName = API_KEY_SECRETS[provider];
+    if (!keyName) return;
+    await invoke("store_secret", { keyName, value: apiKey });
     const refreshed = await invoke<RerankConfig>("get_rerank_config");
     setConfig(normalizeConfig(refreshed));
   };
 
-  const deleteCohereApiKey = async () => {
-    await invoke("delete_secret", { keyName: COHERE_SECRET_KEY });
+  const deleteApiKey = async (provider: string) => {
+    const keyName = API_KEY_SECRETS[provider];
+    if (!keyName) return;
+    await invoke("delete_secret", { keyName });
     const refreshed = await invoke<RerankConfig>("get_rerank_config");
     setConfig(normalizeConfig(refreshed));
   };
 
-  const hasCohereApiKey = async (): Promise<boolean> => {
-    const response = await invoke<{ exists: boolean }>("secret_exists", { keyName: COHERE_SECRET_KEY });
-    return Boolean(response.exists);
-  };
+  // Backwards-compatible aliases
+  const setCohereApiKey = (apiKey: string) => setApiKey("cohere", apiKey);
+  const deleteCohereApiKey = () => deleteApiKey("cohere");
 
   useEffect(() => {
     let cancelled = false;
@@ -136,8 +143,9 @@ export function useRerankConfig() {
     fetchConfig,
     updateConfig,
     reset,
+    setApiKey,
+    deleteApiKey,
     setCohereApiKey,
     deleteCohereApiKey,
-    hasCohereApiKey,
   };
 }

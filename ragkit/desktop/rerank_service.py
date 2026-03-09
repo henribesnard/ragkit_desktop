@@ -16,7 +16,11 @@ from ragkit.desktop.settings_store import load_settings, save_settings
 from ragkit.retrieval.reranker import BaseReranker, create_reranker
 from ragkit.security.secrets import secrets_manager
 
-COHERE_API_KEY_SECRET = "loko.rerank.cohere.api_key"
+_API_KEY_SECRETS: dict[RerankProvider, str] = {
+    RerankProvider.COHERE: "loko.rerank.cohere.api_key",
+    RerankProvider.JINA: "loko.rerank.jina.api_key",
+    RerankProvider.VOYAGE: "loko.rerank.voyage.api_key",
+}
 
 
 def _profile_rerank_payload() -> dict[str, Any]:
@@ -27,11 +31,21 @@ def _profile_rerank_payload() -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _has_api_key(provider: RerankProvider) -> bool:
+    secret = _API_KEY_SECRETS.get(provider)
+    return bool(secret and secrets_manager.exists(secret))
+
+
+def _get_api_key(provider: RerankProvider) -> str | None:
+    secret = _API_KEY_SECRETS.get(provider)
+    return secrets_manager.retrieve(secret) if secret else None
+
+
 def default_rerank_config() -> RerankConfig:
     config = RerankConfig.model_validate(_profile_rerank_payload())
     if config.provider != RerankProvider.NONE and not config.model:
         config.model = default_model_for_provider(config.provider)
-    config.api_key_set = secrets_manager.exists(COHERE_API_KEY_SECRET)
+    config.api_key_set = _has_api_key(config.provider)
     return config
 
 
@@ -41,7 +55,7 @@ def get_rerank_config() -> RerankConfig:
     config = RerankConfig.model_validate(payload) if payload else default_rerank_config()
     if config.provider != RerankProvider.NONE and not config.model:
         config.model = default_model_for_provider(config.provider)
-    config.api_key_set = secrets_manager.exists(COHERE_API_KEY_SECRET)
+    config.api_key_set = _has_api_key(config.provider)
     return config
 
 
@@ -51,7 +65,7 @@ def save_rerank_config(config: RerankConfig) -> RerankConfig:
     settings = load_settings()
     settings.rerank = config.model_dump(mode="json", exclude={"api_key_set"})
     save_settings(settings)
-    config.api_key_set = secrets_manager.exists(COHERE_API_KEY_SECRET)
+    config.api_key_set = _has_api_key(config.provider)
     return config
 
 
@@ -60,7 +74,5 @@ def get_rerank_models(provider: RerankProvider) -> list[RerankModelInfo]:
 
 
 def resolve_reranker(config: RerankConfig) -> BaseReranker | None:
-    api_key: str | None = None
-    if config.provider == RerankProvider.COHERE:
-        api_key = secrets_manager.retrieve(COHERE_API_KEY_SECRET)
+    api_key = _get_api_key(config.provider)
     return create_reranker(config, api_key=api_key)
