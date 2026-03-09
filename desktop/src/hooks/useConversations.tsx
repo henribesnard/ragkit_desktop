@@ -74,14 +74,18 @@ function useConversationsInternal() {
             setLoading(false);
             return normalized;
         } catch {
-            // Backend may not be ready yet - keep current state
+            // Backend busy or not ready — preserve current conversation list
+            // and stop the loading spinner so the UI doesn't stay stuck.
+            setLoading(false);
             return null;
         }
     }, []);
 
     // Keep retrying until first successful load so startup race conditions
-    // never create a phantom empty conversation.
+    // never create a phantom empty conversation.  Cap retries so we don't
+    // spin indefinitely if the backend is down.
     useEffect(() => {
+        const MAX_STARTUP_RETRIES = 20;
         let active = true;
         let attempt = 0;
 
@@ -89,6 +93,10 @@ function useConversationsInternal() {
             const list = await refreshList();
             if (list !== null || !active) return;
             attempt += 1;
+            if (attempt >= MAX_STARTUP_RETRIES) {
+                setLoading(false);
+                return;
+            }
             const delay = Math.min(5000, 500 + attempt * 500);
             retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
         };

@@ -62,11 +62,14 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
         _MEMORY_CACHE[cid] = _CONVERSATION_MEMORY
         return _CONVERSATION_MEMORY
 
-    if cid not in _MEMORY_CACHE:
+    if cid in _MEMORY_CACHE:
+        # Move to end so the eviction below removes least-recently-used
+        _MEMORY_CACHE[cid] = _MEMORY_CACHE.pop(cid)
+    else:
         if len(_MEMORY_CACHE) >= _MAX_CACHE_SIZE:
             oldest_key = next(iter(_MEMORY_CACHE))
             del _MEMORY_CACHE[oldest_key]
-            logger.debug("Pruned conversation cache entry: %s", oldest_key)
+            logger.debug("Evicted LRU conversation cache entry: %s", oldest_key)
 
         db = get_conversation_db()
         # Create conversation in DB if it doesn't exist
@@ -95,11 +98,19 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
     return memory
 
 
-def _persist_new_messages(conversation_id: str, memory: ConversationMemory, prev_count: int) -> None:
-    """Persist any new messages added since prev_count to SQLite."""
+def _persist_new_messages(
+    conversation_id: str,
+    messages: list[ConversationMessage],
+    summary: str | None,
+) -> None:
+    """Persist captured new messages to SQLite.
+
+    Messages are passed explicitly (captured before summary truncation)
+    so they survive ``update_summary_if_needed()`` which may shorten the
+    in-memory list.
+    """
     db = get_conversation_db()
-    new_messages = memory.state.messages[prev_count:]
-    for msg in new_messages:
+    for msg in messages:
         db.add_message(
             conversation_id,
             msg.role,
@@ -110,9 +121,8 @@ def _persist_new_messages(conversation_id: str, memory: ConversationMemory, prev
             feedback=msg.feedback,
             timestamp=msg.timestamp,
         )
-    # Persist summary if it changed
-    if memory.state.summary:
-        db.update_summary(conversation_id, memory.state.summary)
+    if summary:
+        db.update_summary(conversation_id, summary)
 
 
 def _analyzer_llm_config(base: LLMConfig, analyzer_model: str | None) -> LLMConfig:
@@ -122,8 +132,8 @@ def _analyzer_llm_config(base: LLMConfig, analyzer_model: str | None) -> LLMConf
     return base.model_copy(update={"model": model_name})
 
 
-def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool, str, int]:
-    """Build orchestrator and return (orchestrator, include_debug, conversation_id, prev_message_count)."""
+def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool, str]:
+    """Build orchestrator and return (orchestrator, include_debug, conversation_id)."""
     agents_config = get_agents_config()
     llm_config = get_llm_config()
     include_debug = bool(payload.include_debug or agents_config.debug_default or llm_config.debug_default)
@@ -139,7 +149,6 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool, str, in
     if not requested_cid:
         logger.debug("chat request without conversation_id; using default conversation")
     memory = _get_conversation_memory(cid)
-    prev_count = len(memory.state.messages)
     memory.config = agents_config
     memory.llm = provider
 
@@ -169,21 +178,21 @@ def _build_orchestrator(payload: ChatQuery) -> tuple[Orchestrator, bool, str, in
         retrieve_handler=retrieve_handler,
         query_logger=query_logger,
     )
-    return orchestrator, include_debug, cid, prev_count
+    return orchestrator, include_debug, cid
 
 
 @router.post("/chat", response_model=OrchestratedChatResponse)
 async def chat(payload: ChatQuery) -> OrchestratedChatResponse:
     try:
-        orchestrator, include_debug, cid, prev_count = _build_orchestrator(payload)
+        orchestrator, include_debug, cid = _build_orchestrator(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
         result = await orchestrator.process(payload.query, include_debug=include_debug)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Pipeline error: {exc}") from exc
-    # Persist new messages to SQLite
-    _persist_new_messages(cid, orchestrator.memory, prev_count)
+    # Persist new messages to SQLite (captured before summary truncation)
+    _persist_new_messages(cid, orchestrator._new_messages, orchestrator.memory.state.summary)
     return _build_chat_response(payload=payload, result=result)
 
 
@@ -191,7 +200,7 @@ async def chat(payload: ChatQuery) -> OrchestratedChatResponse:
 async def chat_stream(payload: ChatQuery):
     async def event_generator():
         try:
-            orchestrator, include_debug, cid, prev_count = _build_orchestrator(payload)
+            orchestrator, include_debug, cid = _build_orchestrator(payload)
             async for event in orchestrator.stream(payload.query, include_debug=include_debug):
                 event_type = str(event.get("type") or "")
 
@@ -208,8 +217,8 @@ async def chat_stream(payload: ChatQuery):
                     yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
                     continue
                 if event_type == "done":
-                    # Persist new messages to SQLite
-                    _persist_new_messages(cid, orchestrator.memory, prev_count)
+                    # Persist new messages to SQLite (captured before summary truncation)
+                    _persist_new_messages(cid, orchestrator._new_messages, orchestrator.memory.state.summary)
 
                     result = OrchestratedResult(
                         query=payload.query,

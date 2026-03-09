@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Awaitable, Callable
 
-from ragkit.agents.memory import ConversationMemory
+from ragkit.agents.memory import ConversationMemory, ConversationMessage
 from ragkit.agents.query_analyzer import AnalysisResult, QueryAnalyzer
 from ragkit.agents.query_rewriter import QueryRewriter, RewriteResult
 from ragkit.config.agents_schema import AgentsConfig, Intent, OrchestratorDebugInfo
@@ -53,6 +53,7 @@ class Orchestrator:
         self.llm = llm
         self.retrieve_handler = retrieve_handler
         self.query_logger = query_logger
+        self._new_messages: list[ConversationMessage] = []
 
     def _should_collect_metrics(self) -> bool:
         return bool(
@@ -520,6 +521,8 @@ class Orchestrator:
             query_log_id=query_log_id,
             feedback=feedback,
         )
+        # Capture new messages BEFORE update_summary_if_needed() can truncate them
+        self._new_messages = list(self.memory.state.messages[-2:])
 
     def _log_query(
         self,
