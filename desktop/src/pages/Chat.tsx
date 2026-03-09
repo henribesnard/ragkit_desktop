@@ -207,9 +207,9 @@ export function Chat() {
   // Use refs to avoid re-render cascade: updateConversationActivity updates
   // the conversations context which would re-trigger this effect endlessly.
   const conversationsRef = useRef(conversations);
-  conversationsRef.current = conversations;
+  useEffect(() => { conversationsRef.current = conversations; });
   const updateActivityRef = useRef(updateConversationActivity);
-  updateActivityRef.current = updateConversationActivity;
+  useEffect(() => { updateActivityRef.current = updateConversationActivity; });
 
   useEffect(() => {
     if (!urlId || historyLoading) return;
