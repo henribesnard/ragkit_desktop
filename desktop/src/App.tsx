@@ -65,7 +65,8 @@ export function ChatPage() {
             }
         })();
         return () => { unmounted = true; };
-    }, [convLoading, id, createConversation, navigate, conversations, refreshList]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [convLoading, id]);
 
     if (!id) {
         return (
