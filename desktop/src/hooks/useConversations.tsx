@@ -74,7 +74,19 @@ function useConversationsInternal() {
         try {
             const list = await ipc.listConversations() as ConversationListItem[];
             const normalized = Array.isArray(list) ? list : [];
-            setConversations(normalized);
+            // Merge: backend data takes priority, but keep recent optimistic entries
+            // (created < 30s ago) that the backend doesn't know about yet.
+            // This prevents sidebar flickering when the backend is slow (e.g. during ingestion).
+            setConversations((prev) => {
+                const backendIds = new Set(normalized.map((c) => c.id));
+                const now = Date.now();
+                const recentOptimistic = prev.filter(
+                    (c) => !backendIds.has(c.id) && now - new Date(c.createdAt).getTime() < 30_000,
+                );
+                return recentOptimistic.length > 0
+                    ? [...normalized, ...recentOptimistic]
+                    : normalized;
+            });
             setLoading(false);
             return normalized;
         } catch {
