@@ -139,7 +139,13 @@ export function useConversation(conversationId: string | null, minExpectedMessag
       }
     };
 
-    setLoading(true);
+    // Only show full loading spinner if we have NO messages yet
+    // This prevents the screen from going blank and disappearing the generated message
+    // while the history is being refreshed in the background.
+    if (historyRef.current.messages.length === 0) {
+      setLoading(true);
+    }
+    
     void tryLoad();
 
     return () => {
