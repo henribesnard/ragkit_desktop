@@ -68,7 +68,10 @@ export function Chat() {
   const [debugMode] = useState(false);
   const [alphaOverride, setAlphaOverride] = useState(0.5);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [activeQuery, setActiveQuery] = useState<string | null>(null);
+  // Track the active query alongside its conversation so it automatically
+  // becomes null when switching conversations — no cleanup effect needed.
+  const [activeQueryData, setActiveQueryData] = useState<{ query: string; cid: string } | null>(null);
+  const activeQuery = activeQueryData && activeQueryData.cid === urlId ? activeQueryData.query : null;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -169,7 +172,7 @@ export function Chat() {
       // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
       if (updated.messages.length > 0 && !cancelled) {
         clearStreamState();
-        setActiveQuery(null);
+        setActiveQueryData(null);
       }
     })();
 
@@ -205,9 +208,9 @@ export function Chat() {
 
   // C2: Since Chat is no longer remounted via key={id}, clean up stream state
   // when switching conversations so stale streaming data doesn't bleed across.
+  // activeQuery is already derived from activeQueryData.cid, so it auto-resets.
   useEffect(() => {
     clearStreamState();
-    setActiveQuery(null);
   }, [urlId, clearStreamState]);
 
   // Keep sidebar counters aligned with actually loaded history.
@@ -274,7 +277,7 @@ export function Chat() {
     };
     const q = query.trim();
     setQuery("");
-    setActiveQuery(q);
+    setActiveQueryData({ query: q, cid: urlId || "" });
 
     // Immediately set a fallback title from the query text on first message
     // so the sidebar never stays on "Nouvelle conversation"
