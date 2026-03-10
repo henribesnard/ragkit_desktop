@@ -5,7 +5,7 @@ import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe, ChevronDown, Ch
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { useConversations } from "../../hooks/useConversations";
-import { usePersistentIngestion } from "../../hooks/usePersistentIngestion";
+import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import { ConversationList } from "./ConversationList";
 import { ConversationSearch } from "./ConversationSearch";
 
