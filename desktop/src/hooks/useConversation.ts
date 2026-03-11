@@ -111,7 +111,7 @@ export function useConversation(conversationId: string | null, minExpectedMessag
       if (cancelled) return;
       try {
         const payload = await invoke<ConversationHistory>("get_conversation_history", {
-          conversation_id: conversationId,
+          conversationId: conversationId,
         });
         if (cancelled) return;
         const result = parseHistory(payload);
@@ -179,7 +179,7 @@ export function useConversation(conversationId: string | null, minExpectedMessag
 
   const resetConversation = async () => {
     if (!conversationId) return;
-    await invoke("new_conversation", { conversation_id: conversationId, clear: true });
+    await invoke("new_conversation", { conversationId: conversationId, clear: true });
     setHistory(emptyHistory);
   };
 

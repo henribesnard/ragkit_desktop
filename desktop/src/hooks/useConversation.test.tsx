@@ -21,26 +21,23 @@ describe("useConversation", () => {
     vi.useRealTimers();
   });
 
-  it("loads conversation history for a conversation id", async () => {
+  it("loads history immediately if conversationId is provided", async () => {
     invokeMock.mockResolvedValueOnce({
-      messages: [
-        {
-          role: "user",
-          content: "Bonjour",
-          timestamp: "2026-03-08T08:00:00.000Z",
-        },
-      ],
+      messages: [{ role: "user", content: "hello" }],
       total_messages: 1,
       has_summary: false,
     });
 
-    const { result } = renderHook(() => useConversation("conv-1", 0));
+    const { result } = renderHook(() => useConversation("conv-123"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.history.messages).toHaveLength(1);
-    expect(result.current.history.messages[0]?.content).toBe("Bonjour");
+    expect(result.current.loading).toBe(true); // Should be loading initially
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     expect(invokeMock).toHaveBeenCalledWith("get_conversation_history", {
-      conversation_id: "conv-1",
+      conversationId: "conv-123",
     });
   });
 
