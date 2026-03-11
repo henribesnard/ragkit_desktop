@@ -42,7 +42,7 @@ def setup_logging() -> None:
     )
 
 APP_NAME = "LOKO"
-VERSION = "1.4.21"
+VERSION = "1.4.22"
 
 
 def create_app() -> FastAPI:
