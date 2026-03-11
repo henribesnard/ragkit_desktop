@@ -56,3 +56,6 @@ tests/
 # Test infrastructure
 vitest.config.ts
 .pytest_tmp/
+
+# Local build output
+local-build/

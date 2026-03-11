@@ -88,6 +88,7 @@ export function useConversation(conversationId: string | null, minExpectedMessag
         setHistory(emptyHistory);
         historyRef.current = emptyHistory;
         setError(null);
+        setLoading(true); // <--- Only show spinner when switching IDs
     } else {
         setError(null);
     }
@@ -152,13 +153,6 @@ export function useConversation(conversationId: string | null, minExpectedMessag
       }
     };
 
-    // Only show full loading spinner if we have NO messages yet
-    // This prevents the screen from going blank and disappearing the generated message
-    // while the history is being refreshed in the background.
-    if (historyRef.current.messages.length === 0) {
-      setLoading(true);
-    }
-    
     void tryLoad();
 
     return () => {

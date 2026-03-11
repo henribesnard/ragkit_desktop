@@ -1,86 +1,134 @@
-﻿# ProcÃ©dure de release RAGKIT Desktop
+# Procedure de release RAGKIT Desktop (LOKO)
 
-## PrÃ©requis
+## Vue d'ensemble
 
-- Git configurÃ© avec accÃ¨s push au repo `henribesnard/ragkit_desktop`
-- Node.js 20+, Rust stable, Python 3.12+ installÃ©s localement
-- Le tag cible correspond Ã  la spec en cours (voir table ci-dessous)
+Le CI (`desktop.yml`) se declenche uniquement sur les tags `v*`.
+Un push sans tag ne lance aucun build.
 
-## Correspondance specs / versions
-
-| Spec | Fichier | Tag cible | Version |
-|------|---------|-----------|---------|
-| Étape 0 | `spécifications/specs-etape-0.md` | `v0.1.0` | `0.1.0` |
-| Étape 1 | `spécifications/specs-etape-1.md` | `v1.0.0` | `1.0.0` |
-| Étape 2 | `spécifications/specs-etape-2.md` | `v2.0.0` | `2.0.0` |
-| Étape 3 | `spécifications/specs-etape-3.md` | `v3.0.0` | `3.0.0` |
-| Étape 4 | `spécifications/specs-etape-4.md` | `v4.0.0` | `4.0.0` |
-| Étape 5 | `spécifications/specs-etape-5.md` | `v5.0.0` | `5.0.0` |
-| Étape 6 | `spécifications/specs-etape-6.md` | `v6.0.0` | `6.0.0` |
-| Étape 7 | `spécifications/specs-etape-7.md` | `v7.0.0` | `7.0.0` |
-| Étape 8 | `spécifications/specs-etape-8.md` | `v8.0.0` | `8.0.0` |
-| Étape 9 | `spécifications/specs-etape-9.md` | `v9.0.0` | `9.0.0` |
-| Étape 10 | `spécifications/specs-etape-10.md` | `v10.0.0` | `10.0.0` |
-| Étape 11 | `spécifications/specs-etape-11.md` | `v11.0.0` | `11.0.0` |
-| Étape 12 | `spécifications/specs-etape-12.md` | `v12.0.0` | `12.0.0` |
-
-> Adapter la table au fur et à mesure de l'avancement.
+```
+Modifier le code → Bump les 5 fichiers de version → Commit → Push → Tag → Push tag → CI build
+```
 
 ---
 
-## 1. VÃ©rifier la cohÃ©rence des versions
+## 1. Fichiers de version (les 5 a synchroniser)
 
-La version doit Ãªtre identique dans **tous** ces fichiers :
+La version doit etre **identique** dans ces 5 fichiers :
 
-| Fichier | Champ |
-|---------|-------|
-| `desktop/src-tauri/tauri.conf.json` | `"version"` |
-| `desktop/src-tauri/Cargo.toml` | `version` (section `[package]`) |
-| `desktop/package.json` | `"version"` |
-| `pyproject.toml` | `version` (section `[project]`) |
-| `ragkit/desktop/main.py` | `VERSION = "..."` |
-| `desktop/src/locales/fr.json` | `"app.version"` |
-| `desktop/src/locales/en.json` | `"app.version"` |
+| Fichier | Champ | Exemple |
+|---------|-------|---------|
+| `desktop/src-tauri/tauri.conf.json` | `"version": "X.Y.Z"` | Frontend Tauri |
+| `desktop/src-tauri/Cargo.toml` | `version = "X.Y.Z"` | Rust sidecar |
+| `desktop/package.json` | `"version": "X.Y.Z"` | Node/npm |
+| `pyproject.toml` | `version = "X.Y.Z"` | Python package |
+| `ragkit/desktop/main.py` | `VERSION = "X.Y.Z"` | Backend runtime (affiche dans le footer) |
 
-**Commande rapide de vÃ©rification :**
+> **Piege courant** : `main.py` est souvent oublie car il n'est pas un fichier de config standard.
+> C'est pourtant lui qui alimente le `/health` endpoint et la version affichee dans la sidebar.
+
+### Commande de verification
 
 ```bash
 grep -n '"version"' desktop/src-tauri/tauri.conf.json desktop/package.json
 grep -n '^version' desktop/src-tauri/Cargo.toml pyproject.toml
 grep -n 'VERSION = ' ragkit/desktop/main.py
-grep -n '"version"' desktop/src/locales/fr.json desktop/src/locales/en.json
 ```
 
-## 2. VÃ©rifier que tous les fichiers sont trackÃ©s par git
+Les 5 lignes doivent afficher le meme numero de version.
 
-Le `.gitignore` contient `/lib/` (artefacts Python). VÃ©rifier que les fichiers source ne sont pas ignorÃ©s par erreur :
+---
+
+## 2. Procedure complete (pas a pas)
+
+### 2.1 Verifier que le code compile
 
 ```bash
-git status
-git check-ignore desktop/src/lib/*
+cd desktop && npm run build
 ```
 
-Aucun fichier source ne doit apparaÃ®tre comme ignorÃ©.
+Cela lance `tsc` (TypeScript) puis `vite build`. Zero erreur attendue.
 
-## 3. VÃ©rifier la compilation TypeScript
+### 2.2 Verifier le lint
 
 ```bash
-cd desktop
-npx tsc --noEmit
+cd desktop && npm run lint
 ```
 
-Aucune erreur ne doit apparaÃ®tre.
+Zero erreur attendue. Le CI echoue sur les erreurs de lint.
 
-## 4. VÃ©rifier le lint frontend
+### 2.3 Bumper la version dans les 5 fichiers
+
+Remplacer `X.Y.Z` par le nouveau numero dans les 5 fichiers ci-dessus.
+Utiliser une recherche globale de l'ancien numero pour ne rien oublier :
 
 ```bash
-cd desktop
-npm run lint
+grep -rn "1.4.17" desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
 ```
 
-## 5. VÃ©rifier les dÃ©pendances systÃ¨me CI (Linux)
+### 2.4 Commit et push
 
-Dans `.github/workflows/desktop.yml`, la ligne d'installation Linux doit contenir les packages **Tauri v2** :
+```bash
+git add desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
+git add <autres fichiers modifies>
+git commit -m "fix: vX.Y.Z - Description du changement"
+git push origin main
+```
+
+### 2.5 Creer le tag et le pousser
+
+**Nouveau tag :**
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+**Mettre a jour un tag existant (force) :**
+```bash
+git tag -f vX.Y.Z
+git push origin -f vX.Y.Z
+```
+
+> Le push du tag declenche le workflow CI qui build les 3 plateformes.
+
+### 2.6 Verifier le CI
+
+1. Aller sur **Actions** > verifier que les 4 jobs passent (lint + 3 builds)
+2. Aller sur **Releases** > verifier la draft release avec les assets :
+   - Windows : `.exe` (NSIS) + `.msi`
+   - macOS : `.dmg`
+   - Linux : `.AppImage` + `.deb`
+
+---
+
+## 3. Erreurs frequentes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| Version "v1.4.15" affichee alors qu'on est en v1.4.17 | `main.py` oublie lors du bump | Toujours bumper les **5** fichiers |
+| CI ne se declenche pas | Pas de tag pousse | Verifier `git push origin vX.Y.Z` |
+| CI echoue sur lint | Erreur ESLint non detectee localement | Lancer `npm run lint` avant de push |
+| Tag pointe sur un mauvais commit | Tag cree avant le dernier commit | `git tag -f vX.Y.Z && git push origin -f vX.Y.Z` |
+| `invoke` frontend "reussit" avec erreur backend | Rust `request()` ne verifie pas les codes HTTP | Voir MEMORY.md — comportement connu |
+
+---
+
+## 4. Checklist rapide
+
+```
+[ ] npm run build — zero erreur
+[ ] npm run lint — zero erreur
+[ ] 5 fichiers de version synchronises (tauri.conf.json, Cargo.toml, package.json, pyproject.toml, main.py)
+[ ] Commit et push sur main
+[ ] Tag cree et pousse (git tag vX.Y.Z && git push origin vX.Y.Z)
+[ ] CI vert sur les 4 jobs
+[ ] Draft release avec assets pour les 3 OS
+```
+
+---
+
+## 5. Prerequis systeme CI (Linux)
+
+Dans `.github/workflows/desktop.yml`, les packages Tauri v2 requis :
 
 ```
 libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libappindicator3-dev librsvg2-dev patchelf
@@ -89,82 +137,5 @@ libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev 
 Points critiques :
 - `libwebkit2gtk-4.1-dev` (pas `4.0`)
 - `libsoup-3.0-dev` (obligatoire pour Tauri v2)
-- `libjavascriptcoregtk-4.1-dev`
 
-## 6. VÃ©rifier les permissions du workflow
-
-Le workflow doit avoir la permission de crÃ©er des releases :
-
-```yaml
-permissions:
-  contents: write
-```
-
-## 7. VÃ©rifier les icÃ´nes Tauri
-
-```bash
-ls desktop/src-tauri/icons/32x32.png desktop/src-tauri/icons/128x128.png desktop/src-tauri/icons/128x128@2x.png desktop/src-tauri/icons/icon.icns desktop/src-tauri/icons/icon.ico
-```
-
-Si manquantes, les gÃ©nÃ©rer :
-
-```bash
-cd desktop
-npx tauri icon app-icon.png
-```
-
-## 8. Commit et push
-
-```bash
-git add <fichiers modifiÃ©s>
-git commit -m "description du changement"
-git push origin main
-```
-
-## 9. CrÃ©er ou dÃ©placer le tag
-
-**Si le tag n'existe pas encore :**
-
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-**Si le tag existe dÃ©jÃ  et doit Ãªtre mis Ã  jour :**
-
-```bash
-git tag -d vX.Y.Z
-git push origin :refs/tags/vX.Y.Z
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-> Le tag dÃ©clenche le workflow `desktop.yml` qui build les 3 plateformes et crÃ©e une draft release sur GitHub.
-
-## 10. VÃ©rifier le rÃ©sultat
-
-1. Aller sur **Actions** > vÃ©rifier que les 4 jobs passent (lint + 3 builds)
-2. Aller sur **Releases** > vÃ©rifier la draft release avec les assets :
-   - Windows : `.exe` (NSIS) + `.msi`
-   - macOS : `.dmg`
-   - Linux : `.AppImage` + `.deb`
-
----
-
-## Checklist rapide (copier-coller)
-
-```
-[ ] Versions cohÃ©rentes dans les 7 fichiers
-[ ] Aucun fichier source ignorÃ© par .gitignore
-[ ] `npx tsc --noEmit` sans erreur
-[ ] `npm run lint` sans erreur
-[ ] DÃ©pendances Linux Tauri v2 dans le CI
-[ ] `permissions: contents: write` dans le workflow
-[ ] IcÃ´nes prÃ©sentes dans desktop/src-tauri/icons/
-[ ] Commit + push sur main
-[ ] Tag crÃ©Ã©/mis Ã  jour et poussÃ©
-[ ] CI vert sur les 4 jobs
-[ ] Draft release avec assets pour les 3 OS
-```
-
-
+Le workflow doit avoir `permissions: contents: write` pour creer des releases.
