@@ -1,4 +1,4 @@
-﻿import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowUp, FileText, Loader2 } from "lucide-react";
@@ -231,18 +231,32 @@ export function Chat() {
     }
   }, [history.messages.length, historyLoading, urlId]);
 
-  // Recovery: if history loaded empty but conversation should have messages, re-fetch
+  // Recovery: if history loaded empty but conversation should have messages, re-fetch.
+  // We use `historyLoading` to wait until the current load attempt finishes.
+  // We also track the last conversation ID we recovered so we don't spam requests when switching quickly.
+  const lastRecoveredIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    if (historyLoading || !urlId || isStreaming) return;
+    // Wait until loading finishes to check if recovery is actually needed
+    if (historyLoading || !urlId || isStreaming || isIngesting) {
+        lastRecoveredIdRef.current = null;
+        return;
+    }
+    
+    // If we already have messages, no need to recover
     if (history.messages.length > 0) return;
 
     const conv = conversations.find((c) => c.id === urlId);
+    // If the conversation is known to be empty, no need to recover
     if (!conv || conv.messageCount === 0) return;
 
-    // Retry without limit — this effect only re-fires when deps change
-    console.warn("[Chat] History empty but conversation has", conv.messageCount, "messages — retrying");
+    // Prevent infinite retry loops on exactly the same conversation if backend returns empty repeatedly
+    if (lastRecoveredIdRef.current === urlId) return;
+
+    lastRecoveredIdRef.current = urlId;
+    console.warn("[Chat] History empty but conversation has", conv.messageCount, "messages — recovering");
     void refreshHistory();
-  }, [historyLoading, urlId, history.messages.length, conversations, isStreaming, refreshHistory]);
+  }, [historyLoading, urlId, history.messages.length, conversations, isStreaming, isIngesting, refreshHistory]);
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;

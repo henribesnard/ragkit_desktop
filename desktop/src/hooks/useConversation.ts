@@ -70,6 +70,9 @@ export function useConversation(conversationId: string | null, minExpectedMessag
   const resolveRef = useRef<((h: ConversationHistory) => void) | null>(null);
   const historyRef = useRef(history);
   historyRef.current = history;
+  
+  // Track the last conversation ID we loaded to detect switches
+  const lastConversationIdRef = useRef<string | null>(conversationId);
 
   // Unified load effect — handles both initial load and refresh()-triggered reloads
   useEffect(() => {
@@ -79,7 +82,17 @@ export function useConversation(conversationId: string | null, minExpectedMessag
     }
 
     // Do NOT reset history here — old content stays visible while loading
-    setError(null);
+    // UNLESS we are actually switching to a completely different conversation ID.
+    if (lastConversationIdRef.current !== conversationId) {
+        // We're switching conversations, we should clear the history so a spinner shows
+        setHistory(emptyHistory);
+        historyRef.current = emptyHistory;
+        setError(null);
+    } else {
+        setError(null);
+    }
+    
+    lastConversationIdRef.current = conversationId;
 
     if (!conversationId) {
       setHistory(emptyHistory);
