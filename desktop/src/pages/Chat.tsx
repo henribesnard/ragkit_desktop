@@ -158,15 +158,16 @@ export function Chat() {
 
       // Auto-generate title after first exchange (best-effort, non-blocking)
       if (urlId && updated.messages.length >= 2) {
-        try {
-          const { title } = await ipc.generateConversationTitle(urlId);
-          if (title && !cancelled) {
-            updateConversationActivity(urlId, updated.messages.length, title);
-            await renameConversation(urlId, title);
-          }
-        } catch (err) {
-          console.warn("[Chat] Title generation failed:", err);
-        }
+        ipc.generateConversationTitle(urlId)
+          .then(({ title }) => {
+            if (title) { // Global state / API calls are safe even if unmounted
+              updateConversationActivity(urlId, updated.messages.length, title);
+              void renameConversation(urlId, title);
+            }
+          })
+          .catch((err) => {
+            console.warn("[Chat] Title generation failed:", err);
+          });
       }
 
       // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
