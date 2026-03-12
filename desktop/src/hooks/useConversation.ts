@@ -161,9 +161,6 @@ export function useConversation(conversationId: string | null, minExpectedMessag
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
-      // If refresh() is waiting, resolve with current history
-      resolveRef.current?.(historyRef.current);
-      resolveRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, retryTrigger]);
