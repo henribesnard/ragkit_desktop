@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUp, FileText, Loader2 } from "lucide-react";
+import { ArrowUp, FileText } from "lucide-react";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { useParams } from "react-router-dom";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
@@ -322,37 +322,6 @@ export function Chat() {
 
   return (
     <div className="h-full flex flex-col relative" style={{ background: "var(--bg-primary)" }}>
-      {/* Ingestion Banner */}
-      {isIngesting && (
-        <div
-          className="animate-fade-in flex items-center gap-2 mx-auto"
-          style={{
-            maxWidth: "var(--chat-max-width)",
-            width: "100%",
-            padding: "8px 16px",
-            margin: "8px auto 0",
-            borderRadius: "var(--radius-md)",
-            fontSize: 13,
-          }}
-        >
-          <style>{`.dark .ingestion-banner { background: rgba(6, 78, 59, 0.2) !important; color: var(--primary-300) !important; }`}</style>
-          <div
-            className="ingestion-banner flex items-center gap-2 w-full"
-            style={{
-              background: "var(--primary-50)",
-              color: "var(--primary-700)",
-              padding: "8px 16px",
-              borderRadius: "var(--radius-md)",
-            }}
-          >
-            <Loader2 size={14} className="animate-spin" />
-            {t("chat.ingestionInProgress")}...
-          </div>
-        </div>
-      )}
-
-
-
       {/* Messages Area */}
       <div
         ref={messagesContainerRef}
@@ -607,21 +576,7 @@ export function Chat() {
           padding: "16px 20px 24px",
         }}
       >
-        {isIngesting ? (
-          <div
-            className="flex items-center justify-center gap-2 text-sm"
-            style={{
-              padding: "14px 16px",
-              borderRadius: "var(--radius-xl)",
-              background: "var(--bg-tertiary)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            <Loader2 size={16} className="animate-spin" style={{ color: "var(--primary-500)" }} />
-            {t("chat.inputPlaceholderIngestion")}
-          </div>
-        ) : (
-          <form
+        <form
             onSubmit={onSearch}
             className="relative"
             style={{
@@ -671,7 +626,6 @@ export function Chat() {
               )}
             </button>
           </form>
-        )}
 
         {/* Disclaimer */}
         <div
