@@ -280,7 +280,6 @@ async def chat_history(conversation_id: str | None = None) -> ConversationHistor
     cid = conversation_id or _DEFAULT_ID
     db = get_conversation_db()
     messages_data = db.get_messages(cid)
-    logger.info(f"chat_history called with conversation_id={conversation_id}, cid={cid}, found {len(messages_data)} messages")
     conv = db.get_conversation(cid)
     messages = []
     for m in messages_data:
