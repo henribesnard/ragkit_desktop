@@ -212,7 +212,9 @@ export function Chat() {
   // activeQuery is already derived from activeQueryData.cid, so it auto-resets.
   useEffect(() => {
     clearStreamState();
-  }, [urlId, clearStreamState]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveQueryData(null);
+  }, [urlId, clearStreamState, setActiveQueryData]);
 
   // Keep sidebar counters aligned with actually loaded history.
   // Use refs to avoid re-render cascade: updateConversationActivity updates
@@ -279,9 +281,18 @@ export function Chat() {
     await refreshHistory();
   };
 
+  // Ref to prevent double-submit within the same React batch before isStreaming commits
+  const isSubmittingRef = useRef(false);
+  useEffect(() => {
+    if (!isStreaming) {
+      isSubmittingRef.current = false;
+    }
+  }, [isStreaming]);
+
   const onSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim() || isStreaming || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
+    if (!query.trim() || isStreaming || isSubmittingRef.current || !chatReady.ready || !selectedModeEnabled || isIngesting) return;
+    isSubmittingRef.current = true;
     const payload = {
       query: query.trim(),
       conversation_id: urlId || undefined,

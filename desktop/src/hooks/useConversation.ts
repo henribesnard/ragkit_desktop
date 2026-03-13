@@ -66,8 +66,8 @@ export function useConversation(conversationId: string | null, minExpectedMessag
   const minExpectedRef = useRef(minExpectedMessages);
   minExpectedRef.current = minExpectedMessages;
 
-  // Resolve ref: allows the effect to resolve the refresh() promise when done
-  const resolveRef = useRef<((h: ConversationHistory) => void) | null>(null);
+  // Resolve queue: allows the effect to resolve all refresh() promises when done
+  const resolveQueueRef = useRef<((h: ConversationHistory) => void)[]>([]);
   const historyRef = useRef(history);
   historyRef.current = history;
   
@@ -98,8 +98,8 @@ export function useConversation(conversationId: string | null, minExpectedMessag
     if (!conversationId) {
       setHistory(emptyHistory);
       setLoading(false);
-      resolveRef.current?.(emptyHistory);
-      resolveRef.current = null;
+      resolveQueueRef.current.forEach(r => r(emptyHistory));
+      resolveQueueRef.current = [];
       return;
     }
 
@@ -130,8 +130,8 @@ export function useConversation(conversationId: string | null, minExpectedMessag
         setHistory(result);
         setError(null);
         setLoading(false);
-        resolveRef.current?.(result);
-        resolveRef.current = null;
+        resolveQueueRef.current.forEach(r => r(result));
+        resolveQueueRef.current = [];
       } catch (err: any) {
         if (cancelled) return;
         if (attempt < RETRY_DELAYS_MS.length) {
@@ -147,8 +147,8 @@ export function useConversation(conversationId: string | null, minExpectedMessag
           // Max retries exhausted — keep old content, report error
           setError(String(err));
           setLoading(false);
-          resolveRef.current?.(historyRef.current);
-          resolveRef.current = null;
+          resolveQueueRef.current.forEach(r => r(historyRef.current));
+          resolveQueueRef.current = [];
         }
       }
     };
@@ -169,7 +169,7 @@ export function useConversation(conversationId: string | null, minExpectedMessag
   const refresh = useCallback(async (): Promise<ConversationHistory> => {
     if (!conversationId) return emptyHistory;
     return new Promise<ConversationHistory>((resolve) => {
-      resolveRef.current = resolve;
+      resolveQueueRef.current.push(resolve);
       setRetryTrigger((prev) => prev + 1);
     });
   }, [conversationId]);
