@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 
 export function SemanticStep({ wizard }: { wizard: any }) {
     const { t } = useTranslation();
@@ -40,6 +41,9 @@ export function SemanticStep({ wizard }: { wizard: any }) {
                         <span>1</span>
                         <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.semantic.documents')}</span>
                         <span>20</span>
+                    </div>
+                    <div className="mt-2">
+                        <LatencyImpactBadge level="medium" description={t("latency.topKSemanticDesc")} />
                     </div>
                 </div>
 

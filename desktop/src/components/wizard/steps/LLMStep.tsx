@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Key, Cpu, Cloud } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -135,6 +136,11 @@ export function LLMStep({ wizard }: { wizard: any }) {
                         <h3 className="font-semibold text-lg">{t('wizard.llm.ollamaLocal')}</h3>
                     </div>
                     <p className="text-sm text-gray-500">{t('wizard.llm.ollamaLocalDesc')}</p>
+                    {isOllama && (
+                        <div className="mt-2">
+                            <LatencyImpactBadge level="high" description={t("latency.providerOllamaDesc")} />
+                        </div>
+                    )}
                 </button>
 
                 <button

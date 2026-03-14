@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { ipc } from "@/lib/ipc";
 import { useTranslation } from "react-i18next";
 
@@ -143,6 +144,9 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                     <div>
                         <span className="block font-medium text-lg text-blue-900 dark:text-blue-100">{t('wizard.reranking.enable')}</span>
                         <span className="text-sm text-gray-500">{t('wizard.reranking.enableDesc')}</span>
+                        <div className="mt-2">
+                            <LatencyImpactBadge level="medium" description={t("latency.rerankEnabledDesc")} />
+                        </div>
                     </div>
                     <input
                         type="checkbox"

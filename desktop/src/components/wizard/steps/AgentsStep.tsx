@@ -1,5 +1,6 @@
 import { Bot } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 
 export function AgentsStep({ wizard }: { wizard: any }) {
     const { t } = useTranslation();
@@ -42,7 +43,9 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                 </label>
 
                 {enabled && (
-                    <div className="pt-4 border-t border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2">
+                    <div className="pt-4 border-t border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 space-y-3">
+                        <LatencyImpactBadge level="high" description={t("latency.analyzerActiveDesc")} />
+                        <LatencyImpactBadge level="high" description={t("latency.rewritingActiveDesc")} />
                         <p className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
                             <strong>{t('wizard.agents.perfNoteTitle')}</strong> {t('wizard.agents.perfNote')}
                         </p>

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 
 export function LexicalStep({ wizard }: { wizard: any }) {
     const { t } = useTranslation();
@@ -41,6 +42,9 @@ export function LexicalStep({ wizard }: { wizard: any }) {
                         <span>20</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-2">{t('wizard.lexical.topKDesc')}</p>
+                    <div className="mt-2">
+                        <LatencyImpactBadge level="low" description={t("latency.topKLexicalDesc")} />
+                    </div>
                 </div>
             </div>
 
