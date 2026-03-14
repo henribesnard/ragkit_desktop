@@ -1,7 +1,9 @@
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
@@ -28,6 +30,7 @@ const intentLabels: Record<AgentIntent, string> = {
 
 export function AgentsSettings() {
   const { config, loading, error, dirtyKeys, updateConfig, reset } = useAgentsConfig();
+  const { t } = useTranslation();
 
   if (loading) return <div>Chargement...</div>;
   if (error) return <div className="text-red-600">{error}</div>;
@@ -53,7 +56,15 @@ export function AgentsSettings() {
             onChange={(value) => void updateConfig({ always_retrieve: value })}
             label="Toujours lancer la recherche RAG"
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("always_retrieve")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("always_retrieve")} />
+            <LatencyImpactBadge
+              level="high"
+              description={config.always_retrieve
+                ? t("latency.analyzerSkipDesc")
+                : t("latency.analyzerActiveDesc")}
+            />
+          </div>
           <div className="space-y-2">
             <p className="text-sm font-medium">Intentions actives</p>
             {(["question", "greeting", "chitchat", "out_of_scope", "clarification"] as AgentIntent[]).map((intent) => (
@@ -79,7 +90,13 @@ export function AgentsSettings() {
             onChange={(value) => void updateConfig({ query_rewriting: { ...config.query_rewriting, enabled: value } })}
             label="Reformulation automatique"
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("query_rewriting.enabled")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("query_rewriting.enabled")} />
+            <LatencyImpactBadge
+              level="high"
+              description={t("latency.rewritingActiveDesc")}
+            />
+          </div>
           <Slider
             value={config.query_rewriting.num_rewrites}
             min={0}
@@ -95,7 +112,10 @@ export function AgentsSettings() {
               })
             }
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("query_rewriting.num_rewrites")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("query_rewriting.num_rewrites")} />
+            <LatencyImpactBadge level="medium" description={t("latency.rewriteCountDesc")} />
+          </div>
         </div>
 
         <div className="space-y-2 rounded-md border p-3">
@@ -120,7 +140,12 @@ export function AgentsSettings() {
               { value: "summary", label: "Resume" },
             ]}
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("memory_strategy")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("memory_strategy")} />
+            {config.memory_strategy === "summary" && (
+              <LatencyImpactBadge level="medium" description={t("latency.summaryStrategyDesc")} />
+            )}
+          </div>
         </div>
 
         <div className="space-y-2 rounded-md border p-3">

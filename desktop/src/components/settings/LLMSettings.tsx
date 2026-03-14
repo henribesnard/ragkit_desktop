@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Plug, RotateCcw } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
@@ -22,6 +24,7 @@ function apiKeyProvider(provider: string): "openai" | "anthropic" | "mistral" | 
 export function LLMSettings() {
   const { config, loading, error, dirtyKeys, updateConfig, reset, setApiKey, deleteApiKey } = useLLMConfig();
   const { loading: testing, error: testError, testConnection, getModels } = useLLMTest();
+  const { t } = useTranslation();
 
   const [models, setModels] = useState<LLMModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -106,7 +109,12 @@ export function LLMSettings() {
             }}
           />
           {!ollamaAvailable ? <p className="text-xs text-amber-700 mt-1">Ollama non detecte localement.</p> : null}
-          <ModifiedBadge dirty={dirtyKeys.includes("provider")} />
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            <ModifiedBadge dirty={dirtyKeys.includes("provider")} />
+            {config.provider === "ollama" && (
+              <LatencyImpactBadge level="high" description={t("latency.providerOllamaDesc")} />
+            )}
+          </div>
         </div>
 
         <div>
@@ -199,7 +207,10 @@ export function LLMSettings() {
               label="Max tokens"
               onChange={(value) => void updateConfig({ max_tokens: Math.round(value) })}
             />
-            <ModifiedBadge dirty={dirtyKeys.includes("max_tokens")} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <ModifiedBadge dirty={dirtyKeys.includes("max_tokens")} />
+              <LatencyImpactBadge level="high" description={t("latency.maxTokensDesc")} />
+            </div>
           </div>
           <div>
             <Slider
@@ -281,7 +292,10 @@ export function LLMSettings() {
               label="Max chunks"
               onChange={(value) => void updateConfig({ context_max_chunks: Math.round(value) })}
             />
-            <ModifiedBadge dirty={dirtyKeys.includes("context_max_chunks")} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <ModifiedBadge dirty={dirtyKeys.includes("context_max_chunks")} />
+              <LatencyImpactBadge level="medium" description={t("latency.contextChunksDesc")} />
+            </div>
           </div>
           <div>
             <Slider
@@ -292,7 +306,10 @@ export function LLMSettings() {
               label="Max tokens contexte"
               onChange={(value) => void updateConfig({ context_max_tokens: Math.round(value) })}
             />
-            <ModifiedBadge dirty={dirtyKeys.includes("context_max_tokens")} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <ModifiedBadge dirty={dirtyKeys.includes("context_max_tokens")} />
+              <LatencyImpactBadge level="high" description={t("latency.contextTokensDesc")} />
+            </div>
           </div>
         </div>
 

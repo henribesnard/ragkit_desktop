@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Plug, RotateCcw, TestTubeDiagonal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
@@ -23,6 +25,7 @@ function scoreLabel(score: number): string {
 
 export function RerankSettings() {
   const { config, loading, error, dirtyKeys, updateConfig, reset, setApiKey, deleteApiKey } = useRerankConfig();
+  const { t } = useTranslation();
   const { config: hybridConfig } = useHybridSearchConfig();
   const { loading: testing, error: testError, testConnection, testRerank, getModels } = useRerankTest();
 
@@ -119,7 +122,10 @@ export function RerankSettings() {
           <p className="text-xs text-gray-500 mt-1">
             Reevalue les meilleurs candidats avec un cross-encoder pour ameliorer le classement final.
           </p>
-          <ModifiedBadge dirty={dirtyKeys.includes("enabled")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("enabled")} />
+            <LatencyImpactBadge level="medium" description={t("latency.rerankEnabledDesc")} />
+          </div>
         </div>
 
         <div>
@@ -229,7 +235,10 @@ export function RerankSettings() {
                   });
                 }}
               />
-              <ModifiedBadge dirty={dirtyKeys.includes("candidates")} />
+              <div className="flex items-center gap-2 flex-wrap">
+                <ModifiedBadge dirty={dirtyKeys.includes("candidates")} />
+                <LatencyImpactBadge level="medium" description={t("latency.rerankCandidatesDesc")} />
+              </div>
             </div>
 
             <div>

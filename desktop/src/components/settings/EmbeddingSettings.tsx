@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
@@ -46,6 +48,7 @@ function similarityLabel(value: number): string {
 
 export function EmbeddingSettings() {
   const { config, models, environment, cacheStats, loading, error, dirtyKeys, updateConfig, setProvider, refreshEnvironment, refreshCacheStats, reset } = useEmbeddingConfig();
+  const { t } = useTranslation();
   const [apiKey, setApiKey] = useState("");
   const [editingKey, setEditingKey] = useState(false);
   const [connection, setConnection] = useState<any>(null);
@@ -346,6 +349,7 @@ export function EmbeddingSettings() {
       <section className="rounded-lg border p-4 space-y-3">
         <h3 className="font-medium">Cache d'embeddings</h3>
         <Toggle checked={config.cache_enabled} onChange={(checked) => void updateConfig({ cache_enabled: checked })} label="Cache activé" />
+        <LatencyImpactBadge level="medium" description={t("latency.cacheEnabledDesc")} />
         <Select
           value={config.cache_backend}
           onChange={(event) => void updateConfig({ cache_backend: event.target.value as "disk" | "memory" })}

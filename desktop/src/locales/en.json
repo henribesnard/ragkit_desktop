@@ -312,6 +312,25 @@
     "temperature": "Temperature",
     "responseLang": "Response language"
   },
+  "latency": {
+    "estimated": "Estimated latency",
+    "analyzerSkipDesc": "Disables the analyzer. Saves one LLM call (~5-15s Ollama / ~1-2s API). Warning: queries like 'Hello' will also trigger a document search.",
+    "analyzerActiveDesc": "Each query is analyzed by the LLM to determine if a search is needed (~5-15s Ollama / ~1-2s API).",
+    "rewritingActiveDesc": "Query rewriting adds one LLM call per query (~5-15s Ollama / ~1s API). Useful for multi-turn conversations.",
+    "rewriteCountDesc": "Each additional rewrite = 1 additional LLM call.",
+    "summaryStrategyDesc": "Summary mode generates a conversation summary via the LLM, adding an extra call.",
+    "providerOllamaDesc": "Ollama local: high latency (~30-90s total) but free and private. API providers reduce latency to ~2-5s total.",
+    "maxTokensDesc": "Directly proportional to generation time. Reducing from 2000 to 800 can cut time by 2-3x.",
+    "contextTokensDesc": "More context = more tokens for the LLM to process. Direct impact on prompt processing.",
+    "contextChunksDesc": "More injected chunks = longer prompt = slower inference.",
+    "topKSemanticDesc": "More results = more candidates to process in fusion and reranking.",
+    "prefetchDesc": "Multiplies the number of vectors queried from Qdrant (top_k x N).",
+    "mmrDesc": "MMR diversification adds ~50-200ms.",
+    "topKLexicalDesc": "BM25 search is very fast. Negligible latency impact.",
+    "rerankEnabledDesc": "Reranking improves precision but adds ~200ms-2s.",
+    "rerankCandidatesDesc": "More candidates to rerank = longer processing.",
+    "cacheEnabledDesc": "Embedding cache reduces latency from ~100-500ms to ~1ms for previously seen queries."
+  },
   "common": {
     "loading": "Loading...",
     "saving": "Saving...",

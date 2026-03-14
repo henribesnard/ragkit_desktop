@@ -1,6 +1,8 @@
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
 import { useSemanticSearchConfig } from "@/hooks/useSemanticSearchConfig";
@@ -18,6 +20,7 @@ function parseList(value: string): string[] {
 
 export function SemanticSearchSettings() {
   const { config, loading, error, dirtyKeys, updateConfig, updateFilters, reset } = useSemanticSearchConfig();
+  const { t } = useTranslation();
 
   if (loading) {
     return <div>Chargement...</div>;
@@ -47,7 +50,10 @@ export function SemanticSearchSettings() {
             label="Top K"
             onChange={(value) => updateConfig({ top_k: Math.round(value) })}
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("top_k")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("top_k")} />
+            <LatencyImpactBadge level="medium" description={t("latency.topKSemanticDesc")} />
+          </div>
         </div>
 
         <div>
@@ -81,7 +87,10 @@ export function SemanticSearchSettings() {
         <h3 className="font-semibold">Diversification MMR</h3>
         <div>
           <Toggle checked={config.mmr_enabled} onChange={(value) => updateConfig({ mmr_enabled: value })} label="Activer MMR" />
-          <ModifiedBadge dirty={dirtyKeys.includes("mmr_enabled")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("mmr_enabled")} />
+            <LatencyImpactBadge level="low" description={t("latency.mmrDesc")} />
+          </div>
         </div>
         <div>
           <Slider
@@ -156,7 +165,10 @@ export function SemanticSearchSettings() {
             label="Prefetch multiplier"
             onChange={(value) => updateConfig({ prefetch_multiplier: Math.round(value) })}
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("prefetch_multiplier")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("prefetch_multiplier")} />
+            <LatencyImpactBadge level="medium" description={t("latency.prefetchDesc")} />
+          </div>
         </div>
 
         <div>

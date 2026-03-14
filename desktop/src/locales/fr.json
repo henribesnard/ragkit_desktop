@@ -312,6 +312,25 @@
     "temperature": "Température",
     "responseLang": "Langue de réponse"
   },
+  "latency": {
+    "estimated": "Latence estimée",
+    "analyzerSkipDesc": "Désactive l'analyzer. Économise un appel LLM (~5-15s Ollama / ~1-2s API). Attention : des requêtes comme « Bonjour » déclencheront aussi une recherche.",
+    "analyzerActiveDesc": "Chaque requête est analysée par le LLM pour déterminer si une recherche est nécessaire (~5-15s Ollama / ~1-2s API).",
+    "rewritingActiveDesc": "La reformulation ajoute un appel LLM par requête (~5-15s Ollama / ~1s API). Utile pour les conversations multi-tour.",
+    "rewriteCountDesc": "Chaque reformulation supplémentaire = 1 appel LLM additionnel.",
+    "summaryStrategyDesc": "Le mode Résumé génère un résumé de l'historique via le LLM, ajoutant un appel supplémentaire.",
+    "providerOllamaDesc": "Ollama local : latence élevée (~30-90s total) mais gratuit et privé. Les providers API réduisent la latence à ~2-5s total.",
+    "maxTokensDesc": "Directement proportionnel au temps de génération. Réduire de 2000 à 800 peut diviser le temps par 2-3.",
+    "contextTokensDesc": "Plus de contexte = plus de tokens à traiter par le LLM. Impact direct sur le prompt processing.",
+    "contextChunksDesc": "Plus de chunks injectés = prompt plus long = inférence plus lente.",
+    "topKSemanticDesc": "Plus de résultats = plus de candidats à traiter en fusion et reranking.",
+    "prefetchDesc": "Multiplie le nombre de vecteurs interrogés dans Qdrant (top_k × N).",
+    "mmrDesc": "La diversification MMR ajoute ~50-200ms.",
+    "topKLexicalDesc": "La recherche BM25 est très rapide. Impact négligeable.",
+    "rerankEnabledDesc": "Le reranking améliore la précision mais ajoute ~200ms-2s.",
+    "rerankCandidatesDesc": "Plus de candidats à reranker = traitement plus long.",
+    "cacheEnabledDesc": "Le cache d'embedding réduit la latence de ~100-500ms à ~1ms pour les requêtes déjà vues."
+  },
   "common": {
     "loading": "Chargement...",
     "saving": "Sauvegarde...",

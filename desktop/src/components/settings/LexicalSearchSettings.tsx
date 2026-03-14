@@ -1,6 +1,8 @@
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
@@ -20,6 +22,7 @@ const algorithmOptions = [
 
 export function LexicalSearchSettings() {
   const { config, loading, error, dirtyKeys, updateConfig, reset } = useLexicalSearchConfig();
+  const { t } = useTranslation();
 
   if (loading) {
     return <div>Chargement...</div>;
@@ -61,7 +64,10 @@ export function LexicalSearchSettings() {
             label="Nombre de resultats (top_k)"
             onChange={(value) => updateConfig({ top_k: Math.round(value) })}
           />
-          <ModifiedBadge dirty={dirtyKeys.includes("top_k")} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <ModifiedBadge dirty={dirtyKeys.includes("top_k")} />
+            <LatencyImpactBadge level="low" description={t("latency.topKLexicalDesc")} />
+          </div>
         </div>
 
         <div>

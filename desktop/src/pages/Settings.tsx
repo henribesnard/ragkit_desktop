@@ -14,7 +14,13 @@ import { LLMSettings } from "@/components/settings/LLMSettings";
 import { AgentsSettings } from "@/components/settings/AgentsSettings";
 import { MonitoringSettings } from "@/components/settings/MonitoringSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { PipelineLatencyEstimator } from "@/components/settings/PipelineLatencyEstimator";
 import { useExpertiseLevel } from "@/hooks/useExpertiseLevel";
+import { useLatencyEstimator } from "@/hooks/useLatencyEstimator";
+import { useLLMConfig } from "@/hooks/useLLMConfig";
+import { useAgentsConfig } from "@/hooks/useAgentsConfig";
+import { useRerankConfig } from "@/hooks/useRerankConfig";
+import { useSemanticSearchConfig } from "@/hooks/useSemanticSearchConfig";
 import { isSectionVisible } from "@/lib/visibility";
 
 type Section = "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring" | "security";
@@ -34,10 +40,34 @@ const SECTION_VISIBILITY_MAP: Record<string, string> = {
   security: "security",
 };
 
+const PIPELINE_SECTIONS: Set<Section> = new Set(["llm", "agents", "semantic", "lexical", "hybrid", "rerank", "embedding"]);
+
 export function Settings() {
   const { t } = useTranslation();
   const { level } = useExpertiseLevel();
   const [activeSection, setActiveSection] = useState<Section>("general");
+
+  const { config: llmConfig } = useLLMConfig();
+  const { config: agentsConfig } = useAgentsConfig();
+  const { config: rerankConfig } = useRerankConfig();
+  const { config: semanticConfig } = useSemanticSearchConfig();
+
+  const latencyEstimate = useLatencyEstimator({
+    provider: llmConfig.provider,
+    model: llmConfig.model,
+    maxTokens: llmConfig.max_tokens,
+    contextMaxTokens: llmConfig.context_max_tokens,
+    contextMaxChunks: llmConfig.context_max_chunks,
+    alwaysRetrieve: agentsConfig.always_retrieve,
+    queryRewritingEnabled: agentsConfig.query_rewriting.enabled,
+    numRewrites: agentsConfig.query_rewriting.num_rewrites,
+    rerankEnabled: rerankConfig.enabled,
+    rerankCandidates: rerankConfig.candidates,
+    semanticTopK: semanticConfig.top_k,
+    prefetchMultiplier: semanticConfig.prefetch_multiplier,
+  });
+
+  const showEstimator = PIPELINE_SECTIONS.has(activeSection);
 
   const isVisible = (section: Section) => {
     if (section === "general") return true;
@@ -132,6 +162,9 @@ export function Settings() {
 
           {/* Content */}
           <div className="flex-1 min-w-0">
+            {showEstimator && (
+              <PipelineLatencyEstimator estimate={latencyEstimate} className="mb-4 sticky top-0 z-10" />
+            )}
             {activeSection === "general" && <GeneralSettings />}
             {activeSection === "ingestion" && <IngestionSettings />}
             {activeSection === "embedding" && <EmbeddingSettings />}
