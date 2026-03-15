@@ -17,7 +17,7 @@ export function SecuritySettings() {
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmPurge, setConfirmPurge] = useState(false);
 
-  if (loading) return <div className="p-6">{t("common.loading", "Chargement...")}</div>;
+  if (loading) return <div className="p-4">{t("common.loading", "Chargement...")}</div>;
 
   const handleSave = async () => {
     try {
@@ -41,9 +41,9 @@ export function SecuritySettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* API Keys Status */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold text-lg">{t("security.apiKeys", "Cles API")}</h3>
         <div className="space-y-2">
           {apiKeys.map((key) => (
@@ -80,7 +80,7 @@ export function SecuritySettings() {
       </section>
 
       {/* Log Encryption */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold text-lg">{t("security.logEncryption", "Chiffrement des logs")}</h3>
         <label className="flex items-center gap-3 cursor-pointer">
           <input
@@ -97,7 +97,7 @@ export function SecuritySettings() {
       </section>
 
       {/* PII Detection */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold text-lg">{t("security.piiDetection", "Donnees personnelles (PII)")}</h3>
         <label className="flex items-center gap-3 cursor-pointer">
           <input
@@ -153,7 +153,7 @@ export function SecuritySettings() {
       </section>
 
       {/* Retention */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold text-lg">{t("security.retention", "Retention")}</h3>
         <div className="flex items-center gap-3">
           <label className="text-sm">{t("security.retentionDays", "Retention des logs (jours)")}</label>
@@ -178,7 +178,7 @@ export function SecuritySettings() {
       </section>
 
       {/* Danger Zone */}
-      <section className="p-4 border border-red-300 rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border border-red-300 rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold text-lg text-red-600">{t("security.dangerZone", "Zone de danger")}</h3>
         <button
           onClick={handlePurge}
@@ -199,7 +199,7 @@ export function SecuritySettings() {
       </section>
 
       {/* Privacy Info */}
-      <section className="p-4 border rounded-lg bg-green-50 dark:bg-green-950 space-y-2">
+      <section className="p-3 border rounded-lg bg-green-50 dark:bg-green-950 space-y-2">
         <h3 className="font-semibold text-lg">{t("security.privacyInfo", "Informations de confidentialite")}</h3>
         <ul className="text-sm space-y-1 text-green-800 dark:text-green-300">
           <li>{t("security.privacy1", "Toutes les donnees sont stockees localement")}</li>

@@ -62,7 +62,7 @@ export function WizardContainer() {
     return (
         <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans">
             {state.step > 0 ? (
-                <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
+                <header className="h-12 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
                     <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
                         {t('wizard.container.title')} <span className="text-gray-400 font-normal text-sm">{t('wizard.container.subtitle')}</span>
                     </div>
@@ -77,7 +77,7 @@ export function WizardContainer() {
                 </div>
             )}
 
-            <main className="flex-1 overflow-y-auto relative p-6 pt-10">
+            <main className="flex-1 overflow-y-auto relative p-4 pt-6">
                 <div className="max-w-5xl mx-auto h-full animate-in fade-in duration-500 slide-in-from-bottom-4">
                     {steps[state.step]}
                 </div>
@@ -85,7 +85,7 @@ export function WizardContainer() {
 
             {/* Sticky Navigation Footer */}
             {state.step >= 0 && (
-                <footer className="h-20 border-t border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-8 flex items-center justify-center z-50">
+                <footer className="h-14 border-t border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-6 flex items-center justify-center z-50">
                     <div className="max-w-5xl w-full flex justify-between items-center">
                         <Button
                             variant="outline"

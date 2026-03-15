@@ -12,7 +12,7 @@ export function PreprocessingSettings({ config, onChange }: PreprocessingSetting
     const prep = config.preprocessing;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Toggle
                     label="Conversion en minuscules"
@@ -41,10 +41,10 @@ export function PreprocessingSettings({ config, onChange }: PreprocessingSetting
                 />
             </div>
 
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
                 <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Déduplication</h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Select
                         label="Stratégie"
                         value={prep.deduplication_strategy}

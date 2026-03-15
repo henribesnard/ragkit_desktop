@@ -93,8 +93,8 @@ export function LLMSettings() {
   if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">LLM / Generation</h3>
 
         <div>
@@ -139,7 +139,7 @@ export function LLMSettings() {
         </div>
 
         {apiKeyProvider(config.provider) ? (
-          <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <label className="text-sm font-medium flex items-center gap-2">
               <KeyRound className="w-4 h-4" />
               Cle API ({config.provider})
@@ -184,7 +184,7 @@ export function LLMSettings() {
           </div>
         ) : null}
 
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Generation</h4>
           <div>
             <Slider
@@ -226,7 +226,7 @@ export function LLMSettings() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Comportement</h4>
           <div className="grid md:grid-cols-2 gap-3">
             <div>
@@ -281,7 +281,7 @@ export function LLMSettings() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Contexte</h4>
           <div>
             <Slider
@@ -313,7 +313,7 @@ export function LLMSettings() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Prompt systeme</h4>
           <textarea
             value={config.system_prompt}
@@ -328,7 +328,7 @@ export function LLMSettings() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Avance</h4>
           <div className="grid md:grid-cols-2 gap-3">
             <div>

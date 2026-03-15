@@ -16,8 +16,8 @@ export function VectorStoreSettings() {
   if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold mb-1">Provider</h3>
         <Select
           value={config.provider}
@@ -35,7 +35,7 @@ export function VectorStoreSettings() {
         </p>
       </section>
 
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold">Collection</h3>
         <label className="text-sm block">
           Nom de collection
@@ -88,7 +88,7 @@ export function VectorStoreSettings() {
       </section>
 
       {config.provider === "qdrant" && (
-        <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+        <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
           <h3 className="font-semibold">Index HNSW (Qdrant)</h3>
           <Slider
             value={config.hnsw.ef_construction}
@@ -118,7 +118,7 @@ export function VectorStoreSettings() {
         </section>
       )}
 
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Statistiques collection</h3>
           <Button variant="outline" size="sm" onClick={refreshStats}>Actualiser</Button>

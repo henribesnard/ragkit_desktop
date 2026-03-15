@@ -17,13 +17,13 @@ export function ChunkingStep({ wizard }: { wizard: any }) {
     const overlap = chunkCfg.chunk_overlap || 50;
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.chunking.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.chunking.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.chunking.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 <div>
                     <label className="block font-medium mb-2">{t('wizard.chunking.chunkSize')}</label>
                     <input

@@ -337,7 +337,7 @@ export function Chat() {
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto"
-        style={{ padding: "32px 0 0" }}
+        style={{ padding: "16px 0 0" }}
         onScroll={handleScroll}
       >
         <div
@@ -368,7 +368,7 @@ export function Chat() {
           ) : !hasMessages ? (
             <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} isBackendDown={!isBackendHealthy && !isIngesting} />
           ) : (
-            <div className="flex flex-col" style={{ gap: 24 }}>
+            <div className="flex flex-col" style={{ gap: 16 }}>
               {/* History messages */}
               {history.messages.map((message, index) => (
                 <div
@@ -381,7 +381,7 @@ export function Chat() {
                       className="text-sm text-white"
                       style={{
                         maxWidth: "80%",
-                        padding: "12px 16px",
+                        padding: "10px 14px",
                         borderRadius: "20px 20px 4px 20px",
                         background: "var(--primary-500)",
                       }}
@@ -394,7 +394,7 @@ export function Chat() {
                       className="text-sm"
                       style={{
                         maxWidth: "85%",
-                        padding: 16,
+                        padding: 12,
                         borderRadius: "4px 20px 20px 20px",
                         background: "var(--bg-secondary)",
                         border: "1px solid var(--border-default)",
@@ -405,7 +405,7 @@ export function Chat() {
 
                       {/* Sources */}
                       {message.sources?.length ? (
-                        <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--border-default)" }}>
+                        <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border-default)" }}>
                           <div
                             className="text-xs font-semibold uppercase mb-2"
                             style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
@@ -456,7 +456,7 @@ export function Chat() {
                     className="text-sm text-white"
                     style={{
                       maxWidth: "80%",
-                      padding: "12px 16px",
+                      padding: "10px 14px",
                       borderRadius: "20px 20px 4px 20px",
                       background: "var(--primary-500)",
                     }}
@@ -472,7 +472,7 @@ export function Chat() {
                     className="text-sm"
                     style={{
                       maxWidth: "85%",
-                      padding: 16,
+                      padding: 12,
                       borderRadius: "4px 20px 20px 20px",
                       background: "var(--bg-secondary)",
                       border: "1px solid var(--border-default)",
@@ -499,7 +499,7 @@ export function Chat() {
 
                     {/* Final response sources */}
                     {finalResponse?.sources?.length ? (
-                      <div className="mt-3 pt-2" style={{ borderTop: "1px solid var(--border-default)" }}>
+                      <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border-default)" }}>
                         <div
                           className="text-xs font-semibold uppercase mb-2"
                           style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
@@ -584,7 +584,7 @@ export function Chat() {
           maxWidth: "var(--chat-max-width)",
           width: "100%",
           margin: "0 auto",
-          padding: "16px 20px 24px",
+          padding: "12px 16px 16px",
         }}
       >
         {isIngesting && (

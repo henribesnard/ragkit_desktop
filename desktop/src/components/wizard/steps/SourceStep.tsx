@@ -150,10 +150,10 @@ export function SourceStep({ wizard }: { wizard: any }) {
     return (
         <div className="max-w-3xl mx-auto h-full flex flex-col">
             <div className="flex-1 overflow-y-auto pr-2">
-                <h2 className="text-xl font-bold mb-6 text-center">{t('wizard.source.title')}</h2>
+                <h2 className="text-lg font-bold mb-3 text-center">{t('wizard.source.title')}</h2>
 
                 {/* Source type dropdown */}
-                <div className="relative mb-6">
+                <div className="relative mb-3">
                     <button
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         className="w-full flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
@@ -204,7 +204,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                 {/* Local folder config (only shown when sourceType is local_folder) */}
                 {sourceType === "local_folder" && (
                     <>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-3">
                             <div className="flex gap-4 mb-4">
                                 <div className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono truncate flex items-center">
                                     {sourceCfg.path || t('wizard.source.noFolder')}
@@ -245,7 +245,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
 
                         {/* File Types */}
                         {(isScanning || scanResult) && !error && (
-                            <div className="bg-white dark:bg-gray-800 p-6 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+                            <div className="bg-white dark:bg-gray-800 p-4 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-3">
                                 <h3 className="font-semibold flex items-center gap-2">
                                     {t('wizard.source.detectedTypes')}
                                     {isScanning && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}

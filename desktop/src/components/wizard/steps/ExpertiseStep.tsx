@@ -15,16 +15,16 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.expertise.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.expertise.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.expertise.subtitle')}
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <button
                     onClick={() => setExpertise("simple")}
-                    className={`flex flex-col items-start p-6 rounded-xl border-2 transition-all text-left ${currentLevel === "simple"
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "simple"
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                         }`}
@@ -40,7 +40,7 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={() => setExpertise("intermediate")}
-                    className={`flex flex-col items-start p-6 rounded-xl border-2 transition-all text-left ${currentLevel === "intermediate"
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "intermediate"
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                         }`}
@@ -56,7 +56,7 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={() => setExpertise("expert")}
-                    className={`flex flex-col items-start p-6 rounded-xl border-2 transition-all text-left ${currentLevel === "expert"
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "expert"
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                         }`}

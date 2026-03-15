@@ -15,13 +15,13 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.searchType.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.searchType.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.searchType.subtitle')}
             </p>
 
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-4">
                 <button
                     onClick={() => setType("hybrid")}
                     className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "hybrid" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-800"}`}

@@ -47,7 +47,7 @@ export function ExportImportPanel() {
   };
 
   return (
-    <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
       <h3 className="font-semibold text-lg">{t("config.exportImport", "Export / Import de configuration")}</h3>
 
       <div className="flex gap-3">
@@ -70,7 +70,7 @@ export function ExportImportPanel() {
 
       {/* Import Preview */}
       {preview && (
-        <div className="p-3 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
+        <div className="p-2.5 border rounded bg-gray-50 dark:bg-gray-800 space-y-2">
           <h4 className="font-medium">{t("config.importPreview", "Apercu de l'import")}</h4>
           <div className="text-sm space-y-1">
             <p>{t("config.version", "Version")} : {preview.version}</p>

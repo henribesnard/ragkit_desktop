@@ -35,7 +35,7 @@ export function LexicalPreprocessingPanel({
   onChange,
 }: LexicalPreprocessingPanelProps) {
   return (
-    <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
       <h3 className="font-semibold">Preprocessing lexical</h3>
 
       <div>

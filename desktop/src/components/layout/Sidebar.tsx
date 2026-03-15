@@ -68,15 +68,15 @@ export function Sidebar() {
                 width: "var(--sidebar-width)",
                 background: "var(--bg-secondary)",
                 borderRight: "1px solid var(--border-default)",
-                padding: 12,
+                padding: 8,
                 flexShrink: 0,
             }}
         >
             {/* Header — LOKO Wordmark */}
-            <div style={{ padding: "8px 12px", marginBottom: 8 }}>
+            <div style={{ padding: "4px 8px", marginBottom: 4 }}>
                 <span
                     style={{
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: 700,
                         letterSpacing: "0.05em",
                         color: theme === "dark" ? "var(--primary-400)" : "var(--primary-800)",
@@ -91,13 +91,13 @@ export function Sidebar() {
                 onClick={handleNewConversation}
                 className="flex items-center gap-2 w-full transition-colors"
                 style={{
-                    padding: "8px 12px",
+                    padding: "6px 10px",
                     borderRadius: "var(--radius-md)",
                     background: "transparent",
                     color: "var(--text-secondary)",
                     fontSize: 13,
                     fontWeight: 500,
-                    height: 36,
+                    height: 32,
                 }}
                 onMouseEnter={(e) => {
                     (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
@@ -115,7 +115,7 @@ export function Sidebar() {
                 style={{
                     height: 1,
                     background: "var(--border-default)",
-                    margin: "12px 12px 4px",
+                    margin: "6px 8px 4px",
                 }}
             />
 
@@ -124,7 +124,7 @@ export function Sidebar() {
                 onClick={() => setIsConversationsOpen(!isConversationsOpen)}
                 className="w-full flex items-center justify-between transition-colors"
                 style={{
-                    padding: "6px 14px",
+                    padding: "4px 10px",
                     background: "transparent",
                     color: "var(--text-tertiary)",
                     fontSize: 11,
@@ -145,7 +145,7 @@ export function Sidebar() {
 
             {/* Search (if > 5 conversations) */}
             {showSearch && isConversationsOpen && (
-                <div style={{ padding: "4px 0 8px 0" }}>
+                <div style={{ padding: "2px 0 6px 0" }}>
                     <ConversationSearch
                         value={searchQuery}
                         onChange={setSearchQuery}
@@ -157,7 +157,7 @@ export function Sidebar() {
             {isConversationsOpen && (
                 <div
                     className="flex-1 overflow-y-auto"
-                    style={{ marginBottom: 8 }}
+                    style={{ marginBottom: 4 }}
                 >
                     {filteredConversations ? (
                         // Search results — flat list
@@ -175,7 +175,7 @@ export function Sidebar() {
                                         key={conv.id}
                                         className="cursor-pointer transition-colors"
                                         style={{
-                                            padding: "8px 12px",
+                                            padding: "6px 10px",
                                             borderRadius: "var(--radius-md)",
                                             background: conv.id === activeId ? "var(--bg-hover)" : "transparent",
                                         }}
@@ -235,7 +235,7 @@ export function Sidebar() {
                 <div
                     className="flex items-center gap-2 mx-1 mb-2"
                     style={{
-                        padding: "8px 10px",
+                        padding: "6px 8px",
                         borderRadius: "var(--radius-md)",
                         background: theme === "dark" ? "rgba(6, 78, 59, 0.25)" : "var(--primary-50)",
                         color: theme === "dark" ? "var(--primary-300)" : "var(--primary-700)",
@@ -256,7 +256,7 @@ export function Sidebar() {
                 style={{
                     height: 1,
                     background: "var(--border-default)",
-                    margin: "0 12px 8px",
+                    margin: "0 8px 6px",
                 }}
             />
 
@@ -274,7 +274,7 @@ export function Sidebar() {
                             to={item.path}
                             className="flex items-center gap-2 transition-colors"
                             style={{
-                                padding: "8px 12px",
+                                padding: "6px 10px",
                                 borderRadius: "var(--radius-md)",
                                 fontSize: 13,
                                 color: active ? "var(--primary-500)" : "var(--text-secondary)",
@@ -306,7 +306,7 @@ export function Sidebar() {
                 style={{
                     height: 1,
                     background: "var(--border-default)",
-                    margin: "0 12px 8px",
+                    margin: "0 8px 6px",
                 }}
             />
 

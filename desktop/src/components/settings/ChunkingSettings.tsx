@@ -74,8 +74,8 @@ export function ChunkingSettings() {
     };
 
     return (
-        <div className="space-y-6">
-            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+        <div className="space-y-4">
+            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
                 <h3 className="font-semibold text-gray-900 dark:text-white">Stratégie de découpage</h3>
                 <Select
                     value={config.strategy}
@@ -89,7 +89,7 @@ export function ChunkingSettings() {
             </section>
 
             {config.strategy !== "markdown_header" && (
-                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Paramètres de taille</h3>
                     <div>
                         <Slider value={config.chunk_size} min={64} max={4096} onChange={(v) => updateConfig({ chunk_size: v })} label="Taille des chunks" formatValue={(v) => `${v} tokens`} />
@@ -111,7 +111,7 @@ export function ChunkingSettings() {
                 </section>
             )}
 
-            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-2">
+            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                 <h3 className="font-semibold text-gray-900 dark:text-white">Options avancées</h3>
                 <Toggle checked={config.preserve_sentences} onChange={(v) => updateConfig({ preserve_sentences: v })} label="Préserver les phrases" />
                 <Toggle checked={config.metadata_propagation} onChange={(v) => updateConfig({ metadata_propagation: v })} label="Propager les métadonnées" />
@@ -121,7 +121,7 @@ export function ChunkingSettings() {
             </section>
 
             {config.strategy === "recursive" && (
-                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Séparateurs</h3>
                     <div className="space-y-2">
                         {config.separators.map((separator, index) => (
@@ -170,14 +170,14 @@ export function ChunkingSettings() {
             )}
 
             {config.strategy === "semantic" && (
-                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-2">
+                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                     <Slider value={config.similarity_threshold} min={0.1} max={1} step={0.01} onChange={(v) => updateConfig({ similarity_threshold: v })} label="Seuil de similarité" formatValue={(v) => v.toFixed(2)} />
                     <p className="text-xs text-amber-700 dark:text-amber-300">La stratégie sémantique utilise un mode léger pour la prévisualisation.</p>
                 </section>
             )}
 
             {config.strategy === "markdown_header" && (
-                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-2">
+                <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                     <label className="text-sm font-medium">Niveaux de titres</label>
                     <div className="flex gap-2 flex-wrap">
                         {[1, 2, 3, 4, 5, 6].map((level) => {
@@ -201,7 +201,7 @@ export function ChunkingSettings() {
                 </section>
             )}
 
-            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+            <section className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
                 <div className="flex flex-wrap gap-2 items-center">
                     <Select
                         className="min-w-64"

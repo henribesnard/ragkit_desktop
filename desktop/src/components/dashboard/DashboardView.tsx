@@ -65,7 +65,7 @@ const cardStyle: React.CSSProperties = {
   background: "var(--bg-secondary)",
   border: "1px solid var(--border-default)",
   borderRadius: "var(--radius-lg)",
-  padding: 20,
+  padding: 16,
 };
 
 export function DashboardView() {
@@ -83,7 +83,7 @@ export function DashboardView() {
   const activityMax = useMemo(() => Math.max(...state.activity.map((item) => item.total), 1), [state.activity]);
 
   return (
-    <div className="space-y-6 pb-10 animate-fade-in" style={{ maxWidth: "var(--settings-max-width)", margin: "0 auto" }}>
+    <div className="space-y-4 pb-6 animate-fade-in" style={{ maxWidth: "var(--settings-max-width)", margin: "0 auto" }}>
       {/* ALERTS */}
       {state.alerts.length ? (
         <section
@@ -107,9 +107,9 @@ export function DashboardView() {
       ) : null}
 
       {/* TOP LEVEL: SERVICES & INGESTION */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* System Health — Horizontal Bar */}
-        <div style={{ ...cardStyle, padding: "12px 20px" }}>
+        <div style={{ ...cardStyle, padding: "10px 16px" }}>
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <div className="flex items-center gap-2 pr-4 border-r border-default">
               <Activity size={14} style={{ color: "var(--info)" }} />
@@ -277,10 +277,10 @@ export function DashboardView() {
       </div>
 
       {/* MAIN STATS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Queries Card */}
         <div style={cardStyle} className="hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div>
               <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>{t("monitoring.dashboard.total")}</p>
               <h4 style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: "var(--text-primary)" }}>{state.metrics.total_queries}</h4>
@@ -299,7 +299,7 @@ export function DashboardView() {
 
         {/* Latency Card */}
         <div style={cardStyle} className="hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div>
               <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>{t("monitoring.dashboard.avgLatency")}</p>
               <h4 style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: "var(--text-primary)" }}>{formatLatency(state.metrics.avg_latency_ms)}</h4>
@@ -318,7 +318,7 @@ export function DashboardView() {
 
         {/* Feedback Card */}
         <div style={cardStyle} className="hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div>
               <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>{t("dashboard.satisfactionRate")}</p>
               <h4 style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: "var(--text-primary)" }}>{(state.feedback.positive_rate * 100).toFixed(1)}%</h4>
@@ -337,10 +337,10 @@ export function DashboardView() {
       </div>
 
       {/* ACTIVITY & INTENTS */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4">
         {/* ACTIVITY CHART */}
         <section className="col-span-1 lg:col-span-2" style={cardStyle}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-1.5">
+          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 12 }} className="flex items-center gap-1.5">
             <BarChart3 size={14} style={{ color: "var(--primary-500)" }} /> {t("monitoring.dashboard.activity7dTitle")}
           </h3>
           <div className="grid grid-cols-7 gap-3 items-end" style={{ height: 160, marginTop: 16 }}>
@@ -378,7 +378,7 @@ export function DashboardView() {
 
         {/* INTENT DISTRIBUTION */}
         <section className="col-span-1" style={cardStyle}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-1.5">
+          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 12 }} className="flex items-center gap-1.5">
             <Cpu size={14} style={{ color: "var(--primary-500)" }} /> {t("monitoring.dashboard.intentDistributionTitle")}
           </h3>
           <div className="space-y-4">
@@ -412,9 +412,9 @@ export function DashboardView() {
       </div>
 
       {/* RECENT QUERIES & LATENCY */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4">
         <section className="col-span-1 lg:col-span-2 overflow-hidden flex flex-col" style={cardStyle}>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)" }} className="flex items-center gap-2">
               <Clock size={14} style={{ color: "var(--success)" }} /> {t("monitoring.dashboard.recentQueriesTitle")}
             </h3>
@@ -468,7 +468,7 @@ export function DashboardView() {
         </section>
 
         <section className="col-span-1" style={cardStyle}>
-          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 24 }} className="flex items-center gap-2">
+          <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: 12 }} className="flex items-center gap-2">
             <Server size={14} style={{ color: "var(--warning)" }} /> {t("monitoring.dashboard.latencyBreakdownTitle")}
           </h3>
           <div className="space-y-4">

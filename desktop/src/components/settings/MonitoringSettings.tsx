@@ -40,7 +40,7 @@ export function MonitoringSettings() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
 
-      <section className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+      <section className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-2">
         <h3 className="font-medium">{t("monitoring.settings.loggingTitle")}</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <Toggle checked={draft.log_queries} onChange={(value) => setDraft((prev) => ({ ...prev, log_queries: value }))} label={t("monitoring.settings.logQueries")} />
@@ -50,7 +50,7 @@ export function MonitoringSettings() {
         </div>
       </section>
 
-      <section className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+      <section className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-2">
         <h3 className="font-medium">{t("monitoring.settings.retentionTitle")}</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="text-sm">
@@ -81,7 +81,7 @@ export function MonitoringSettings() {
         </Button>
       </section>
 
-      <section className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+      <section className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-2">
         <h3 className="font-medium">{t("monitoring.settings.alertsTitle")}</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="text-sm">
@@ -134,7 +134,7 @@ export function MonitoringSettings() {
         </div>
       </section>
 
-      <section className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+      <section className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-2">
         <h3 className="font-medium">{t("monitoring.settings.refreshTitle")}</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="text-sm">

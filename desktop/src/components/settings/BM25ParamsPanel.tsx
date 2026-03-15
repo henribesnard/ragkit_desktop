@@ -14,7 +14,7 @@ function ModifiedBadge({ dirty }: { dirty: boolean }) {
 
 export function BM25ParamsPanel({ config, dirtyKeys, onChange }: BM25ParamsPanelProps) {
   return (
-    <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
       <h3 className="font-semibold">Parametres BM25</h3>
 
       <div>

@@ -38,12 +38,12 @@ export function GeneralSettings() {
   if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Expertise Level */}
       <ExpertiseLevelSelector />
 
       {/* Ingestion Mode */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">{t("general.ingestionMode", "Mode d'ingestion")}</h3>
         <select
           className="border rounded px-2 py-1"
@@ -72,7 +72,7 @@ export function GeneralSettings() {
       </section>
 
       {/* Search Type */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">{t("general.searchType", "Type de recherche")}</h3>
         <div className="space-y-2 text-sm">
           <label className={`flex items-center gap-2 ${!semanticEnabled ? "text-gray-400" : ""}`}>
@@ -109,7 +109,7 @@ export function GeneralSettings() {
       </section>
 
       {/* LLM */}
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
         <h3 className="font-semibold">{t("general.llm", "LLM (generation)")}</h3>
         <div>
           <label className="text-sm">{t("general.llmModel", "Modele LLM")}</label>

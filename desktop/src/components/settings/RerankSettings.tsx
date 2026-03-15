@@ -106,8 +106,8 @@ export function RerankSettings() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Reranking</h3>
 
         <div>
@@ -172,7 +172,7 @@ export function RerankSettings() {
         )}
 
         {isCloudProvider && (
-          <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <label className="text-sm font-medium flex items-center gap-2">
               <KeyRound className="w-4 h-4" />
               Cle API {providerLabel[config.provider] || config.provider}
@@ -217,7 +217,7 @@ export function RerankSettings() {
         )}
 
         {config.provider !== "none" && (
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <h4 className="font-medium text-sm">Selection des resultats</h4>
 
             <div>
@@ -276,7 +276,7 @@ export function RerankSettings() {
         )}
 
         {config.provider !== "none" && (
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <h4 className="font-medium text-sm">Parametres avances</h4>
             <div className="grid md:grid-cols-2 gap-3">
               <div>
@@ -325,7 +325,7 @@ export function RerankSettings() {
         )}
 
         {config.provider !== "none" && (
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <h4 className="font-medium text-sm">Test du reranker</h4>
 
             <div className="flex gap-2">

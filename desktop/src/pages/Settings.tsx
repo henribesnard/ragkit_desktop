@@ -111,31 +111,31 @@ export function Settings() {
         style={{
           maxWidth: "var(--settings-max-width)",
           margin: "0 auto",
-          padding: "24px 20px",
+          padding: "16px 16px",
         }}
       >
         <h1
-          className="text-lg font-semibold mb-6"
+          className="text-lg font-semibold mb-3"
           style={{ color: "var(--text-primary)" }}
         >
           {t("settings.title")}
         </h1>
 
-        <div className="flex gap-6">
+        <div className="flex gap-4">
           {/* Navigation sidebar */}
           <div
             className="flex-shrink-0"
             style={{
-              width: 180,
+              width: 160,
               borderRight: "1px solid var(--border-default)",
-              paddingRight: 16,
+              paddingRight: 12,
             }}
           >
-            <nav className="space-y-1">
+            <nav className="space-y-0.5">
               {navButton("general", <Layers className="w-4 h-4" />, t("settings.general", "General"))}
 
               {(isVisible("ingestion") || isVisible("embedding") || isVisible("chunking") || isVisible("vector") || isVisible("semantic") || isVisible("lexical") || isVisible("hybrid") || isVisible("rerank") || isVisible("llm") || isVisible("agents") || isVisible("monitoring") || isVisible("security")) && (
-                <div className="pt-4 pb-2">
+                <div className="pt-3 pb-1">
                   <span
                     className="px-3 text-xs font-semibold uppercase"
                     style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em" }}

@@ -13,11 +13,11 @@ export function Dashboard() {
         style={{
           maxWidth: "var(--settings-max-width)",
           margin: "0 auto",
-          padding: "24px 20px",
+          padding: "16px 16px",
         }}
       >
         <h1
-          className="text-lg font-semibold mb-6"
+          className="text-lg font-semibold mb-3"
           style={{ color: "var(--text-primary)" }}
         >
           {t("dashboard.title")}

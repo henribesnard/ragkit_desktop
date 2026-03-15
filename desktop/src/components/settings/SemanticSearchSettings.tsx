@@ -32,8 +32,8 @@ export function SemanticSearchSettings() {
   const defaultFiltersDirty = dirtyKeys.includes("default_filters") || dirtyKeys.includes("default_filters_enabled");
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Recherche sémantique</h3>
 
         <div>
@@ -83,7 +83,7 @@ export function SemanticSearchSettings() {
         </div>
       </section>
 
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Diversification MMR</h3>
         <div>
           <Toggle checked={config.mmr_enabled} onChange={(value) => updateConfig({ mmr_enabled: value })} label="Activer MMR" />
@@ -106,7 +106,7 @@ export function SemanticSearchSettings() {
         </div>
       </section>
 
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Filtres par métadonnées</h3>
         <div>
           <Toggle
@@ -154,7 +154,7 @@ export function SemanticSearchSettings() {
         </label>
       </section>
 
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Options avancées</h3>
         <div>
           <Slider

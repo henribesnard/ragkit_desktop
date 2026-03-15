@@ -11,8 +11,8 @@ export function ParsingSettings({ config, onChange }: ParsingSettingsProps) {
     const parsing = config.parsing;
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
                     label="Moteur de parsing"
                     value={parsing.engine}
@@ -38,7 +38,7 @@ export function ParsingSettings({ config, onChange }: ParsingSettingsProps) {
                 />
             </div>
 
-            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">OCR & Vision</h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -56,7 +56,7 @@ export function ParsingSettings({ config, onChange }: ParsingSettingsProps) {
                 </div>
 
                 {parsing.ocr_enabled && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
                         <Select
                             label="Moteur OCR"
                             value={parsing.ocr_engine}

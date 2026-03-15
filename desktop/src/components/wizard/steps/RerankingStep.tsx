@@ -133,13 +133,13 @@ export function RerankingStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.reranking.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.reranking.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.reranking.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 <label className="flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-700 pb-4">
                     <div>
                         <span className="block font-medium text-lg text-blue-900 dark:text-blue-100">{t('wizard.reranking.enable')}</span>
@@ -157,7 +157,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 </label>
 
                 {enabled && (
-                    <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
                         <div>
                             <label className="block font-medium mb-2">{t('wizard.reranking.provider')}</label>
                             <select

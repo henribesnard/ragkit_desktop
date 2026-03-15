@@ -145,8 +145,8 @@ export function EmbeddingSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border p-4 space-y-2">
+    <div className="space-y-4">
+      <section className="rounded-lg border p-3 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="font-medium">Environnement détecté</h3>
           <Button variant="outline" onClick={() => void refreshEnvironment()}>Rafraîchir</Button>
@@ -156,7 +156,7 @@ export function EmbeddingSettings() {
         <p>Modèles Ollama: {(environment?.ollama_embedding_models || []).join(", ") || "—"}</p>
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Modèle de documents</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
@@ -243,7 +243,7 @@ export function EmbeddingSettings() {
         </div>
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Modèle de requêtes</h3>
         <Toggle
           checked={config.query_model.same_as_document}
@@ -280,7 +280,7 @@ export function EmbeddingSettings() {
         )}
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Paramètres de vectorisation</h3>
         <div className="grid md:grid-cols-2 gap-3 items-center">
           <input
@@ -297,7 +297,7 @@ export function EmbeddingSettings() {
         <Toggle checked={config.normalize} onChange={(checked) => void updateConfig({ normalize: checked })} label="Normalisation L2" />
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Paramètres avancés</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="text-sm block">
@@ -346,7 +346,7 @@ export function EmbeddingSettings() {
         </div>
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Cache d'embeddings</h3>
         <Toggle checked={config.cache_enabled} onChange={(checked) => void updateConfig({ cache_enabled: checked })} label="Cache activé" />
         <LatencyImpactBadge level="medium" description={t("latency.cacheEnabledDesc")} />
@@ -368,7 +368,7 @@ export function EmbeddingSettings() {
         )}
       </section>
 
-      <section className="rounded-lg border p-4 space-y-3">
+      <section className="rounded-lg border p-3 space-y-2">
         <h3 className="font-medium">Panneau de test d'embedding ({profile})</h3>
         <textarea className="w-full border rounded p-2" rows={3} value={textA} onChange={(event) => setTextA(event.target.value)} />
         <textarea className="w-full border rounded p-2" rows={3} value={textB} onChange={(event) => setTextB(event.target.value)} />

@@ -17,16 +17,16 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
     }, []);
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.system.title')}</h1>
-            <p className="text-gray-500 mb-8">{t('wizard.system.subtitle')}</p>
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.system.title')}</h1>
+            <p className="text-gray-500 mb-4">{t('wizard.system.subtitle')}</p>
 
             {loading ? (
                 <div className="flex items-center justify-center p-12">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                 </div>
             ) : (
-                <div className="space-y-4 mb-8">
+                <div className="space-y-4 mb-4">
                     <div className="p-4 rounded-lg border flex items-center justify-between">
                         <div>
                             <h3 className="font-semibold">{t('wizard.system.ollama')}</h3>

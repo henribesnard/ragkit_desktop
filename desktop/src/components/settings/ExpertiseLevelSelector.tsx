@@ -14,7 +14,7 @@ export function ExpertiseLevelSelector() {
   if (loading) return null;
 
   return (
-    <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
+    <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-2">
       <h3 className="font-semibold text-lg">{t("expertise.title", "Niveau d'expertise")}</h3>
       <div className="space-y-2">
         {LEVELS.map((item) => (

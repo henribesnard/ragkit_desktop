@@ -67,9 +67,9 @@
     --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
     /* ── Layout ── */
-    --sidebar-width: 260px;
+    --sidebar-width: 240px;
     --sidebar-collapsed-width: 64px;
-    --chat-max-width: 768px;
+    --chat-max-width: 800px;
     --settings-max-width: 1200px;
 
     /* ── Typography ── */

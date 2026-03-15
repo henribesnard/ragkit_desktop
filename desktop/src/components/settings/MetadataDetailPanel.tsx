@@ -132,9 +132,9 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {/* Global File Info Header */}
-                <div className="flex items-start gap-3 mb-6">
+                <div className="flex items-start gap-3 mb-3">
                     <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg shrink-0">
                         <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -159,14 +159,14 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                 </div>
 
                 {/* Features Badges */}
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-2 mb-3">
                     {document.has_tables && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"><TableIcon className="w-3 h-3 mr-1" /> Tableaux</span>}
                     {document.has_images && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300"><ImageIcon className="w-3 h-3 mr-1" /> Images</span>}
                     {document.has_code && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"><Code className="w-3 h-3 mr-1" /> Code</span>}
                 </div>
 
                 {activeTab === 'metadata' ? (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {/* Description */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
@@ -288,7 +288,7 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                         </div>
 
                         {/* Tags & Keywords */}
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags (Manuels)</label>
                                 <div className="flex flex-wrap gap-2 mb-2">
@@ -324,7 +324,7 @@ export function MetadataDetailPanel({ document, documents, currentIndex, onClose
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {/* Content Stats */}
                         <div className="grid grid-cols-3 gap-2 py-3 border-y border-gray-100 dark:border-gray-800">
                             <div className="text-center">

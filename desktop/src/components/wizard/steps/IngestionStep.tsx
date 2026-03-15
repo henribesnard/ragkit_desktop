@@ -61,15 +61,15 @@ export function IngestionStep({ wizard }: { wizard: any }) {
     const preproc = ingCfg.preprocessing || {};
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.ingestion.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.ingestion.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.ingestion.subtitle')}
             </p>
 
-            <div className="space-y-6 mb-8">
+            <div className="space-y-4 mb-4">
                 {/* Mode d'ingestion */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                     <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.mode')}</h3>
 
                     {expertiseLevel === "simple" ? (
@@ -148,7 +148,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                     )}
                 </div>
                 {/* Parsing Settings */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                     <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.parsing')}</h3>
 
                     <div className="space-y-4">
@@ -182,7 +182,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                 </div>
 
                 {/* Preprocessing Settings */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                     <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.preprocessing')}</h3>
 
                     <div className="space-y-4">

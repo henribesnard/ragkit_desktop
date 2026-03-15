@@ -134,14 +134,14 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
     return (
         <div className="max-w-6xl mx-auto h-full flex flex-col">
-            <div className="mb-6 text-center">
-                <h2 className="text-xl font-bold">{t('wizard.metadata.title')}</h2>
+            <div className="mb-3 text-center">
+                <h2 className="text-lg font-bold">{t('wizard.metadata.title')}</h2>
                 <p className="text-sm text-gray-500 mt-2">
                     {t('wizard.metadata.subtitle')}
                 </p>
             </div>
 
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-6">
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
 
                 {/* Left side: Table */}
                 <div className={`flex-1 flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${selectedPaths.size > 0 ? 'lg:w-2/3' : 'w-full'}`}>

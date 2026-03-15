@@ -116,14 +116,14 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.embedding.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.embedding.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.embedding.subtitle')}
             </p>
 
             {/* Provider Category Selection — 3 buttons like LLMStep */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <button
                     onClick={handleSwitchToLocal}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${isHuggingface ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
@@ -158,7 +158,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 {/* API provider sub-selector */}
                 {isApiProvider && (
                     <>

@@ -55,7 +55,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
                 {/* Source Path */}
                 <div>
@@ -99,7 +99,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Max File Size */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

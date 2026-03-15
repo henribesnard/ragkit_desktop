@@ -45,11 +45,11 @@ export function AgentsSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Agents</h3>
 
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Query Analyzer</h4>
           <Toggle
             checked={config.always_retrieve}
@@ -83,7 +83,7 @@ export function AgentsSettings() {
           <ModifiedBadge dirty={dirtyKeys.includes("detect_intents")} />
         </div>
 
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Query Rewriting</h4>
           <Toggle
             checked={config.query_rewriting.enabled}
@@ -118,7 +118,7 @@ export function AgentsSettings() {
           </div>
         </div>
 
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Historique</h4>
           <Slider
             value={config.max_history_messages}
@@ -148,7 +148,7 @@ export function AgentsSettings() {
           </div>
         </div>
 
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Prompts</h4>
 
           <div>
@@ -212,7 +212,7 @@ export function AgentsSettings() {
           </div>
         </div>
 
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-md border p-2.5">
           <h4 className="font-medium text-sm">Avance</h4>
           <label className="text-sm block">
             Modele Analyzer (optionnel)

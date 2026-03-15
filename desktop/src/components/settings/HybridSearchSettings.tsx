@@ -31,8 +31,8 @@ export function HybridSearchSettings() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="p-4 border rounded-lg bg-white dark:bg-gray-900 space-y-4">
+    <div className="space-y-4">
+      <section className="p-3 border rounded-lg bg-white dark:bg-gray-900 space-y-3">
         <h3 className="font-semibold">Recherche hybride</h3>
 
         <div>
@@ -74,7 +74,7 @@ export function HybridSearchSettings() {
             <ModifiedBadge dirty={dirtyKeys.includes("rrf_k")} />
           </div>
         ) : (
-          <div className="space-y-3 border rounded-md p-3">
+          <div className="space-y-2 rounded-md border p-2.5">
             <Toggle
               checked={config.normalize_scores}
               onChange={(value) => updateConfig({ normalize_scores: value })}

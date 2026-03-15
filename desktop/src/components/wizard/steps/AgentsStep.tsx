@@ -17,13 +17,13 @@ export function AgentsStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
-            <h1 className="text-2xl font-bold mb-4">{t('wizard.agents.title')}</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="max-w-2xl mx-auto py-4">
+            <h1 className="text-xl font-bold mb-4">{t('wizard.agents.title')}</h1>
+            <p className="text-gray-500 mb-4">
                 {t('wizard.agents.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 space-y-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-lg ${enabled ? "bg-blue-100 dark:bg-blue-900 text-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
