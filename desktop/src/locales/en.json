@@ -380,7 +380,15 @@
       "includeSubfolders": "Include subfolders",
       "detectedTypes": "Detected File Types",
       "files": "files",
-      "noSupportedFiles": "No supported file found."
+      "noSupportedFiles": "No supported file found.",
+      "comingSoon": "Coming soon",
+      "type": {
+        "local_folder": "Local folder",
+        "database": "Database",
+        "website": "Website",
+        "email": "Email",
+        "api": "API / Connector"
+      }
     },
     "searchType": {
       "title": "Search Strategy",

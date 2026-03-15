@@ -380,7 +380,15 @@
       "includeSubfolders": "Inclure les sous-dossiers",
       "detectedTypes": "Types de Fichiers détectés",
       "files": "fichiers",
-      "noSupportedFiles": "Aucun fichier supporté trouvé."
+      "noSupportedFiles": "Aucun fichier supporté trouvé.",
+      "comingSoon": "Bientôt",
+      "type": {
+        "local_folder": "Dossier local",
+        "database": "Base de données",
+        "website": "Site web",
+        "email": "Messagerie",
+        "api": "API / Connecteur"
+      }
     },
     "searchType": {
       "title": "Stratégie de Recherche",

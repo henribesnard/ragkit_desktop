@@ -1,8 +1,6 @@
-import { ProfileCard } from "./ProfileCard";
 import { CalibrationQuestion } from "./CalibrationQuestion";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/cn";
 
 interface ProfileStepProps {
     wizard: any;
@@ -11,7 +9,6 @@ interface ProfileStepProps {
 export function ProfileStep({ wizard }: ProfileStepProps) {
     const { t } = useTranslation();
     const { state, updateConfig } = wizard;
-    const [showCalibration, setShowCalibration] = useState(true);
 
     const currentProfile = state.config?.profile || null;
     const getCalibration = (key: string) => !!state.config?.calibration_answers?.[key];
@@ -49,51 +46,45 @@ export function ProfileStep({ wizard }: ProfileStepProps) {
     ];
 
     return (
-        <div className="max-w-3xl mx-auto h-full flex flex-col">
-            <div className="flex-1 overflow-y-auto pr-2">
-                <h2 className="text-xl font-bold mb-6 text-center">{t('wizard.profile.title')}</h2>
+        <div className="max-w-4xl mx-auto flex flex-col gap-5">
+            <h2 className="text-xl font-bold text-center">{t('wizard.profile.title')}</h2>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    {profiles.map((p) => (
-                        <ProfileCard
-                            key={p.id}
-                            id={p.id}
-                            name={p.name}
-                            icon={p.icon}
-                            description={p.desc}
-                            selected={currentProfile === p.id}
-                            onSelect={setProfile}
+            {/* Profile cards — compact horizontal row */}
+            <div className="flex gap-2">
+                {profiles.map((p) => (
+                    <button
+                        key={p.id}
+                        onClick={() => setProfile(p.id)}
+                        className={cn(
+                            "flex-1 flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all duration-200 text-center hover:bg-gray-50 dark:hover:bg-gray-800 min-w-0",
+                            currentProfile === p.id
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                        )}
+                    >
+                        <span className="text-2xl">{p.icon}</span>
+                        <span className="font-semibold text-xs text-gray-900 dark:text-gray-100 leading-tight">{p.name}</span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight hidden lg:block">{p.desc}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Calibration questions — 2 columns, always visible */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t('wizard.profile.refineProfile')}</h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-0">
+                    {questions.map((q) => (
+                        <CalibrationQuestion
+                            key={q.id}
+                            id={q.id}
+                            question={q.q}
+                            tooltip={q.t}
+                            value={getCalibration(q.id)}
+                            onChange={toggleCalibration}
                         />
                     ))}
                 </div>
-
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-8">
-                    <button
-                        onClick={() => setShowCalibration(!showCalibration)}
-                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                        <span className="font-medium text-sm text-gray-700 dark:text-gray-300">{t('wizard.profile.refineProfile')}</span>
-                        {showCalibration ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-
-                    {showCalibration && (
-                        <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 space-y-1">
-                            {questions.map((q) => (
-                                <CalibrationQuestion
-                                    key={q.id}
-                                    id={q.id}
-                                    question={q.q}
-                                    tooltip={q.t}
-                                    value={getCalibration(q.id)}
-                                    onChange={toggleCalibration}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
             </div>
-
-
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import { useWizard } from "@/hooks/useWizard";
 import { WizardProgress } from "./WizardProgress";
-import { Loader2 } from "lucide-react";
+import { Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,6 +9,25 @@ import {
     SearchTypeStep, SemanticStep, LexicalStep, HybridStep,
     RerankingStep, LLMStep, AgentsStep, MetadataStep
 } from "./steps";
+
+function LanguageToggle() {
+    const { i18n } = useTranslation();
+    const toggle = () => {
+        const newLang = i18n.language === "fr" ? "en" : "fr";
+        i18n.changeLanguage(newLang);
+        localStorage.setItem("loko-lang", newLang);
+    };
+    return (
+        <button
+            onClick={toggle}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title={i18n.language === "fr" ? "Switch to English" : "Passer en français"}
+        >
+            <Globe size={14} />
+            {i18n.language.toUpperCase()}
+        </button>
+    );
+}
 
 export function WizardContainer() {
     const { t } = useTranslation();
@@ -42,13 +61,20 @@ export function WizardContainer() {
 
     return (
         <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans">
-            {state.step > 0 && (
+            {state.step > 0 ? (
                 <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
                     <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
                         {t('wizard.container.title')} <span className="text-gray-400 font-normal text-sm">{t('wizard.container.subtitle')}</span>
                     </div>
-                    <WizardProgress currentStep={state.step} totalSteps={15} />
+                    <div className="flex items-center gap-4">
+                        <WizardProgress currentStep={state.step} totalSteps={15} />
+                        <LanguageToggle />
+                    </div>
                 </header>
+            ) : (
+                <div className="absolute top-4 right-6 z-50">
+                    <LanguageToggle />
+                </div>
             )}
 
             <main className="flex-1 overflow-y-auto relative p-6 pt-10">

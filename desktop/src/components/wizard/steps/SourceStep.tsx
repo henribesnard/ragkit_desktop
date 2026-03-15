@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { FolderOpen, Loader2, Database, Globe, FileText, Mail, ChevronDown } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderTree } from "../FolderTree";
 import { useTranslation } from "react-i18next";
+
+type SourceType = "local_folder" | "database" | "website" | "email" | "api";
+
+const SOURCE_TYPES: { id: SourceType; iconEl: typeof FolderOpen; available: boolean }[] = [
+    { id: "local_folder", iconEl: FolderOpen, available: true },
+    { id: "database", iconEl: Database, available: false },
+    { id: "website", iconEl: Globe, available: false },
+    { id: "email", iconEl: Mail, available: false },
+    { id: "api", iconEl: FileText, available: false },
+];
 
 export function SourceStep({ wizard }: { wizard: any }) {
     const { t } = useTranslation();
@@ -16,6 +26,8 @@ export function SourceStep({ wizard }: { wizard: any }) {
         file_types: ["pdf", "docx", "doc", "md", "txt"]
     };
 
+    const [sourceType, setSourceType] = useState<SourceType>("local_folder");
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -132,87 +144,142 @@ export function SourceStep({ wizard }: { wizard: any }) {
         return (sourceCfg.file_types || []).includes(ext.replace(".", ""));
     };
 
+    const selectedSourceDef = SOURCE_TYPES.find(s => s.id === sourceType)!;
+    const SelectedIcon = selectedSourceDef.iconEl;
+
     return (
         <div className="max-w-3xl mx-auto h-full flex flex-col">
             <div className="flex-1 overflow-y-auto pr-2">
                 <h2 className="text-xl font-bold mb-6 text-center">{t('wizard.source.title')}</h2>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
-                    <div className="flex gap-4 mb-4">
-                        <div className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono truncate flex items-center">
-                            {sourceCfg.path || t('wizard.source.noFolder')}
+                {/* Source type dropdown */}
+                <div className="relative mb-6">
+                    <button
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="w-full flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <SelectedIcon className="w-5 h-5 text-blue-500" />
+                            <span className="font-medium text-sm">{t(`wizard.source.type.${sourceType}`)}</span>
                         </div>
-                        <Button onClick={handleSelectFolder} variant="outline" className="flex items-center gap-2">
-                            <FolderOpen className="w-4 h-4" />
-                            {t('wizard.source.browse')}
-                        </Button>
-                    </div>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
 
-                    {error && (
-                        <div className="text-red-500 text-sm mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-100 dark:border-red-900">
-                            {error}
+                    {dropdownOpen && (
+                        <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
+                            {SOURCE_TYPES.map((src) => {
+                                const Icon = src.iconEl;
+                                return (
+                                    <button
+                                        key={src.id}
+                                        onClick={() => {
+                                            if (src.available) {
+                                                setSourceType(src.id);
+                                                setDropdownOpen(false);
+                                            }
+                                        }}
+                                        disabled={!src.available}
+                                        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                                            src.available
+                                                ? "hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                                                : "opacity-50 cursor-not-allowed"
+                                        } ${src.id === sourceType ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Icon className={`w-5 h-5 ${src.id === sourceType ? "text-blue-500" : "text-gray-400"}`} />
+                                            <span className="text-sm font-medium">{t(`wizard.source.type.${src.id}`)}</span>
+                                        </div>
+                                        {!src.available && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                                                {t('wizard.source.comingSoon')}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
-
-                    <div className="space-y-4">
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                className="rounded border-gray-300"
-                                checked={sourceCfg.recursive}
-                                onChange={(e) => updateSource({ recursive: e.target.checked })}
-                            />
-                            {t('wizard.source.includeSubfolders')}
-                        </label>
-
-                        {sourceCfg.recursive && folderTree && (
-                            <FolderTree
-                                path={sourceCfg.path}
-                                tree={folderTree}
-                                excludedFolders={sourceCfg.excluded_dirs}
-                                onToggleExclusion={toggleExclusion}
-                            />
-                        )}
-                    </div>
                 </div>
 
-                {/* Second block: File Types */}
-                {(isScanning || scanResult) && !error && (
-                    <div className="bg-white dark:bg-gray-800 p-6 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
-                        <h3 className="font-semibold flex items-center gap-2">
-                            {t('wizard.source.detectedTypes')}
-                            {isScanning && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
-                        </h3>
+                {/* Local folder config (only shown when sourceType is local_folder) */}
+                {sourceType === "local_folder" && (
+                    <>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+                            <div className="flex gap-4 mb-4">
+                                <div className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono truncate flex items-center">
+                                    {sourceCfg.path || t('wizard.source.noFolder')}
+                                </div>
+                                <Button onClick={handleSelectFolder} variant="outline" className="flex items-center gap-2">
+                                    <FolderOpen className="w-4 h-4" />
+                                    {t('wizard.source.browse')}
+                                </Button>
+                            </div>
 
-                        {!isScanning && scanResult?.supported_types && (
-                            <div className="space-y-2">
-                                {scanResult.supported_types.map((type: any) => (
-                                    <div key={type.extension} className="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors cursor-pointer" onClick={() => handleToggleType(type.extension)}>
-                                        <input
-                                            type="checkbox"
-                                            checked={isIncluded(type.extension)}
-                                            onChange={() => { }}
-                                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                                        />
-                                        <span className="font-mono text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded uppercase w-16 text-center">
-                                            {type.display_name}
-                                        </span>
-                                        <div className="flex-1 flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                                            <span>{type.count} {t('wizard.source.files')}</span>
-                                            <span>{type.size_mb.toFixed(2)} Mo</span>
-                                        </div>
+                            {error && (
+                                <div className="text-red-500 text-sm mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-100 dark:border-red-900">
+                                    {error}
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300"
+                                        checked={sourceCfg.recursive}
+                                        onChange={(e) => updateSource({ recursive: e.target.checked })}
+                                    />
+                                    {t('wizard.source.includeSubfolders')}
+                                </label>
+
+                                {sourceCfg.recursive && folderTree && (
+                                    <FolderTree
+                                        path={sourceCfg.path}
+                                        tree={folderTree}
+                                        excludedFolders={sourceCfg.excluded_dirs}
+                                        onToggleExclusion={toggleExclusion}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* File Types */}
+                        {(isScanning || scanResult) && !error && (
+                            <div className="bg-white dark:bg-gray-800 p-6 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+                                <h3 className="font-semibold flex items-center gap-2">
+                                    {t('wizard.source.detectedTypes')}
+                                    {isScanning && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                                </h3>
+
+                                {!isScanning && scanResult?.supported_types && (
+                                    <div className="space-y-2">
+                                        {scanResult.supported_types.map((type: any) => (
+                                            <div key={type.extension} className="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors cursor-pointer" onClick={() => handleToggleType(type.extension)}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isIncluded(type.extension)}
+                                                    onChange={() => { }}
+                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                                />
+                                                <span className="font-mono text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded uppercase w-16 text-center">
+                                                    {type.display_name}
+                                                </span>
+                                                <div className="flex-1 flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                                                    <span>{type.count} {t('wizard.source.files')}</span>
+                                                    <span>{type.size_mb.toFixed(2)} Mo</span>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
+                                {!isScanning && scanResult?.supported_types?.length === 0 && (
+                                    <p className="text-sm text-gray-500 italic">{t('wizard.source.noSupportedFiles')}</p>
+                                )}
                             </div>
                         )}
-                        {!isScanning && scanResult?.supported_types?.length === 0 && (
-                            <p className="text-sm text-gray-500 italic">{t('wizard.source.noSupportedFiles')}</p>
-                        )}
-                    </div>
+                    </>
                 )}
             </div>
-
-
         </div>
     );
 }

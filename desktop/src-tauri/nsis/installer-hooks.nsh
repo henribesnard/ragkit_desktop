@@ -20,8 +20,11 @@
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  ; Ask user if they want to remove their data
-  MessageBox MB_YESNO|MB_ICONQUESTION "Voulez-vous également supprimer toutes les données locales et la configuration de LOKO (dossier .loko) ?" IDNO KeepData
+  ; Ask user if they want to remove their data (bilingual)
+  StrCmp $LANGUAGE 1033 0 +3
+    MessageBox MB_YESNO|MB_ICONQUESTION "Do you also want to delete all local data and LOKO configuration (.loko folder)?" IDNO KeepData
+    Goto +2
+    MessageBox MB_YESNO|MB_ICONQUESTION "Voulez-vous également supprimer toutes les données locales et la configuration de LOKO (dossier .loko) ?" IDNO KeepData
 
   ; Delete the .loko profile folder
   RMDir /r "$PROFILE\.loko"
