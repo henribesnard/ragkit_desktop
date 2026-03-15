@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use futures_util::StreamExt;
 use tauri::{AppHandle, Emitter, Manager, Window};
@@ -6,15 +7,19 @@ use serde::{Deserialize, Serialize};
 use crate::backend::{request, BackendState};
 use reqwest::Method;
 
-static CHAT_STREAM_STOP: AtomicBool = AtomicBool::new(false);
-
 fn _encode_query_value(value: &str) -> String {
-    value
-        .replace('%', "%25")
-        .replace(' ', "%20")
-        .replace('&', "%26")
-        .replace('?', "%3F")
-        .replace('=', "%3D")
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(byte as char);
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", byte));
+            }
+        }
+    }
+    encoded
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -136,7 +141,7 @@ pub async fn get_documents(app: AppHandle) -> Result<serde_json::Value, String> 
 
 #[tauri::command]
 pub async fn update_document_metadata(app: AppHandle, id: String, metadata: serde_json::Value) -> Result<serde_json::Value, String> {
-    let endpoint = format!("/api/ingestion/documents/{}/metadata", id);
+    let endpoint = format!("/api/ingestion/documents/{}/metadata", _encode_query_value(&id));
     request(Method::PUT, &endpoint, Some(metadata), &app).await
 }
 
@@ -225,8 +230,8 @@ pub async fn delete_secret(app: AppHandle, key_name: String) -> Result<serde_jso
 pub async fn test_embedding_connection(app: AppHandle, provider: Option<String>, model: Option<String>) -> Result<serde_json::Value, String> {
     let mut endpoint = String::from("/api/embedding/test-connection");
     let mut query = vec![];
-    if let Some(p) = provider { query.push(format!("provider={}", p)); }
-    if let Some(m) = model { query.push(format!("model={}", m)); }
+    if let Some(p) = provider { query.push(format!("provider={}", _encode_query_value(&p))); }
+    if let Some(m) = model { query.push(format!("model={}", _encode_query_value(&m))); }
     if !query.is_empty() { endpoint.push('?'); endpoint.push_str(&query.join("&")); }
     request(Method::POST, &endpoint, None, &app).await
 }
@@ -244,7 +249,7 @@ pub async fn get_embedding_environment(app: AppHandle) -> Result<serde_json::Val
 
 #[tauri::command]
 pub async fn get_available_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
-    let endpoint = format!("/api/embedding/models?provider={}", provider);
+    let endpoint = format!("/api/embedding/models?provider={}", _encode_query_value(&provider));
     request(Method::GET, &endpoint, None, &app).await
 }
 
@@ -335,7 +340,7 @@ pub async fn get_ingestion_log(app: AppHandle, version: Option<String>) -> Resul
 
 #[tauri::command]
 pub async fn restore_ingestion_version(app: AppHandle, version: String) -> Result<serde_json::Value, String> {
-    let endpoint = format!("/api/ingestion/history/{}/restore", version);
+    let endpoint = format!("/api/ingestion/history/{}/restore", _encode_query_value(&version));
     request(Method::POST, &endpoint, None, &app).await
 }
 
@@ -471,7 +476,7 @@ pub async fn test_rerank(app: AppHandle, query: serde_json::Value) -> Result<ser
 
 #[tauri::command]
 pub async fn get_rerank_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
-    let endpoint = format!("/api/rerank/models?provider={}", provider);
+    let endpoint = format!("/api/rerank/models?provider={}", _encode_query_value(&provider));
     request(Method::GET, &endpoint, None, &app).await
 }
 
@@ -499,7 +504,7 @@ pub async fn test_llm_connection(app: AppHandle) -> Result<serde_json::Value, St
 
 #[tauri::command]
 pub async fn get_llm_models(app: AppHandle, provider: String) -> Result<serde_json::Value, String> {
-    let endpoint = format!("/api/llm/models?provider={}", provider);
+    let endpoint = format!("/api/llm/models?provider={}", _encode_query_value(&provider));
     request(Method::GET, &endpoint, None, &app).await
 }
 
@@ -529,15 +534,24 @@ pub async fn chat(app: AppHandle, query: serde_json::Value) -> Result<serde_json
 
 #[tauri::command]
 pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<String, String> {
-    CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
-
     let app = window.app_handle();
     let state = app.state::<BackendState>();
+
+    // Create a per-stream cancel token so stopping one stream doesn't affect others
+    let cancel_token = Arc::new(AtomicBool::new(false));
+    {
+        let mut guard = state.chat_stream_cancel.lock().map_err(|e| e.to_string())?;
+        *guard = cancel_token.clone();
+    }
+
     let port = (*state.port.lock().map_err(|e| e.to_string())?)
         .ok_or_else(|| "Backend not ready".to_string())?;
     let url = format!("http://127.0.0.1:{}/api/chat/stream", port);
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
     let response = client
         .post(&url)
         .json(&query)
@@ -554,7 +568,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
     let mut buffer = String::new();
 
     while let Some(next) = stream.next().await {
-        if CHAT_STREAM_STOP.load(Ordering::SeqCst) {
+        if cancel_token.load(Ordering::SeqCst) {
             break;
         }
         let bytes = match next {
@@ -564,7 +578,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
                 window
                     .emit("chat-stream-done", serde_json::json!({ "error": error_msg }))
                     .ok();
-                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                cancel_token.store(false, Ordering::SeqCst);
                 return Ok("stream_error".to_string());
             }
         };
@@ -572,7 +586,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
 
         while let Some(delim_pos) = buffer.find("\n\n") {
             let block = buffer[..delim_pos].to_string();
-            buffer = buffer[(delim_pos + 2)..].to_string();
+            buffer.drain(..delim_pos + 2);
 
             let mut event_name = String::from("message");
             let mut data_lines: Vec<String> = Vec::new();
@@ -607,7 +621,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
                 window
                     .emit("chat-stream-done", parsed)
                     .map_err(|e| e.to_string())?;
-                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                cancel_token.store(false, Ordering::SeqCst);
                 return Ok("stream_completed".to_string());
             } else if event_name == "status" {
                 let parsed: serde_json::Value = serde_json::from_str(&data_payload)
@@ -621,17 +635,17 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
                 window
                     .emit("chat-stream-done", parsed)
                     .map_err(|e| e.to_string())?;
-                CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+                cancel_token.store(false, Ordering::SeqCst);
                 return Ok("stream_error".to_string());
             }
         }
     }
 
-    if CHAT_STREAM_STOP.load(Ordering::SeqCst) {
+    if cancel_token.load(Ordering::SeqCst) {
         window
             .emit("chat-stream-done", serde_json::json!({"stopped": true}))
             .map_err(|e| e.to_string())?;
-        CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+        cancel_token.store(false, Ordering::SeqCst);
         return Ok("stream_stopped".to_string());
     }
 
@@ -639,13 +653,15 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
     window
         .emit("chat-stream-done", serde_json::json!({"error": "Connection to backend lost unexpectedly"}))
         .ok();
-    CHAT_STREAM_STOP.store(false, Ordering::SeqCst);
+    cancel_token.store(false, Ordering::SeqCst);
     Ok("stream_ended".to_string())
 }
 
 #[tauri::command]
-pub async fn chat_stream_stop() -> Result<(), String> {
-    CHAT_STREAM_STOP.store(true, Ordering::SeqCst);
+pub async fn chat_stream_stop(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<BackendState>();
+    let token = state.chat_stream_cancel.lock().map_err(|e| e.to_string())?.clone();
+    token.store(true, Ordering::SeqCst);
     Ok(())
 }
 
@@ -858,7 +874,11 @@ pub async fn export_query_logs(app: AppHandle, filters: serde_json::Value) -> Re
         .ok_or_else(|| "Backend not ready".to_string())?;
     let url = format!("http://127.0.0.1:{}{}", port, endpoint);
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| e.to_string())?;
     let response = client.get(url).send().await.map_err(|e| e.to_string())?;
     let status = response.status();
     if !status.is_success() {

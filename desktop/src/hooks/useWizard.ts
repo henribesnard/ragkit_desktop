@@ -118,7 +118,6 @@ export function useWizard() {
             return true;
         } catch (e) {
             console.error("Wizard completion failed", e);
-            alert("Erreur lors de la sauvegarde: " + e);
             return false;
         }
     };

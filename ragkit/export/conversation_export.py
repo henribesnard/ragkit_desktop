@@ -33,9 +33,8 @@ class ConversationExporter:
         return "\n".join(lines)
 
     def to_pdf(self, messages: list[dict[str, Any]], profile: str, path: str) -> str:
-        """Export to PDF by writing markdown to an .md file (PDF generation requires weasyprint)."""
+        """Export as Markdown (PDF generation not available)."""
         md_content = self.to_markdown(messages, profile)
-        # Write as markdown file with .pdf extension replaced
         md_path = path.replace(".pdf", ".md") if path.endswith(".pdf") else path
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(md_content)

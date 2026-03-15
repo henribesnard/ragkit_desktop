@@ -22,6 +22,9 @@ async def get_expertise():
 async def set_expertise(payload: dict[str, Any]):
     runtime.ensure_background_tasks()
     level = payload.get("level", "simple")
+    if level not in ("simple", "intermediate", "expert"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Invalid expertise level: {level}")
     settings = settings_store.load_settings()
     
     general_payload = settings.general if isinstance(settings.general, dict) else {}

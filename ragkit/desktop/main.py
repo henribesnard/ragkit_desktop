@@ -42,7 +42,7 @@ def setup_logging() -> None:
     )
 
 APP_NAME = "LOKO"
-VERSION = "1.4.33"
+VERSION = "1.4.34"
 
 
 def create_app() -> FastAPI:
@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:1420", "https://tauri.localhost", "http://tauri.localhost"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -90,7 +90,7 @@ def create_app() -> FastAPI:
     @app.post("/shutdown")
     async def shutdown():
         logger.info("Shutdown requested")
-        asyncio.get_event_loop().call_later(0.5, lambda: os._exit(0))
+        asyncio.get_event_loop().call_later(0.5, lambda: sys.exit(0))
         return {"ok": True}
     
     return app

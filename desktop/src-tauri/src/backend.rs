@@ -15,6 +15,7 @@ pub struct BackendState {
     pub port: Mutex<Option<u16>>,
     pub child: Mutex<Option<ChildProcess>>,
     pub client: Client,
+    pub chat_stream_cancel: Mutex<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
 
 pub enum ChildProcess {
@@ -30,22 +31,23 @@ pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
 
     // Update state
     if let Some(state) = app.try_state::<BackendState>() {
-        *state.port.lock().unwrap() = Some(port);
+        *state.port.lock().unwrap_or_else(|e| e.into_inner()) = Some(port);
     }
 
     #[cfg(debug_assertions)]
     {
         tracing::info!("Starting backend in DEV mode (python -m ...)");
         let mut cmd = StdCommand::new("python");
-        // We assume we are running from src-tauri, so we go up twice to find the root
-        // Windows might need "python" or "python3" depending on env. 
-        // Assuming "python" is available in PATH.
-        cmd.current_dir("../../") 
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let project_root = manifest_dir.parent().unwrap().parent().unwrap();
+        cmd.current_dir(project_root)
            .args(["-m", "ragkit.desktop.main", "--port", &port.to_string()]);
-        
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
         let child = cmd.spawn()?;
         if let Some(state) = app.try_state::<BackendState>() {
-            *state.child.lock().unwrap() = Some(ChildProcess::Std(child));
+            *state.child.lock().unwrap_or_else(|e| e.into_inner()) = Some(ChildProcess::Std(child));
         }
     }
 
@@ -55,7 +57,7 @@ pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
         let sidecar = app.shell().sidecar("ragkit-backend")?;
         let (_rx, child) = sidecar.args(["--port", &port.to_string()]).spawn()?;
         if let Some(state) = app.try_state::<BackendState>() {
-            *state.child.lock().unwrap() = Some(ChildProcess::Sidecar(child));
+            *state.child.lock().unwrap_or_else(|e| e.into_inner()) = Some(ChildProcess::Sidecar(child));
         }
     }
 
@@ -68,7 +70,8 @@ pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
 
 async fn wait_for_backend(port: u16) -> Result<(), String> {
     let url = format!("http://127.0.0.1:{}/health", port);
-    let client = Client::builder().timeout(Duration::from_secs(1)).build().unwrap();
+    let client = Client::builder().timeout(Duration::from_secs(1)).build()
+        .map_err(|e| format!("Failed to build health check client: {}", e))?;
     
     for i in 0..30 {
         tracing::debug!("Health check attempt {}...", i + 1);
@@ -87,19 +90,19 @@ pub async fn stop_backend(app: &AppHandle) {
     let mut port_opt = None;
 
     if let Some(state) = app.try_state::<BackendState>() {
-        port_opt = *state.port.lock().unwrap();
+        port_opt = *state.port.lock().unwrap_or_else(|e| e.into_inner());
+        // Reset port immediately so request() returns "Backend not ready"
+        *state.port.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 
     if let Some(port) = port_opt {
         // Try graceful shutdown via API
-        let client = Client::builder()
-            .timeout(Duration::from_secs(3))
-            .build()
-            .unwrap();
-        let _ = client
-            .post(format!("http://127.0.0.1:{}/shutdown", port))
-            .send()
-            .await;
+        if let Ok(client) = Client::builder().timeout(Duration::from_secs(3)).build() {
+            let _ = client
+                .post(format!("http://127.0.0.1:{}/shutdown", port))
+                .send()
+                .await;
+        }
 
         // Give the backend a moment to exit cleanly
         tokio::time::sleep(Duration::from_secs(1)).await;
@@ -109,7 +112,7 @@ pub async fn stop_backend(app: &AppHandle) {
 
     // Force kill the child process
     if let Some(state) = app.try_state::<BackendState>() {
-         let mut child_guard = state.child.lock().unwrap();
+         let mut child_guard = state.child.lock().unwrap_or_else(|e| e.into_inner());
          if let Some(child) = child_guard.take() {
              tracing::info!("Force killing backend process...");
              match child {
@@ -150,10 +153,13 @@ pub async fn monitor_backend(app: AppHandle) {
     // Wait after startup before starting to monitor
     tokio::time::sleep(Duration::from_secs(30)).await;
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(3))
-        .build()
-        .unwrap();
+    let client = match Client::builder().timeout(Duration::from_secs(3)).build() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::error!("Failed to build watchdog client: {}", e);
+            return;
+        }
+    };
     let mut consecutive_failures: u32 = 0;
     // Allow up to 6 failures (6 × 15s = 90s) before restarting.
     // Heavy operations like loading ML models (reranker, embeddings) can
@@ -165,7 +171,7 @@ pub async fn monitor_backend(app: AppHandle) {
 
         let port_value = app
             .try_state::<BackendState>()
-            .map(|s| *s.port.lock().unwrap());
+            .map(|s| *s.port.lock().unwrap_or_else(|e| e.into_inner()));
 
         let Some(Some(p)) = port_value else { continue };
         let url = format!("http://127.0.0.1:{}/health", p);
@@ -215,7 +221,7 @@ pub async fn request(
 ) -> Result<serde_json::Value, String> {
     let port = {
         let state = app.state::<BackendState>();
-        let port_value = *state.port.lock().unwrap();
+        let port_value = *state.port.lock().map_err(|e| format!("Port lock poisoned: {}", e))?;
         port_value
     };
 

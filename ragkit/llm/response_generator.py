@@ -166,7 +166,7 @@ class ResponseGenerator:
                     {"id": item["id"], "title": item["title"], "page": item["page"], "score": item["score"]}
                     for item in sources
                 ],
-                prompt_preview=(messages[0].content + "\n\n" + messages[1].content)[:4000],
+                prompt_preview=(messages[0].content + "\n\n" + (messages[1].content if len(messages) > 1 else ""))[:4000],
             )
 
         return RAGResponse(content=response.content, sources=sources, debug=debug)
@@ -240,7 +240,7 @@ class ResponseGenerator:
                         {"id": item["id"], "title": item["title"], "page": item["page"], "score": item["score"]}
                         for item in sources
                     ],
-                    prompt_preview=(messages[0].content + "\n\n" + messages[1].content)[:4000],
+                    prompt_preview=(messages[0].content + "\n\n" + (messages[1].content if len(messages) > 1 else ""))[:4000],
                 )
             )
         yield {

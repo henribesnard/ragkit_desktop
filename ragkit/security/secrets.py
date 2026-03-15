@@ -7,8 +7,11 @@ import getpass
 import hashlib
 import hmac
 import json
+import logging
 import platform
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SERVICE_NAME = "ragkit"
 CREDENTIALS_FILE = Path.home() / ".loko" / "credentials.enc"
@@ -89,10 +92,11 @@ class SecretsManager:
             data, needs_migration = self._decrypt_payload(blob)
             # Automatically migrate legacy XOR payloads to Fernet.
             if needs_migration:
+                logger.warning("Migrating credentials from legacy XOR to Fernet encryption")
                 try:
                     self._save_file_store(data)
                 except Exception:
-                    pass
+                    logger.warning("Failed to migrate credentials to Fernet encryption")
             return data
         except Exception:
             return {}

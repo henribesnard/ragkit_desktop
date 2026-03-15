@@ -261,7 +261,7 @@ class IngestionRuntime:
                     self._pending_auto_trigger_at = None
                     self._last_auto_signature = None
             except Exception:
-                # Keep watcher loop resilient and try again.
+                logger.exception("Auto-ingestion loop error")
                 await asyncio.sleep(30)
                 continue
 
@@ -357,7 +357,7 @@ class IngestionRuntime:
 
     async def _run(self, incremental: bool) -> None:
         self.ensure_background_tasks()
-        settings = settings_store.load_settings()
+        settings = await asyncio.to_thread(settings_store.load_settings)
         if not settings.ingestion:
             logger.warning("Ingestion skipped: no ingestion config in settings")
             self.progress.status = "failed"
@@ -499,7 +499,7 @@ class IngestionRuntime:
 
                     points = [
                         VectorPoint(
-                            id=hashlib.sha1(f"{doc.id}:{i}:{chunk.content}".encode("utf-8")).hexdigest(),
+                            id=hashlib.sha256(f"{doc.id}:{i}:{chunk.content}".encode("utf-8")).hexdigest(),
                             vector=outputs[i].vector,
                             payload={
                                 "doc_id": doc.id,

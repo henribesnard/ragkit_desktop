@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +13,21 @@ from ragkit.desktop.settings_store import load_settings, save_settings
 
 router = APIRouter(prefix="/api", tags=["security"])
 logger = logging.getLogger(__name__)
+
+
+def _validate_path(path_str: str) -> Path:
+    """Resolve a user-supplied path and ensure it stays within the user's home directory.
+
+    Raises HTTPException(400) for path traversal attempts.
+    """
+    resolved = Path(path_str).expanduser().resolve()
+    home = Path.home().resolve()
+    if not str(resolved).startswith(str(home)):
+        raise HTTPException(
+            status_code=400,
+            detail="Path must be within the user's home directory",
+        )
+    return resolved
 
 _SECURITY_CONFIG: SecurityConfig | None = None
 
@@ -117,6 +133,7 @@ async def export_config(payload: dict[str, str]) -> dict[str, Any]:
     path = payload.get("path", "")
     if not path:
         raise HTTPException(status_code=400, detail="Export path is required")
+    _validate_path(path)
 
     from ragkit.config.config_export import ConfigExporter
 
@@ -132,6 +149,7 @@ async def validate_import(payload: dict[str, str]) -> dict[str, Any]:
     path = payload.get("path", "")
     if not path:
         raise HTTPException(status_code=400, detail="Import path is required")
+    _validate_path(path)
 
     from ragkit.config.config_export import ConfigImporter
 
@@ -148,6 +166,7 @@ async def import_config(payload: dict[str, str]) -> dict[str, bool]:
     mode = payload.get("mode", "replace")
     if not path:
         raise HTTPException(status_code=400, detail="Import path is required")
+    _validate_path(path)
 
     from ragkit.config.config_export import ConfigImporter
 
@@ -172,6 +191,7 @@ async def export_conversation(payload: dict[str, str]) -> dict[str, Any]:
     conversation_id = payload.get("conversation_id")
     if not path:
         raise HTTPException(status_code=400, detail="Export path is required")
+    _validate_path(path)
 
     from ragkit.desktop.api.chat import _get_conversation_memory
     from ragkit.export.conversation_export import ConversationExporter

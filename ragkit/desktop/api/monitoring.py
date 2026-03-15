@@ -348,10 +348,4 @@ async def submit_feedback(payload: FeedbackSubmission) -> dict[str, bool]:
     updated = get_query_logger().set_feedback(payload.query_id, payload.feedback)
     if not updated:
         raise HTTPException(status_code=404, detail="Query log not found.")
-    try:
-        from ragkit.desktop.api import chat as chat_api
-
-        chat_api._get_conversation_memory().set_feedback(payload.query_id, payload.feedback)
-    except Exception:
-        pass
     return {"success": True}

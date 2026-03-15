@@ -370,7 +370,7 @@ export function Chat() {
           ) : (
             <div className="flex flex-col" style={{ gap: 24 }}>
               {/* History messages */}
-              {history.messages.map((message: any, index: number) => (
+              {history.messages.map((message, index) => (
                 <div
                   key={`${message.timestamp}-${index}`}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}

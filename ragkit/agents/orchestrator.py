@@ -624,9 +624,11 @@ class Orchestrator:
     def _deduplicate_results(self, results: list[Any]) -> list[Any]:
         selected_by_chunk: dict[str, Any] = {}
         score_by_chunk: dict[str, float] = {}
+        no_id_results: list[Any] = []
         for item in results:
             chunk_id = str(getattr(item, "chunk_id", "") or "")
             if not chunk_id:
+                no_id_results.append(item)
                 continue
             score = float(getattr(item, "rerank_score", None) or getattr(item, "score", 0.0))
             previous_score = score_by_chunk.get(chunk_id)
@@ -638,4 +640,4 @@ class Orchestrator:
             key=lambda item: float(getattr(item, "rerank_score", None) or getattr(item, "score", 0.0)),
             reverse=True,
         )
-        return deduped
+        return deduped + no_id_results

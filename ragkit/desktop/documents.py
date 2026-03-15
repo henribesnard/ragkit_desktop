@@ -271,7 +271,7 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
 
             parsed_documents.append(
                 DocumentInfo(
-                    id=hashlib.sha1(relative_path.encode("utf-8")).hexdigest(),
+                    id=hashlib.sha256(relative_path.encode("utf-8")).hexdigest(),
                     filename=file_path.name,
                     file_path=relative_path,
                     file_type=file_type,
@@ -496,7 +496,7 @@ def _detect_language(text: str) -> str | None:
 
 def _derive_title_description(text: str, fallback_title: str, extracted_title: str | None) -> tuple[str, str | None]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    title = fallback_title  # Default to filename instead of document contents
+    title = extracted_title or fallback_title
 
     if len(title) > 160:
         title = title[:157] + "..."

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 from pathlib import Path
 
 from ragkit.config.embedding_schema import CacheBackend, CacheStats
@@ -41,7 +42,8 @@ class DiskEmbeddingCache(BaseEmbeddingCache):
 
     def __init__(self) -> None:
         self.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.DB_PATH))
+        self._lock = threading.Lock()
+        self._conn = sqlite3.connect(str(self.DB_PATH), check_same_thread=False)
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS embeddings (
@@ -56,25 +58,29 @@ class DiskEmbeddingCache(BaseEmbeddingCache):
 
     def get(self, text: str, model_id: str) -> list[float] | None:
         key = self.cache_key(text, model_id)
-        cur = self._conn.execute("SELECT vector FROM embeddings WHERE key = ?", (key,))
-        row = cur.fetchone()
+        with self._lock:
+            cur = self._conn.execute("SELECT vector FROM embeddings WHERE key = ?", (key,))
+            row = cur.fetchone()
         return json.loads(row[0]) if row else None
 
     def put(self, text: str, model_id: str, vector: list[float]) -> None:
         key = self.cache_key(text, model_id)
-        self._conn.execute(
-            "INSERT OR REPLACE INTO embeddings(key, model_id, vector) VALUES (?, ?, ?)",
-            (key, model_id, json.dumps(vector)),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO embeddings(key, model_id, vector) VALUES (?, ?, ?)",
+                (key, model_id, json.dumps(vector)),
+            )
+            self._conn.commit()
 
     def clear(self) -> None:
-        self._conn.execute("DELETE FROM embeddings")
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("DELETE FROM embeddings")
+            self._conn.commit()
 
     def stats(self, model_id: str | None = None) -> CacheStats:
-        cur = self._conn.execute("SELECT COUNT(*) FROM embeddings")
-        entries = int(cur.fetchone()[0])
+        with self._lock:
+            cur = self._conn.execute("SELECT COUNT(*) FROM embeddings")
+            entries = int(cur.fetchone()[0])
         size_mb = self.DB_PATH.stat().st_size / (1024 * 1024) if self.DB_PATH.exists() else 0.0
         return CacheStats(entries=entries, size_mb=round(size_mb, 3), backend="disk", model_id=model_id)
 

@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+const MAX_SETUP_RETRIES = 30;
+
 export function useSetupStatus() {
     const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         let cancelled = false;
+        let attempt = 0;
 
         const checkStatus = async () => {
             try {
@@ -15,8 +18,8 @@ export function useSetupStatus() {
                     setHasCompletedSetup(!!res.setup_completed);
                 }
             } catch {
-                // Backend not ready yet, retry after delay
-                if (!cancelled) {
+                attempt += 1;
+                if (!cancelled && attempt < MAX_SETUP_RETRIES) {
                     setTimeout(checkStatus, 1000);
                     return;
                 }

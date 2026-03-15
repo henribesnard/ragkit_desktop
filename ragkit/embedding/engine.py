@@ -87,7 +87,11 @@ class EmbeddingEngine:
         use_fallback = needs_api_key and not self.api_key
 
         if use_fallback:
-            vector = self._hashed_lexical_embed(text, self.resolve_dimensions())
+            dims = self.config.dimensions or 768
+            model = get_model_info(self.config.provider, self.config.model)
+            if model:
+                dims = model.dimensions_default
+            vector = self._hashed_lexical_embed(text, dims)
         elif provider == EmbeddingProvider.OPENAI:
             vector = self._embed_openai(text)
         elif provider == EmbeddingProvider.OLLAMA:
@@ -101,7 +105,8 @@ class EmbeddingEngine:
         elif provider == EmbeddingProvider.HUGGINGFACE:
             vector = self._embed_huggingface(text)
         else:
-            vector = self._hashed_lexical_embed(text, self.resolve_dimensions())
+            fallback_dims = self.config.dimensions or 768
+            vector = self._hashed_lexical_embed(text, fallback_dims)
 
         if self.config.normalize:
             vector = _l2_normalize(vector)

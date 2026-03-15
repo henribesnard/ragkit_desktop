@@ -7,12 +7,10 @@ use std::sync::Mutex;
 use backend::BackendState;
 
 fn get_log_dir() -> std::path::PathBuf {
-    #[cfg(target_os = "windows")]
-    let home = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\".to_string());
-    #[cfg(not(target_os = "windows"))]
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    
-    std::path::PathBuf::from(home).join(".loko").join("logs")
+    dirs::home_dir()
+        .unwrap_or_else(|| std::env::temp_dir())
+        .join(".loko")
+        .join("logs")
 }
 
 fn main() {
@@ -37,6 +35,9 @@ fn main() {
                 .timeout(std::time::Duration::from_secs(300))
                 .build()
                 .expect("Failed to build reqwest client"),
+            chat_stream_cancel: Mutex::new(std::sync::Arc::new(
+                std::sync::atomic::AtomicBool::new(false),
+            )),
         })
         .setup(|app| {
             let app_handle = app.handle().clone();
