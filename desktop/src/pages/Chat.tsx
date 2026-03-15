@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUp, FileText } from "lucide-react";
+import { ArrowUp, FileText, Loader2 } from "lucide-react";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { useParams } from "react-router-dom";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
@@ -587,6 +587,19 @@ export function Chat() {
           padding: "16px 20px 24px",
         }}
       >
+        {isIngesting && (
+          <div className="mb-2 p-3 rounded-lg flex items-center gap-2 text-sm"
+            style={{
+              background: "var(--status-warning-bg, #fffbeb)",
+              border: "1px solid var(--status-warning-border, #fde68a)",
+              color: "var(--status-warning-text, #92400e)",
+            }}
+          >
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+            {t("chat.ingestionInProgress")}
+          </div>
+        )}
+
         <form
             onSubmit={onSearch}
             className="relative"
@@ -619,15 +632,15 @@ export function Chat() {
             {/* Send Button */}
             <button
               type="submit"
-              disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled}
+              disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
               className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
               style={{
                 width: 36,
                 height: 36,
                 borderRadius: "var(--radius-full)",
-                background: query.trim() && chatReady.ready ? "var(--primary-500)" : "var(--bg-hover)",
-                color: query.trim() && chatReady.ready ? "white" : "var(--text-tertiary)",
-                cursor: query.trim() && chatReady.ready ? "pointer" : "default",
+                background: query.trim() && chatReady.ready && !isIngesting ? "var(--primary-500)" : "var(--bg-hover)",
+                color: query.trim() && chatReady.ready && !isIngesting ? "white" : "var(--text-tertiary)",
+                cursor: query.trim() && chatReady.ready && !isIngesting ? "pointer" : "default",
               }}
             >
               {isStreaming ? (

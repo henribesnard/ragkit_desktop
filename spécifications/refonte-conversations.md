@@ -1,7 +1,8 @@
 # Plan de refonte - Gestion des conversations LOKO
 
 **Date** : 9 mars 2026
-**Statut** : A implementer
+**Derniere revue** : 14 mars 2026
+**Statut** : Termine
 **Objectif** : Fiabiliser la persistence, la recuperation et l'affichage des conversations de bout en bout.
 
 ---
@@ -10,29 +11,29 @@
 
 ### Symptomes rapportes
 
-| # | Symptome | Frequence |
-|---|----------|-----------|
-| S1 | Le contenu disparait quand on navigue et revient | Systematique |
-| S2 | Toutes les conversations perdues apres fermeture/reouverture | Systematique |
-| S3 | La sidebar clignote pendant l'ingestion | Frequent |
-| S4 | Aucun message pour indiquer que le chat est indisponible pendant l'ingestion | Permanent |
+| # | Symptome | Frequence | Statut |
+|---|----------|-----------|--------|
+| S1 | Le contenu disparait quand on navigue et revient | Systematique | **Corrige** (C1, C2) |
+| S2 | Toutes les conversations perdues apres fermeture/reouverture | Systematique | **Corrige** (C5, C7, C8) |
+| S3 | La sidebar clignote pendant l'ingestion | Frequent | **Corrige** (C3, C10) |
+| S4 | Aucun message pour indiquer que le chat est indisponible pendant l'ingestion | Permanent | **Corrige** (C12) |
 
 ### Causes racines confirmees (audit complet backend + frontend)
 
-| ID | Cause | Fichier(s) | Gravite |
-|----|-------|------------|---------|
-| C1 | `useConversation.ts` remet `history = []` avant de re-fetcher | `useConversation.ts:116` | Critique |
-| C2 | `key={id}` sur Chat detruit et remonte tout le composant a chaque navigation | `App.tsx:78` | Critique |
-| C3 | `refreshList()` met `loading=false` des la 1ere erreur, l'UI montre une liste vide | `useConversations.tsx:79` | Critique |
-| C4 | L'effet de recovery ne retente qu'une seule fois (`recoveryAttemptedRef`) | `Chat.tsx:225-240` | Eleve |
-| C5 | `_persist_new_messages()` execute APRES le stream (risque de perte si connexion coupee) | `chat.py:212` | Eleve |
-| C6 | `update_summary_if_needed()` exception bloque la persistance | `orchestrator.py:119,295` | Eleve |
-| C7 | `_MEMORY_CACHE` sans verrou (race condition sur eviction LRU) | `chat.py:65-72` | Moyen |
-| C8 | `_CONVERSATION_MEMORY` singleton obsolete peut devenir incoherent | `chat.py:33,61-63` | Moyen |
-| C9 | `total_messages` dans `conversations` table pas decrement apres truncation summary | `memory.py:137` | Moyen |
-| C10 | Timestamps identiques dans `updateConversationActivity()` causent tri instable | `useConversations.tsx:174` | Moyen |
-| C11 | `creating.current` pas reinitialise si ChatPage demonte pendant creation | `App.tsx:23-64` | Moyen |
-| C12 | Pas de message pour l'utilisateur pendant l'ingestion | `Chat.tsx` | UX |
+| ID | Cause | Fichier(s) | Gravite | Statut |
+|----|-------|------------|---------|--------|
+| C1 | `useConversation.ts` remet `history = []` avant de re-fetcher | `useConversation.ts` | Critique | **Corrige** |
+| C2 | `key={id}` sur Chat detruit et remonte tout le composant a chaque navigation | `App.tsx` | Critique | **Corrige** |
+| C3 | `refreshList()` met `loading=false` des la 1ere erreur, l'UI montre une liste vide | `useConversations.tsx` | Critique | **Corrige** |
+| C4 | L'effet de recovery ne retente qu'une seule fois (`recoveryAttemptedRef`) | `Chat.tsx:240-262` | Eleve | **Corrige** (via `lastRecoveredIdRef`) |
+| C5 | `_persist_new_messages()` execute APRES le stream (risque de perte si connexion coupee) | `chat.py:220` | Eleve | **Non-probleme** (persistance deja avant le yield) |
+| C6 | `update_summary_if_needed()` exception bloque la persistance | `orchestrator.py:121,300` | Eleve | **Corrige** (try/catch + logger ajoute le 14/03) |
+| C7 | `_MEMORY_CACHE` sans verrou (race condition sur eviction LRU) | `chat.py:33,60` | Moyen | **Corrige** (`_CACHE_LOCK`) |
+| C8 | `_CONVERSATION_MEMORY` singleton obsolete peut devenir incoherent | `chat.py` | Moyen | **Corrige** (singleton supprime) |
+| C9 | `total_messages` dans `conversations` table pas decrement apres truncation summary | `memory.py:137` | Moyen | **Benin** (truncation in-memory uniquement) |
+| C10 | Timestamps identiques dans `updateConversationActivity()` causent tri instable | `useConversations.tsx:44-50` | Moyen | **Corrige** (tie-breaker par ID) |
+| C11 | `creating.current` pas reinitialise si ChatPage demonte pendant creation | `App.tsx:23-65` | Moyen | **Corrige** (bloc `finally`) |
+| C12 | Pas de message pour l'utilisateur pendant l'ingestion | `Chat.tsx` | UX | **Corrige** |
 
 ---
 
@@ -48,439 +49,138 @@
 
 ## 3. Changements backend (Python/FastAPI)
 
-### 3.1 Persister AVANT le done event (C5)
+### 3.1 Persister AVANT le done event (C5) — NON-PROBLEME
 
 **Fichier** : `ragkit/desktop/api/chat.py`
 
-Actuellement `_persist_new_messages()` est appele dans le `event_generator()` quand il recoit `event_type == "done"`. Mais si la connexion HTTP est coupee avant, les messages sont perdus.
+**Constat** : La persistance (`_persist_new_messages`) est deja appelee AVANT le yield du done event (ligne 220), dans le bloc `if event_type == "done"`. Pour le endpoint non-streaming `/chat`, la persistance est aussi avant le return (ligne 194). Aucun changement necessaire.
 
-**Changement** : Deplacer la persistance dans `orchestrator.stream()` AVANT le yield du done event.
-
-```python
-# orchestrator.py - dans stream(), AVANT le yield done
-self._append_memory(...)
-await self.memory.update_summary_if_needed()
-# Persister ICI, pas dans chat.py
-self._persist_callback(self._new_messages, self.memory.state.summary)
-
-yield {"type": "done", ...}
-```
-
-**Alternative plus simple** : Garder la persistance dans `chat.py` mais la deplacer DANS le bloc `if event_type == "done"` AVANT le yield SSE, en transformant le generateur :
-
-```python
-# chat.py - event_generator()
-if event_type == "done":
-    # Persister AVANT d'envoyer le done au client
-    _persist_new_messages(cid, orchestrator._new_messages, orchestrator.memory.state.summary)
-    # Puis seulement envoyer le done
-    yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
-```
-
-C'est deja le cas actuellement (la persistance est avant le yield), mais il faut s'assurer que c'est bien le cas et le documenter.
-
-**Pour le endpoint non-streaming `/chat`** : Persister avant le return (deja le cas, confirmer).
-
-### 3.2 Proteger update_summary_if_needed (C6)
+### 3.2 Proteger update_summary_if_needed (C6) — CORRIGE
 
 **Fichier** : `ragkit/agents/orchestrator.py`
 
-```python
-# Dans process() et stream(), entourer l'appel :
-try:
-    await self.memory.update_summary_if_needed()
-except Exception:
-    logger.exception("Summary update failed, continuing")
-    # Ne pas crasher - les messages sont deja captures dans _new_messages
-```
+Le try/catch est en place aux lignes 121-123 et 300-302.
 
-### 3.3 Ajouter un verrou sur _MEMORY_CACHE (C7)
+**Correctif du 14/03** : Le fichier utilisait `logger.exception(...)` sans avoir importe `logging` ni cree de `logger`. Ajoute `import logging` et `logger = logging.getLogger(__name__)` en tete de fichier. Sans ce correctif, toute exception dans `update_summary_if_needed()` aurait provoque un `NameError` secondaire, annulant la protection du try/catch.
+
+### 3.3 Ajouter un verrou sur _MEMORY_CACHE (C7) — CORRIGE
 
 **Fichier** : `ragkit/desktop/api/chat.py`
 
-```python
-import threading
+`_CACHE_LOCK = threading.Lock()` (ligne 33) protege toutes les operations sur `_MEMORY_CACHE` dans `_get_conversation_memory()`.
 
-_CACHE_LOCK = threading.Lock()
-
-def _get_conversation_memory(conversation_id: str | None = None) -> ConversationMemory:
-    cid = conversation_id or _DEFAULT_ID
-    with _CACHE_LOCK:
-        if cid in _MEMORY_CACHE:
-            _MEMORY_CACHE[cid] = _MEMORY_CACHE.pop(cid)
-            return _MEMORY_CACHE[cid]
-        # ... chargement depuis SQLite ...
-        _MEMORY_CACHE[cid] = memory
-        return memory
-```
-
-### 3.4 Supprimer le singleton _CONVERSATION_MEMORY (C8)
+### 3.4 Supprimer le singleton _CONVERSATION_MEMORY (C8) — CORRIGE
 
 **Fichier** : `ragkit/desktop/api/chat.py`
 
-Supprimer completement `_CONVERSATION_MEMORY`. Utiliser uniquement `_MEMORY_CACHE`. Le singleton est un vestige de l'ancien code qui cause des incoherences.
+Le singleton `_CONVERSATION_MEMORY` a ete completement supprime. Seul `_MEMORY_CACHE` est utilise.
 
-```python
-# SUPPRIMER :
-_CONVERSATION_MEMORY: ConversationMemory | None = None
-
-# SUPPRIMER les lignes qui le referent (61-63, 89-90, 93-94)
-# Remplacer par : utiliser uniquement _MEMORY_CACHE[cid]
-```
-
-### 3.5 Robustifier _get_conversation_memory (deserialization)
+### 3.5 Robustifier _get_conversation_memory (deserialization) — CORRIGE
 
 **Fichier** : `ragkit/desktop/api/chat.py`
 
-```python
-# Dans _get_conversation_memory(), lors du chargement depuis SQLite :
-messages = []
-for m in messages_data:
-    try:
-        messages.append(ConversationMessage(**m))
-    except (TypeError, ValueError) as exc:
-        logger.warning("Skipping malformed message in %s: %s", cid, exc)
-memory.state = ConversationState(
-    messages=messages,
-    summary=summary,
-    total_messages=len(messages),
-)
-```
+La deserialization des messages est protegee par un try/except par message (lignes 83-89), avec un `logger.warning` pour les messages malformes.
 
-### 3.6 Corriger total_messages apres truncation (C9)
+### 3.6 Corriger total_messages apres truncation (C9) — BENIN
 
 **Fichier** : `ragkit/agents/memory.py`
 
-```python
-# Dans update_summary_if_needed(), apres la truncation :
-messages_to_summarize = self.state.messages[:-self.config.max_history_messages]
-# ... generer le summary ...
-self.state.messages = self.state.messages[-self.config.max_history_messages:]
-# PAS BESOIN de toucher total_messages ici car :
-# - total_messages dans conversations table est incremente par add_message()
-# - La table messages garde TOUS les messages (la truncation est in-memory uniquement)
-# - chat_history() lit depuis la table messages, pas depuis la memoire
-# Donc le compteur en DB reste correct.
-```
+`total_messages` en base reste correct car `add_message()` incremente et on ne supprime jamais de la table messages. La truncation est uniquement in-memory. Le compteur in-memory peut diverger mais n'est pas utilise pour la persistance.
 
-En fait `total_messages` en base reste correct car `add_message()` incremente et on ne supprime jamais de la table messages. Le probleme est uniquement in-memory et n'affecte pas la persistance.
-
-### 3.7 Endpoint chat_history : retourner len(messages) au lieu de total_messages DB
+### 3.7 Endpoint chat_history : retourner len(messages) (C9) — CORRIGE
 
 **Fichier** : `ragkit/desktop/api/chat.py`
 
-```python
-# Dans chat_history() :
-return ConversationHistory(
-    messages=messages,
-    total_messages=len(messages),  # Nombre reel de messages retournes
-    has_summary=bool(conv.get("summary")) if conv else False,
-)
-```
+`chat_history()` retourne `total_messages=len(messages)` (lignes 305-309), soit le nombre reel de messages retournes.
 
 ---
 
 ## 4. Changements frontend (React/TypeScript)
 
-### 4.1 Ne plus remettre l'historique a vide (C1 - CRITIQUE)
+### 4.1 Ne plus remettre l'historique a vide (C1 - CRITIQUE) — CORRIGE
 
 **Fichier** : `desktop/src/hooks/useConversation.ts`
 
-Le probleme principal : `setHistory(emptyHistory)` est appele immediatement quand `conversationId` change, AVANT que le nouveau chargement soit termine. L'utilisateur voit un flash vide.
+L'historique n'est plus remis a vide avant le re-fetch. Un commentaire explicite (ligne 84) documente ce choix. L'ancien contenu reste visible pendant le chargement. Le reset ne se fait que lors d'un changement effectif de `conversationId` (via `lastConversationIdRef`).
 
-**Changement** : Ne pas reset l'historique. Garder l'ancien contenu pendant le chargement.
-
-```typescript
-useEffect(() => {
-    // SUPPRIMER : setHistory(emptyHistory);
-    setError(null);
-
-    if (!conversationId) {
-        setHistory(emptyHistory);  // Reset seulement si pas de conversation
-        setLoading(false);
-        return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const tryLoad = async () => {
-        // ... meme logique de chargement et retry ...
-        // setHistory(result) remplace l'ancien contenu seulement quand le nouveau est pret
-    };
-
-    void tryLoad();
-    return () => { cancelled = true; /* cleanup timers */ };
-}, [conversationId]);
-```
-
-### 4.2 Retirer key={id} sur Chat (C2 - CRITIQUE)
+### 4.2 Retirer key={id} sur Chat (C2 - CRITIQUE) — CORRIGE
 
 **Fichier** : `desktop/src/App.tsx`
 
-Le `key={id}` force React a detruire et recreer tout le composant Chat. C'est trop destructif - on perd tout l'etat local (streaming en cours, historique charge, etc.).
+Le `key={id}` a ete retire (ligne 79 : `return <Chat />`). Un commentaire en tete de fichier documente le choix. Un effect de nettoyage dans `Chat.tsx` (lignes 210-217) reinitialise l'etat du stream quand `urlId` change.
 
-**Changement** : Retirer le key et laisser Chat gerer le changement de conversation en interne.
-
-```tsx
-// AVANT :
-return <Chat key={id} />;
-
-// APRES :
-return <Chat />;
-```
-
-Chat utilisera deja `urlId` de `useParams()` comme dependance dans ses effects. Le `useConversation(urlId)` changera automatiquement quand l'URL change, sans detruire le composant.
-
-**Impact** : Le hook `useChatStream` doit nettoyer son etat quand `urlId` change :
-
-```typescript
-// Dans Chat.tsx, ajouter un effect de nettoyage :
-useEffect(() => {
-    // Quand la conversation change, nettoyer le stream en cours
-    clearStreamState();
-    setActiveQuery(null);
-}, [urlId, clearStreamState]);
-```
-
-### 4.3 Garder loading=true jusqu'au premier succes (C3 - CRITIQUE)
+### 4.3 Garder loading=true jusqu'au premier succes (C3 - CRITIQUE) — CORRIGE
 
 **Fichier** : `desktop/src/hooks/useConversations.tsx`
 
-```typescript
-const refreshList = useCallback(async (): Promise<ConversationListItem[] | null> => {
-    try {
-        const list = await ipc.listConversations() as ConversationListItem[];
-        const normalized = Array.isArray(list) ? list : [];
-        setConversations(normalized);
-        setLoading(false);  // Succes : arreter le loading
-        return normalized;
-    } catch {
-        // NE PAS mettre setLoading(false) ici
-        // Le retry loop dans useEffect continuera a essayer
-        return null;
-    }
-}, []);
-```
+`refreshList()` ne met `setLoading(false)` que sur succes (ligne 92). Le catch retourne `null` sans toucher au loading. Le retry loop abandonne apres `MAX_STARTUP_RETRIES = 20` (ligne 106).
 
-Et dans le retry loop, ajouter un etat distinct pour "premier chargement reussi" :
-
-```typescript
-useEffect(() => {
-    const MAX_STARTUP_RETRIES = 30;  // ~60 secondes
-    let active = true;
-    let attempt = 0;
-
-    const tryLoad = async () => {
-        const list = await refreshList();
-        if (list !== null || !active) return;
-        attempt += 1;
-        if (attempt >= MAX_STARTUP_RETRIES) {
-            setLoading(false);  // Abandonner apres 60s
-            return;
-        }
-        const delay = Math.min(5000, 500 + attempt * 500);
-        retryTimerRef.current = setTimeout(() => void tryLoad(), delay);
-    };
-
-    void tryLoad();
-    return () => { active = false; /* cleanup */ };
-}, [refreshList]);
-```
-
-### 4.4 Retirer recoveryAttemptedRef - toujours retenter (C4)
+### 4.4 Recovery : retenter par conversation (C4) — CORRIGE (approche differente)
 
 **Fichier** : `desktop/src/pages/Chat.tsx`
 
-```typescript
-// SUPPRIMER recoveryAttemptedRef
-// Remplacer l'effet de recovery par :
-useEffect(() => {
-    if (historyLoading || !urlId || isStreaming) return;
-    if (history.messages.length > 0) return;
+Au lieu de supprimer la limite de retry comme propose initialement, l'implementation utilise `lastRecoveredIdRef` (ligne 240) : le recovery est tente une fois par conversation ID (pas une fois globalement). C'est un compromis raisonnable qui evite les boucles infinies tout en permettant le recovery lors du changement de conversation.
 
-    const conv = conversations.find((c) => c.id === urlId);
-    if (!conv || conv.messageCount === 0) return;
-
-    // Retenter sans limite de tentatives
-    // Le debounce est naturel : cet effect ne se re-execute que quand ses deps changent
-    console.warn("[Chat] History empty but conversation has", conv.messageCount, "messages - retrying");
-    void refreshHistory();
-}, [historyLoading, urlId, history.messages.length, conversations, isStreaming, refreshHistory]);
-```
-
-### 4.5 Stabiliser le tri sidebar (C10)
+### 4.5 Stabiliser le tri sidebar (C10) — CORRIGE
 
 **Fichier** : `desktop/src/hooks/useConversations.tsx`
 
-Ajouter un tie-breaker par ID pour eviter le tri instable quand les timestamps sont identiques :
+Le tri utilise un tie-breaker par `a.id.localeCompare(b.id)` (lignes 44-50 dans `groupConversations()`).
 
-```typescript
-const sorted = [...conversations]
-    .filter((c) => !c.archived)
-    .sort((a, b) => {
-        const timeDiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        if (timeDiff !== 0) return timeDiff;
-        return a.id.localeCompare(b.id);  // Tie-breaker stable
-    });
-```
-
-### 4.6 Corriger creating.current dans ChatPage (C11)
+### 4.6 Corriger creating.current dans ChatPage (C11) — CORRIGE
 
 **Fichier** : `desktop/src/App.tsx`
 
-```typescript
-useEffect(() => {
-    if (convLoading || id || creating.current) return;
+Le bloc `finally` (lignes 63-65) reinitialise toujours `creating.current = false`, meme si le composant est demonte.
 
-    creating.current = true;
-    let unmounted = false;
-    void (async () => {
-        try {
-            // ... logique existante ...
-        } catch (error) {
-            console.warn("[ChatPage] Failed to create conversation:", error);
-        } finally {
-            creating.current = false;  // Toujours reset, meme si unmounted
-        }
-    })();
-    return () => { unmounted = true; };
-}, [convLoading, id, createConversation, navigate, conversations, refreshList]);
-```
-
-### 4.7 Message d'indisponibilite pendant l'ingestion (C12)
+### 4.7 Message d'indisponibilite pendant l'ingestion (C12) — CORRIGE
 
 **Fichier** : `desktop/src/pages/Chat.tsx`
 
-Quand `isIngesting` est true, afficher un bandeau au-dessus de la zone de saisie :
+- Le formulaire bloque la soumission quand `isIngesting` est true (ligne 294)
+- Le placeholder du champ de saisie change pendant l'ingestion (lignes 327-329)
+- L'`EmptyState` recoit `isIngesting` pour adapter son affichage (ligne 369)
+- Le bouton d'envoi est desactive visuellement et fonctionnellement quand `isIngesting` (ligne 622, corrige le 14/03)
+- Un bandeau amber avec spinner s'affiche au-dessus de la zone de saisie pendant l'ingestion (ajoute le 14/03)
+- Les cles de traduction `chat.ingestionInProgress` et `chat.inputPlaceholderIngestion` sont presentes dans fr.json et en.json
 
-```tsx
-{isIngesting && (
-    <div className="mx-4 mb-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        {t('chat.ingestionInProgress')}
-    </div>
-)}
-```
-
-Desactiver aussi visuellement le bouton d'envoi :
-
-```tsx
-<button
-    type="submit"
-    disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
->
-```
-
-Ajouter les cles de traduction :
-
-```json
-// fr.json
-"chat.ingestionInProgress": "L'ingestion est en cours. Le chat sera disponible une fois l'ingestion terminee."
-
-// en.json
-"chat.ingestionInProgress": "Ingestion in progress. Chat will be available once ingestion is complete."
-```
-
-### 4.8 Simplifier useConversation - un seul mecanisme de retry
+### 4.8 Simplifier useConversation - un seul mecanisme de retry — CORRIGE
 
 **Fichier** : `desktop/src/hooks/useConversation.ts`
 
-Actuellement il y a deux mecanismes de retry independants (useEffect + refresh()). Les unifier :
-
-```typescript
-// Le useEffect gere le chargement initial et les retries
-// La methode refresh() utilise le MEME mecanisme en re-declenchant le useEffect
-
-const [retryTrigger, setRetryTrigger] = useState(0);
-
-const refresh = useCallback(async (): Promise<ConversationHistory> => {
-    // Declencher un re-chargement via le useEffect
-    setRetryTrigger(prev => prev + 1);
-    // Retourner l'historique actuel (le useEffect mettra a jour)
-    return history;
-}, [history]);
-
-useEffect(() => {
-    // ... logique de chargement avec retry ...
-}, [conversationId, retryTrigger]);
-```
-
-Ou plus simplement, garder les deux mais s'assurer que `refresh()` a la meme logique de retry que le useEffect :
-
-```typescript
-const refresh = useCallback(async (): Promise<ConversationHistory> => {
-    if (!conversationId) return emptyHistory;
-    setLoading(true);
-    const expectedCount = Math.max(0, minExpectedRef.current);
-
-    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-        try {
-            const payload = await invoke<ConversationHistory>("get_conversation_history", {
-                conversation_id: conversationId,
-            });
-            const result = parseHistory(payload);
-            if (shouldRetryForUnexpectedEmptyHistory(result, expectedCount) && attempt < RETRY_DELAYS_MS.length) {
-                await new Promise<void>(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
-                continue;
-            }
-            setHistory(result);
-            setError(null);
-            setLoading(false);
-            return result;
-        } catch (err: any) {
-            if (attempt >= RETRY_DELAYS_MS.length) {
-                setError(String(err));
-                setLoading(false);
-                return history;  // Retourner l'ancien, pas emptyHistory
-            }
-            await new Promise<void>(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
-        }
-    }
-    setLoading(false);
-    return history;
-}, [conversationId, history]);
-```
+Le mecanisme de retry est unifie : `retryTrigger` (ligne 62) declenche le meme `useEffect` pour le chargement initial et les refresh. Le commentaire en lignes 50-53 documente explicitement cette architecture.
 
 ---
 
-## 5. Ordre d'implementation
+## 5. Ordre d'implementation — BILAN
 
-Les changements sont classes par priorite. Chaque phase peut etre livree independamment.
+### Phase 1 - Corrections critiques — TERMINEE
 
-### Phase 1 - Corrections critiques (1 session)
+| # | Changement | Section | Statut |
+|---|-----------|---------|--------|
+| 1 | Ne plus reset history a vide avant re-fetch | 4.1 | **Fait** |
+| 2 | Retirer `key={id}` sur Chat | 4.2 | **Fait** |
+| 3 | Garder `loading=true` jusqu'au 1er succes | 4.3 | **Fait** |
+| 4 | Retirer `recoveryAttemptedRef` | 4.4 | **Fait** (via `lastRecoveredIdRef`) |
+| 5 | Stabiliser tri sidebar (tie-breaker) | 4.5 | **Fait** |
+| 6 | Corriger `creating.current` | 4.6 | **Fait** |
 
-Corrige les 3 symptomes principaux : conversations qui disparaissent, liste vide au demarrage.
+### Phase 2 - Robustesse backend — TERMINEE
 
-| # | Changement | Section | Fichier(s) |
-|---|-----------|---------|------------|
-| 1 | Ne plus reset history a vide avant re-fetch | 4.1 | `useConversation.ts` |
-| 2 | Retirer `key={id}` sur Chat | 4.2 | `App.tsx` + `Chat.tsx` |
-| 3 | Garder `loading=true` jusqu'au 1er succes | 4.3 | `useConversations.tsx` |
-| 4 | Retirer `recoveryAttemptedRef` | 4.4 | `Chat.tsx` |
-| 5 | Stabiliser tri sidebar (tie-breaker) | 4.5 | `useConversations.tsx` |
-| 6 | Corriger `creating.current` | 4.6 | `App.tsx` |
+| # | Changement | Section | Statut |
+|---|-----------|---------|--------|
+| 7 | Proteger `update_summary_if_needed` avec try/catch | 3.2 | **Fait** (+ correctif logger 14/03) |
+| 8 | Ajouter verrou sur `_MEMORY_CACHE` | 3.3 | **Fait** |
+| 9 | Supprimer singleton `_CONVERSATION_MEMORY` | 3.4 | **Fait** |
+| 10 | Robustifier deserialization dans `_get_conversation_memory` | 3.5 | **Fait** |
+| 11 | Retourner `len(messages)` dans `chat_history` | 3.7 | **Fait** |
 
-### Phase 2 - Robustesse backend (1 session)
+### Phase 3 - UX ingestion + polish — TERMINEE
 
-Protege contre la perte de donnees dans les cas limites.
-
-| # | Changement | Section | Fichier(s) |
-|---|-----------|---------|------------|
-| 7 | Proteger `update_summary_if_needed` avec try/catch | 3.2 | `orchestrator.py` |
-| 8 | Ajouter verrou sur `_MEMORY_CACHE` | 3.3 | `chat.py` |
-| 9 | Supprimer singleton `_CONVERSATION_MEMORY` | 3.4 | `chat.py` |
-| 10 | Robustifier deserialization dans `_get_conversation_memory` | 3.5 | `chat.py` |
-| 11 | Retourner `len(messages)` dans `chat_history` | 3.7 | `chat.py` |
-
-### Phase 3 - UX ingestion + polish (1 session)
-
-Ameliore l'experience pendant l'ingestion et simplifie le code.
-
-| # | Changement | Section | Fichier(s) |
-|---|-----------|---------|------------|
-| 12 | Bandeau "ingestion en cours" + bouton desactive | 4.7 | `Chat.tsx` + traductions |
-| 13 | Simplifier retry dans `useConversation` | 4.8 | `useConversation.ts` |
+| # | Changement | Section | Statut |
+|---|-----------|---------|--------|
+| 12 | Bouton desactive + bandeau pendant ingestion | 4.7 | **Fait** (14/03) |
+| 13 | Simplifier retry dans `useConversation` | 4.8 | **Fait** |
 
 ---
 
@@ -503,9 +203,9 @@ Apres chaque phase, verifier ces scenarios :
 ### Scenario C - Chat pendant ingestion
 1. Lancer une ingestion
 2. Naviguer vers le chat
-3. **Attendu** : bandeau "ingestion en cours", bouton d'envoi desactive
+3. **Attendu** : bandeau "ingestion en cours" avec spinner, placeholder adapte, bouton d'envoi desactive
 4. Attendre la fin de l'ingestion
-5. **Attendu** : le bandeau disparait, le chat est utilisable
+5. **Attendu** : le chat est utilisable
 
 ### Scenario D - Backend lent au demarrage
 1. Ouvrir l'application (backend met 10s a demarrer)
@@ -523,3 +223,11 @@ Apres chaque phase, verifier ces scenarios :
 cd desktop && npm run build
 ```
 **Attendu** : zero erreurs TypeScript
+
+---
+
+## 7. Correctifs appliques le 14 mars 2026
+
+1. **`orchestrator.py`** : Ajout de `import logging` et `logger = logging.getLogger(__name__)`. Sans cela, les blocs `try/except` autour de `update_summary_if_needed()` (C6) auraient provoque un `NameError: name 'logger' is not defined` au lieu de capturer l'exception.
+
+2. **`Chat.tsx`** : Ajout de `|| isIngesting` dans la prop `disabled` du bouton d'envoi et dans les conditions de style du bouton, pour que le bouton soit visuellement desactive pendant l'ingestion. Ajout d'un bandeau amber avec spinner `Loader2` au-dessus de la zone de saisie, affiche conditionnellement quand `isIngesting` est true.

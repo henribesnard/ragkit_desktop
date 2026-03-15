@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import time
 import uuid
 from dataclasses import dataclass
@@ -16,6 +17,8 @@ from ragkit.config.agents_schema import AgentsConfig, Intent, OrchestratorDebugI
 from ragkit.llm.base import BaseLLMProvider, LLMMessage
 from ragkit.llm.response_generator import ResponseGenerator
 from ragkit.monitoring.query_logger import QueryLogEntry, QueryLogger
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
