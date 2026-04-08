@@ -202,5 +202,12 @@ Secrets GitHub obligatoires :
 - `TAURI_SIGNING_PRIVATE_KEY`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
+Noms legacy acceptes par le workflow (compatibilite) :
+
+- `TAURI_PRIVATE_KEY`
+- `TAURI_KEY_PASSWORD`
+
+Les memes valeurs peuvent aussi etre definies en `Repository variables`, mais les `Repository secrets` restent preferables.
+
 La cle publique reste dans `desktop/src-tauri/tauri.conf.json`.
 La cle privee ne doit jamais etre committee.
