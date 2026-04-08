@@ -167,7 +167,7 @@ jobs:
           fi
 
           # Handle secrets stored as base64
-          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
             if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
               KEY="${DECODED}"
             elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
@@ -180,8 +180,8 @@ jobs:
             KEY="$(printf '%b' "${KEY}")"
           fi
 
-          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
-            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign secret key content." >&2
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
+            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign/rsign secret key content." >&2
             exit 1
           fi
 
@@ -329,7 +329,7 @@ jobs:
           fi
 
           # Handle secrets stored as base64
-          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
             if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
               KEY="${DECODED}"
             elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
@@ -342,8 +342,8 @@ jobs:
             KEY="$(printf '%b' "${KEY}")"
           fi
 
-          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
-            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign secret key content." >&2
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
+            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign/rsign secret key content." >&2
             exit 1
           fi
 
