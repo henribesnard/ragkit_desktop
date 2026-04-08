@@ -209,5 +209,7 @@ Noms legacy acceptes par le workflow (compatibilite) :
 
 Les memes valeurs peuvent aussi etre definies en `Repository variables`, mais les `Repository secrets` restent preferables.
 
+Si ces valeurs sont absentes, la CI continue quand meme la build mais sans artefacts updater (`latest.json`/`.sig`).
+
 La cle publique reste dans `desktop/src-tauri/tauri.conf.json`.
 La cle privee ne doit jamais etre committee.

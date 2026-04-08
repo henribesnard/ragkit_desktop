@@ -124,7 +124,24 @@ jobs:
           cache: 'pip'
           cache-dependency-path: pyproject.toml
 
+      - name: Detect updater signing config
+        id: updater_config
+        shell: bash
+        env:
+          HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' || secrets.TAURI_PRIVATE_KEY != '' || vars.TAURI_SIGNING_PRIVATE_KEY != '' || vars.TAURI_PRIVATE_KEY != '' }}
+          HAS_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' || secrets.TAURI_KEY_PASSWORD != '' || vars.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' || vars.TAURI_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          if [[ "${HAS_KEY}" == "true" && "${HAS_PASSWORD}" == "true" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Updater signing enabled."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Updater signing disabled for this run: missing TAURI signing key/password. Build will continue without updater artifacts."
+          fi
+
       - name: Normalize updater private key
+        if: steps.updater_config.outputs.enabled == 'true'
         shell: bash
         env:
           RAW_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || secrets.TAURI_PRIVATE_KEY || vars.TAURI_SIGNING_PRIVATE_KEY || vars.TAURI_PRIVATE_KEY }}
@@ -134,13 +151,13 @@ jobs:
 
           KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
           if [[ -z "${KEY}" ]]; then
-            echo "No updater private key found. Set TAURI_SIGNING_PRIVATE_KEY (or TAURI_PRIVATE_KEY) in repository secrets/vars." >&2
+            echo "No updater private key found after detection; check secrets configuration." >&2
             exit 1
           fi
 
           PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
           if [[ -z "${PASSWORD}" ]]; then
-            echo "No updater private key password found. Set TAURI_SIGNING_PRIVATE_KEY_PASSWORD (or TAURI_KEY_PASSWORD)." >&2
+            echo "No updater private key password found after detection; check secrets configuration." >&2
             exit 1
           fi
 
@@ -196,6 +213,7 @@ jobs:
           cp "dist/ragkit-backend.exe" "desktop/src-tauri/binaries/ragkit-backend-x86_64-pc-windows-msvc.exe"
 
       - name: Build Tauri
+        if: steps.updater_config.outputs.enabled == 'true'
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -207,6 +225,23 @@ jobs:
           releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: ''
+
+      - name: Build Tauri (without updater artifacts)
+        if: steps.updater_config.outputs.enabled != 'true'
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+        with:
+          projectPath: desktop
+          tagName: ${{ needs.prepare-release.outputs.tag_name }}
+          releaseName: 'RAGKIT Desktop ${{ needs.prepare-release.outputs.tag_name }}'
+          releaseBody: 'See the assets to download this version and install. Updater artifacts were skipped because signing secrets were not configured.'
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: false
           updaterJsonPreferNsis: true
           args: ''
 
@@ -251,7 +286,24 @@ jobs:
           cache: 'pip'
           cache-dependency-path: pyproject.toml
 
+      - name: Detect updater signing config
+        id: updater_config
+        shell: bash
+        env:
+          HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' || secrets.TAURI_PRIVATE_KEY != '' || vars.TAURI_SIGNING_PRIVATE_KEY != '' || vars.TAURI_PRIVATE_KEY != '' }}
+          HAS_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' || secrets.TAURI_KEY_PASSWORD != '' || vars.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' || vars.TAURI_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          if [[ "${HAS_KEY}" == "true" && "${HAS_PASSWORD}" == "true" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Updater signing enabled."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Updater signing disabled for this run: missing TAURI signing key/password. Build will continue without updater artifacts."
+          fi
+
       - name: Normalize updater private key
+        if: steps.updater_config.outputs.enabled == 'true'
         shell: bash
         env:
           RAW_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || secrets.TAURI_PRIVATE_KEY || vars.TAURI_SIGNING_PRIVATE_KEY || vars.TAURI_PRIVATE_KEY }}
@@ -261,13 +313,13 @@ jobs:
 
           KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
           if [[ -z "${KEY}" ]]; then
-            echo "No updater private key found. Set TAURI_SIGNING_PRIVATE_KEY (or TAURI_PRIVATE_KEY) in repository secrets/vars." >&2
+            echo "No updater private key found after detection; check secrets configuration." >&2
             exit 1
           fi
 
           PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
           if [[ -z "${PASSWORD}" ]]; then
-            echo "No updater private key password found. Set TAURI_SIGNING_PRIVATE_KEY_PASSWORD (or TAURI_KEY_PASSWORD)." >&2
+            echo "No updater private key password found after detection; check secrets configuration." >&2
             exit 1
           fi
 
@@ -329,6 +381,7 @@ jobs:
           cp "dist/ragkit-backend" "desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
 
       - name: Build Tauri
+        if: steps.updater_config.outputs.enabled == 'true'
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -340,5 +393,22 @@ jobs:
           releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: ${{ matrix.args }}
+
+      - name: Build Tauri (without updater artifacts)
+        if: steps.updater_config.outputs.enabled != 'true'
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+        with:
+          projectPath: desktop
+          tagName: ${{ needs.prepare-release.outputs.tag_name }}
+          releaseName: 'RAGKIT Desktop ${{ needs.prepare-release.outputs.tag_name }}'
+          releaseBody: 'See the assets to download this version and install. Updater artifacts were skipped because signing secrets were not configured.'
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: false
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
