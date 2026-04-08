@@ -143,7 +143,7 @@ jobs:
           cp "dist/ragkit-backend.exe" "desktop/src-tauri/binaries/ragkit-backend-x86_64-pc-windows-msvc.exe"
 
       - name: Build Tauri
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -225,7 +225,7 @@ jobs:
           cp "dist/ragkit-backend" "desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
 
       - name: Build Tauri
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
