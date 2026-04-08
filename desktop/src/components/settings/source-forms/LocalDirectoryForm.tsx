@@ -2,26 +2,23 @@ import { Button } from "@/components/ui/Button";
 import { FolderOpen, Plus, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 
-interface SourceSettingsProps {
+interface LocalDirectoryFormProps {
     config: any;
-    onChange: (key: string, value: any) => void;
+    onChange: (config: any) => void;
 }
 
 const SUPPORTED_EXTENSIONS = ["pdf", "docx", "doc", "md", "txt", "html", "csv", "xml", "json", "yaml", "rst"];
 
-export function SourceSettings({ config, onChange }: SourceSettingsProps) {
-    if (!config) return null;
-    const source = config.source;
-
+export function LocalDirectoryForm({ config, onChange }: LocalDirectoryFormProps) {
     const handleBrowse = async () => {
         try {
             const selected = await open({
                 directory: true,
                 multiple: false,
-                defaultPath: source.path || undefined,
+                defaultPath: config.path || undefined,
             });
             if (selected) {
-                onChange("source.path", selected);
+                onChange({ ...config, path: selected });
             }
         } catch (error) {
             console.error("Failed to open dialog:", error);
@@ -29,29 +26,28 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
     };
 
     const handleFileTypeToggle = (ext: string) => {
-        const current = source.file_types || [];
-        if (current.includes(ext)) {
-            onChange("source.file_types", current.filter((e: string) => e !== ext));
-        } else {
-            onChange("source.file_types", [...current, ext]);
-        }
+        const current = config.file_types || [];
+        const next = current.includes(ext)
+            ? current.filter((e: string) => e !== ext)
+            : [...current, ext];
+        onChange({ ...config, file_types: next });
     };
 
     const handleAddExclusion = () => {
-        const current = source.excluded_dirs || [];
-        onChange("source.excluded_dirs", [...current, ""]);
+        const current = config.excluded_dirs || [];
+        onChange({ ...config, excluded_dirs: [...current, ""] });
     };
 
     const handleUpdateExclusion = (index: number, value: string) => {
-        const current = [...(source.excluded_dirs || [])];
+        const current = [...(config.excluded_dirs || [])];
         current[index] = value;
-        onChange("source.excluded_dirs", current);
+        onChange({ ...config, excluded_dirs: current });
     };
 
     const handleRemoveExclusion = (index: number) => {
-        const current = [...(source.excluded_dirs || [])];
+        const current = [...(config.excluded_dirs || [])];
         current.splice(index, 1);
-        onChange("source.excluded_dirs", current);
+        onChange({ ...config, excluded_dirs: current });
     };
 
     return (
@@ -62,9 +58,9 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Répertoire source</label>
                     <div className="flex gap-2">
                         <div className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm truncate font-mono">
-                            {source.path || "Non configuré"}
+                            {config.path || "Non configuré"}
                         </div>
-                        <Button variant="outline" onClick={handleBrowse}>
+                        <Button variant="outline" onClick={handleBrowse} type="button">
                             <FolderOpen className="w-4 h-4 mr-2" />
                             Modifier
                         </Button>
@@ -74,11 +70,12 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                 <div className="flex items-center gap-2">
                     <input
                         type="checkbox"
-                        checked={source.recursive}
-                        onChange={(e) => onChange("source.recursive", e.target.checked)}
+                        id="recursive-scan"
+                        checked={config.recursive !== false}
+                        onChange={(e) => onChange({ ...config, recursive: e.target.checked })}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <label className="text-sm text-gray-700 dark:text-gray-300">Scanner les sous-dossiers</label>
+                    <label htmlFor="recursive-scan" className="text-sm text-gray-700 dark:text-gray-300">Scanner les sous-dossiers</label>
                 </div>
 
                 {/* File Types */}
@@ -90,7 +87,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                                 <input
                                     type="checkbox"
                                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                                    checked={(source.file_types || []).includes(ext)}
+                                    checked={(config.file_types || ["pdf", "docx", "md", "txt"]).includes(ext)}
                                     onChange={() => handleFileTypeToggle(ext)}
                                 />
                                 <span className="text-sm text-gray-700 dark:text-gray-300 uppercase">{ext}</span>
@@ -109,8 +106,8 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                             type="number"
                             min="1"
                             max="500"
-                            value={source.max_file_size_mb || 50}
-                            onChange={(e) => onChange("source.max_file_size_mb", parseInt(e.target.value) || 50)}
+                            value={config.max_file_size_mb || 50}
+                            onChange={(e) => onChange({ ...config, max_file_size_mb: parseInt(e.target.value) || 50 })}
                             className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         />
                     </div>
@@ -121,7 +118,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                             Dossiers exclus
                         </label>
                         <div className="space-y-2">
-                            {(source.excluded_dirs || []).map((dir: string, index: number) => (
+                            {(config.excluded_dirs || []).map((dir: string, index: number) => (
                                 <div key={index} className="flex gap-2">
                                     <input
                                         type="text"
@@ -131,6 +128,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                                         className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                     />
                                     <button
+                                        type="button"
                                         onClick={() => handleRemoveExclusion(index)}
                                         className="p-2 text-gray-400 hover:text-red-500"
                                     >
@@ -138,7 +136,7 @@ export function SourceSettings({ config, onChange }: SourceSettingsProps) {
                                     </button>
                                 </div>
                             ))}
-                            <Button variant="ghost" size="sm" onClick={handleAddExclusion} className="text-blue-600 hover:text-blue-700 p-0 h-auto">
+                            <Button variant="ghost" size="sm" onClick={handleAddExclusion} type="button" className="text-blue-600 hover:text-blue-700 p-0 h-auto">
                                 <Plus className="w-4 h-4 mr-1" />
                                 Ajouter un dossier exclu
                             </Button>

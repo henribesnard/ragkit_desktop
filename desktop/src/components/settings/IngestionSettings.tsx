@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useIngestionConfig } from "@/hooks/useIngestionConfig";
 import { useDocuments } from "@/hooks/useDocuments";
-import { SourceSettings } from "./SourceSettings";
+import { SourceManager } from "./SourceManager";
 import { ParsingSettings } from "./ParsingSettings";
 import { PreprocessingSettings } from "./PreprocessingSettings";
 import { MetadataTable } from "./MetadataTable";
@@ -90,8 +90,7 @@ export function IngestionSettings() {
             {activeTab === "config" && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                     <section>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3 border-b pb-2 border-gray-100 dark:border-gray-800">Source</h3>
-                        <SourceSettings config={config} onChange={handleConfigChange} />
+                        <SourceManager />
                     </section>
 
                     <section>

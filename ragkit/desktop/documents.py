@@ -25,6 +25,7 @@ from .models import (
     FolderNode,
 )
 from .analysis_progress import AnalysisProgress
+from ragkit.connectors.base import ConnectorDocument
 
 import os
 
@@ -302,14 +303,76 @@ def analyze_documents(config: IngestionConfig) -> tuple[list[DocumentInfo], list
                     text_preview=parsed.text[:500] if parsed.text else None,
                 )
             )
-        except Exception as exc:  # pragma: no cover - defensive at runtime
-            progress.update(current_file=file_path.name, error=True)
-            errors.append(f"{file_path.name}: {exc}")
+        except Exception as exc:
+            errors.append(f"Failed to analyze {file_path.name}: {exc}")
+            progress.docs_failed += 1
     
-    progress.finish()
+    progress.status = "completed"
     return parsed_documents, errors
 
 
+def process_connector_document(
+    doc: ConnectorDocument,
+    text: str,
+    config: IngestionConfig,
+    seen_hashes: set[str],
+    seen_token_sets: list[set[str]],
+) -> DocumentInfo | None:
+    """Processes raw text from a connector into a rich DocumentInfo."""
+    preprocessed = _preprocess_text(text, config)
+    if _is_duplicate(preprocessed, config, seen_hashes, seen_token_sets):
+        return None
+
+    file_type = _normalize_extension(doc.file_type or "txt")
+    detected_language = _detect_language(preprocessed) if config.preprocessing.language_detection else None
+    
+    fallback_title = doc.title or "Document sans titre"
+    title, description = _derive_title_description(preprocessed, fallback_title, None)
+    keywords = _extract_keywords(preprocessed)
+
+    overrides = {}
+    if doc.file_path and config.source and config.source.metadata_overrides:
+        overrides = config.source.metadata_overrides.get(doc.file_path.replace("\\", "/"), {})
+        
+    final_title = overrides.get("title", title)
+    final_author = overrides.get("author", doc.metadata.get("author"))
+    final_description = overrides.get("description", description)
+    final_category = overrides.get("category", doc.metadata.get("category"))
+    
+    # Fallback to reconstructing filename
+    filename = (doc.title or "document")
+    if doc.file_type and not filename.endswith(f".{doc.file_type}"):
+        filename = f"{filename}.{doc.file_type}"
+        
+    guessed_mime = mimetypes.guess_type(doc.file_path or doc.title)[0] if (doc.file_path or doc.title) else "text/plain"
+    
+    return DocumentInfo(
+        id=doc.id,
+        filename=filename,
+        file_path=doc.file_path or doc.url or "",
+        file_type=file_type,
+        file_size_bytes=doc.file_size_bytes,
+        page_count=doc.metadata.get("page_count"),
+        language=detected_language,
+        last_modified=doc.last_modified,
+        encoding="utf-8",
+        word_count=len(re.findall(r"\w+", preprocessed)),
+        title=final_title,
+        author=final_author,
+        description=final_description,
+        keywords=keywords,
+        creation_date=doc.metadata.get("creation_date"),
+        mime_type=guessed_mime,
+        ingested_at=datetime.now(timezone.utc).isoformat(),
+        char_count=len(text),
+        has_tables=doc.metadata.get("has_tables", False),
+        has_images=doc.metadata.get("has_images", False),
+        has_code=doc.metadata.get("has_code", False),
+        tags=keywords,
+        category=final_category,
+        source_id=doc.source_id,
+        original_url=doc.url,
+    )
 
 
 def get_document_text(config: IngestionConfig, document: DocumentInfo) -> str:

@@ -87,10 +87,12 @@ class EmbeddingEngine:
         use_fallback = needs_api_key and not self.api_key
 
         if use_fallback:
-            dims = self.config.dimensions or 768
-            model = get_model_info(self.config.provider, self.config.model)
-            if model:
-                dims = model.dimensions_default
+            dims = self.config.dimensions
+            if not dims:
+                model = get_model_info(self.config.provider, self.config.model)
+                if model:
+                    dims = model.dimensions_default
+            dims = dims or 768
             vector = self._hashed_lexical_embed(text, dims)
         elif provider == EmbeddingProvider.OPENAI:
             vector = self._embed_openai(text)

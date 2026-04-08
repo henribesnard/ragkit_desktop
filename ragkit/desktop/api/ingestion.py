@@ -215,9 +215,8 @@ async def ingestion_status():
 
 @router.get("/changes", response_model=ChangeDetectionResult)
 async def ingestion_changes():
-    # detect_changes does heavy I/O (reads all files + SHA-256).
-    # MUST run in thread to avoid blocking the event loop.
-    return await asyncio.to_thread(runtime.detect_changes)
+    # detect_changes does heavy I/O (reads files + APIs), keep it async.
+    return await runtime.detect_changes()
 
 
 @router.get("/history")

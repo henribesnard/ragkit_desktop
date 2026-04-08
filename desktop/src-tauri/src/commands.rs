@@ -932,20 +932,20 @@ pub async fn purge_all_data(app: AppHandle) -> Result<serde_json::Value, String>
 
 #[tauri::command]
 pub async fn export_config(app: AppHandle, path: String) -> Result<serde_json::Value, String> {
-    let body = serde_json::json!({ "path": path });
-    request(Method::POST, "/api/config/export", Some(body), &app).await
+    let body = serde_json::json!({"path": path});
+    request(Method::POST, "/api/import-export/export", Some(body), &app).await
 }
 
 #[tauri::command]
 pub async fn validate_import(app: AppHandle, path: String) -> Result<serde_json::Value, String> {
-    let body = serde_json::json!({ "path": path });
-    request(Method::POST, "/api/config/import/validate", Some(body), &app).await
+    let body = serde_json::json!({"path": path});
+    request(Method::POST, "/api/import-export/validate", Some(body), &app).await
 }
 
 #[tauri::command]
 pub async fn import_config(app: AppHandle, path: String, mode: String) -> Result<serde_json::Value, String> {
-    let body = serde_json::json!({ "path": path, "mode": mode });
-    request(Method::POST, "/api/config/import", Some(body), &app).await
+    let body = serde_json::json!({"path": path, "mode": mode});
+    request(Method::POST, "/api/import-export/import", Some(body), &app).await
 }
 
 #[tauri::command]
@@ -970,4 +970,72 @@ pub async fn get_expertise_level(app: AppHandle) -> Result<serde_json::Value, St
 pub async fn set_expertise_level(app: AppHandle, level: String) -> Result<serde_json::Value, String> {
     let body = serde_json::json!({ "level": level });
     request(Method::PUT, "/api/general/expertise", Some(body), &app).await
+}
+
+// --- Sources Commands ---
+
+#[tauri::command]
+pub async fn get_sources(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/sources", None, &app).await
+}
+
+#[tauri::command]
+pub async fn get_source(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/sources/{}", _encode_query_value(&id));
+    request(Method::GET, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn add_source(app: AppHandle, source: serde_json::Value) -> Result<serde_json::Value, String> {
+    request(Method::POST, "/api/sources", Some(source), &app).await
+}
+
+#[tauri::command]
+pub async fn update_source(app: AppHandle, id: String, source: serde_json::Value) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/sources/{}", _encode_query_value(&id));
+    request(Method::PUT, &endpoint, Some(source), &app).await
+}
+
+#[tauri::command]
+pub async fn delete_source(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/sources/{}", _encode_query_value(&id));
+    request(Method::DELETE, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn test_source_connection(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/sources/{}/test", _encode_query_value(&id));
+    request(Method::POST, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn sync_source(app: AppHandle, id: String, incremental: Option<bool>) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({"incremental": incremental.unwrap_or(false)});
+    let endpoint = format!("/api/sources/{}/sync", _encode_query_value(&id));
+    request(Method::POST, &endpoint, Some(body), &app).await
+}
+
+#[tauri::command]
+pub async fn get_source_types(app: AppHandle) -> Result<serde_json::Value, String> {
+    request(Method::GET, "/api/sources/types", None, &app).await
+}
+
+#[tauri::command]
+pub async fn start_source_oauth(
+    app: AppHandle,
+    id: String,
+    provider: String,
+) -> Result<serde_json::Value, String> {
+    let endpoint = format!(
+        "/api/sources/{}/oauth/start?provider={}",
+        _encode_query_value(&id),
+        _encode_query_value(&provider)
+    );
+    request(Method::POST, &endpoint, None, &app).await
+}
+
+#[tauri::command]
+pub async fn revoke_source_oauth(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let endpoint = format!("/api/sources/{}/oauth/revoke", _encode_query_value(&id));
+    request(Method::POST, &endpoint, None, &app).await
 }

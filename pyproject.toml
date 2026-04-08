@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragkit-desktop"
-version = "1.4.35"
+version = "1.4.36"
 description = "A comprehensive and multi-agent RAG (Retrieval-Augmented Generation) framework"
 requires-python = ">=3.10"
 dependencies = [
@@ -43,7 +43,59 @@ dev = [
 desktop = [
     "pyinstaller>=6.0",
 ]
+web = [
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "feedparser>=6.0",
+]
+google = [
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+]
+microsoft = [
+    "msal>=1.28",
+]
+dropbox = [
+    "dropbox>=12.0",
+]
+sql = [
+    "aiosqlite>=0.20",
+    "asyncpg>=0.29",
+    "aiomysql>=0.2",
+]
+s3 = [
+    "aiobotocore>=2.12",
+]
+email = [
+    "aioimaplib>=2.0",
+]
+git = [
+    "gitpython>=3.1",
+]
+all-connectors = [
+    "ragkit[web]",
+    "ragkit[google]",
+    "ragkit[microsoft]",
+    "ragkit[dropbox]",
+    "ragkit[sql]",
+    "ragkit[s3]",
+    "ragkit[email]",
+    "ragkit[git]",
+]
 
 [tool.setuptools.packages.find]
 include = ["ragkit*"]
 exclude = ["desktop*", "spécifications*", "tests*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:doctest --basetemp=.pytest_tmp"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore:ARC4 has been moved.*:cryptography.utils.CryptographyDeprecationWarning",
+    "ignore:The 'app' shortcut is now deprecated.*:DeprecationWarning:httpx._client",
+    "ignore:Field \"model_id\" in CacheStats.*:UserWarning:pydantic._internal._fields",
+    "ignore::DeprecationWarning:ragkit.desktop.main",
+    "ignore::DeprecationWarning:fastapi.applications",
+    "ignore:.*on_event is deprecated.*:DeprecationWarning",
+]

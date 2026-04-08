@@ -9,7 +9,7 @@ import logging
 import sqlite3
 import time
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any
 
 from ragkit.chunking.engine import create_chunker
 from ragkit.config.chunking_schema import ChunkingConfig
@@ -24,10 +24,15 @@ from ragkit.desktop.models import (
     IngestionLogEntry,
     IngestionProgress,
     SettingsPayload,
+    SourceEntry,
 )
 from ragkit.desktop.profiles import build_full_config
 from ragkit.desktop import settings_store
 from ragkit.embedding.engine import EmbeddingEngine
+from ragkit.connectors.base import ConnectorDocument
+from ragkit.connectors.credentials import CredentialManager
+from ragkit.connectors.registry import create_connector
+from ragkit.desktop.migration import migrate_settings_to_multi_sources
 from ragkit.retrieval.lexical_engine import BM25Index
 from ragkit.storage.base import VectorPoint, create_vector_store
 
@@ -47,28 +52,38 @@ class IngestionRuntime:
         self._pending_auto_trigger_at: float | None = None
         self._last_auto_signature: str | None = None
         self._registry = settings_store.get_data_dir() / "ingestion_registry.db"
-        self._ensure_db()
+        self._pending_docs_by_id: dict[str, ConnectorDocument] = {}
+        self._credential_manager = CredentialManager()
+        self._db_ready = False
+        try:
+            self._ensure_db()
+        except Exception as exc:  # pragma: no cover - defensive for read-only envs
+            logger.warning("Failed to initialize ingestion registry database: %s", exc)
 
-    def _count_source_documents_fast(self, settings: SettingsPayload) -> int:
-        ingestion = getattr(settings, "ingestion", None)
-        if ingestion is None or not ingestion.source.path:
+    async def _count_source_documents_fast(
+        self,
+        settings: SettingsPayload,
+        source_ids: list[str] | None = None,
+    ) -> int:
+        sources = self._resolve_sources(settings)
+        if source_ids:
+            allowed = set(source_ids)
+            sources = [source for source in sources if source.id in allowed]
+        if not sources:
             return 0
 
-        root = Path(ingestion.source.path).expanduser()
-        if not root.exists() or not root.is_dir():
-            return 0
-
-        selected_types = {documents._normalize_extension(ext) for ext in ingestion.source.file_types}
         count = 0
-        for path in documents._iter_files(
-            root,
-            recursive=ingestion.source.recursive,
-            excluded_dirs=ingestion.source.excluded_dirs,
-            exclusion_patterns=ingestion.source.exclusion_patterns,
-            max_file_size_mb=ingestion.source.max_file_size_mb,
-        ):
-            if documents._normalize_extension(path.suffix) in selected_types:
-                count += 1
+        for source in sources:
+            if not source.enabled:
+                continue
+            try:
+                credential = self._get_credential(source)
+                connector = create_connector(source.type, source.id, source.config, credential)
+                # the list_documents is usually reasonably fast (e.g., local FS scan or one API call)
+                docs = await connector.list_documents()
+                count += len(docs)
+            except Exception as e:
+                logger.error("Failed to fast-count documents for source %s: %s", source.name, e)
         return count
 
     def _ensure_db(self) -> None:
@@ -78,6 +93,7 @@ class IngestionRuntime:
                 """
                 CREATE TABLE IF NOT EXISTS ingestion_registry (
                     doc_id TEXT PRIMARY KEY,
+                    source_id TEXT,
                     file_path TEXT NOT NULL,
                     file_hash TEXT NOT NULL,
                     file_size INTEGER NOT NULL,
@@ -88,6 +104,9 @@ class IngestionRuntime:
                 )
                 """
             )
+            cols = {row[1] for row in con.execute("PRAGMA table_info(ingestion_registry)").fetchall()}
+            if "source_id" not in cols:
+                con.execute("ALTER TABLE ingestion_registry ADD COLUMN source_id TEXT")
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS ingestion_history (
@@ -108,6 +127,11 @@ class IngestionRuntime:
                 )
                 """
             )
+        self._db_ready = True
+
+    def _ensure_db_ready(self) -> None:
+        if not self._db_ready:
+            self._ensure_db()
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -135,17 +159,20 @@ class IngestionRuntime:
             self._subscribers.remove(queue)
 
     def _load_registry(self) -> dict[str, dict]:
+        self._ensure_db_ready()
         with sqlite3.connect(self._registry) as con:
             rows = con.execute(
-                "SELECT doc_id,file_path,file_hash,file_size,last_modified,chunk_count FROM ingestion_registry"
+                "SELECT doc_id,source_id,file_path,file_hash,file_size,last_modified,chunk_count FROM ingestion_registry"
             ).fetchall()
         return {
-            row[1]: {
+            row[0]: {
                 "doc_id": row[0],
-                "file_hash": row[2],
-                "file_size": row[3],
-                "last_modified": row[4],
-                "chunk_count": row[5],
+                "source_id": row[1],
+                "file_path": row[2],
+                "file_hash": row[3],
+                "file_size": row[4],
+                "last_modified": row[5],
+                "chunk_count": row[6],
             }
             for row in rows
         }
@@ -184,6 +211,26 @@ class IngestionRuntime:
                 payload["ingestion_mode"] = IngestionMode.AUTOMATIC.value
 
         return GeneralSettings.model_validate(payload)
+
+    def _resolve_sources(self, settings: SettingsPayload) -> list[SourceEntry]:
+        ingestion = settings.ingestion
+        if ingestion is None:
+            return []
+        if not ingestion.sources and getattr(ingestion, "source", None) and ingestion.source.path:
+            try:
+                ingestion = migrate_settings_to_multi_sources(ingestion)
+                settings.ingestion = ingestion
+            except Exception as exc:
+                logger.warning("Failed to migrate legacy source config: %s", exc)
+        return list(ingestion.sources or [])
+
+    def _get_credential(self, source: SourceEntry) -> dict[str, Any] | None:
+        key = source.credential_key or source.id
+        try:
+            return self._credential_manager.retrieve(key)
+        except Exception as exc:
+            logger.warning("Failed to retrieve credential for source %s: %s", source.name, exc)
+            return None
 
     def _effective_embedding_batch_size(self, embedder: EmbeddingEngine) -> int:
         configured = max(1, int(getattr(embedder.config, "batch_size", 100) or 100))
@@ -231,9 +278,8 @@ class IngestionRuntime:
                     await asyncio.sleep(30)
                     continue
 
-                # detect_changes reads ALL document bytes + computes SHA-256.
-                # Running it in a thread prevents blocking the event loop.
-                changes = await asyncio.to_thread(self.detect_changes, settings)
+                # detect_changes is async and reads metadata or APIs.
+                changes = await self.detect_changes(settings)
                 signature = "|".join(sorted(f"{change.type}:{change.path}" for change in changes.changes))
                 now = time.monotonic()
 
@@ -267,69 +313,85 @@ class IngestionRuntime:
 
             await asyncio.sleep(30)
 
-    def detect_changes(self, settings: SettingsPayload | None = None) -> ChangeDetectionResult:
+    async def detect_changes(
+        self,
+        settings: SettingsPayload | None = None,
+        source_ids: list[str] | None = None,
+    ) -> ChangeDetectionResult:
         settings = settings or settings_store.load_settings()
-        if not settings.ingestion or not settings.ingestion.source.path:
+        sources = self._resolve_sources(settings)
+        active_sources = [source for source in sources if source.enabled]
+        if source_ids:
+            allowed = set(source_ids)
+            active_sources = [source for source in active_sources if source.id in allowed]
+        if not active_sources:
             return ChangeDetectionResult()
-        root = Path(settings.ingestion.source.path).expanduser()
-        if not root.exists():
-            return ChangeDetectionResult()
-        current: dict[str, dict] = {}
-        selected = set(settings.ingestion.source.file_types)
-        previous = self._load_registry()
-        
-        for file_path in documents._iter_files(
-            root,
-            recursive=settings.ingestion.source.recursive,
-            excluded_dirs=settings.ingestion.source.excluded_dirs,
-            exclusion_patterns=settings.ingestion.source.exclusion_patterns,
-            max_file_size_mb=settings.ingestion.source.max_file_size_mb,
-        ):
-            ext = documents._normalize_extension(file_path.suffix)
-            if ext not in selected:
-                continue
-                
-            rel = file_path.relative_to(root).as_posix()
-            stat = file_path.stat()
-            size = stat.st_size
-            mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
             
-            # Optimization: only hash if size or mtime changed, or if it's new
-            if rel not in previous or previous[rel]["file_size"] != size or previous[rel]["last_modified"] != mtime:
-                payload = file_path.read_bytes()
-                file_hash = hashlib.sha256(payload).hexdigest()
-            else:
-                file_hash = previous[rel]["file_hash"]
-                
-            current[rel] = {
-                "hash": file_hash,
-                "size": size,
-                "mtime": mtime,
-            }
+        previous = self._load_registry()
+        legacy_entries = {doc_id: info for doc_id, info in previous.items() if not info.get("source_id")}
 
+        if legacy_entries and len(active_sources) == 1:
+            legacy_source_id = active_sources[0].id
+            for info in legacy_entries.values():
+                info["source_id"] = legacy_source_id
+            with sqlite3.connect(self._registry) as con:
+                con.execute(
+                    "UPDATE ingestion_registry SET source_id = ? WHERE source_id IS NULL OR source_id = ''",
+                    (legacy_source_id,),
+                )
+
+        known_hashes_by_source: dict[str, dict[str, str]] = {source.id: {} for source in active_sources}
+        for doc_id, info in previous.items():
+            source_id = info.get("source_id")
+            if source_id in known_hashes_by_source:
+                known_hashes_by_source[source_id][doc_id] = info["file_hash"]
+        
         changes: list[IngestionChange] = []
-        for rel, info in current.items():
-            if rel not in previous:
-                changes.append(IngestionChange(type="added", path=rel, file_size=info["size"], last_modified=info["mtime"]))
-            elif info["hash"] != previous[rel]["file_hash"]:
-                changes.append(IngestionChange(type="modified", path=rel, file_size=info["size"], last_modified=info["mtime"]))
-        for rel in previous:
-            if rel not in current:
-                changes.append(IngestionChange(type="removed", path=rel))
+        all_removed_ids: set[str] = set()
+        self._pending_docs_by_id = {}
+        
+        for source in active_sources:
+            try:
+                credential = self._get_credential(source)
+                connector = create_connector(source.type, source.id, source.config, credential)
+                delta = await connector.detect_changes(known_hashes_by_source.get(source.id, {}))
+                
+                for doc in delta.added:
+                    path = doc.file_path or doc.url or doc.title
+                    self._pending_docs_by_id[doc.id] = doc
+                    changes.append(IngestionChange(type="added", path=path, file_size=doc.file_size_bytes, last_modified=doc.last_modified, doc_id=doc.id, source_id=source.id))
+                for doc in delta.modified:
+                    path = doc.file_path or doc.url or doc.title
+                    self._pending_docs_by_id[doc.id] = doc
+                    changes.append(IngestionChange(type="modified", path=path, file_size=doc.file_size_bytes, last_modified=doc.last_modified, doc_id=doc.id, source_id=source.id))
+                all_removed_ids.update(delta.removed_ids)
+            except Exception as e:
+                logger.error("Failed to detect changes for source %s: %s", source.name, e)
+                
+        for doc_id in all_removed_ids:
+            info = previous.get(doc_id)
+            if info:
+                changes.append(IngestionChange(type="removed", path=info["file_path"], doc_id=doc_id, source_id=info.get("source_id")))
+                
         return ChangeDetectionResult(
             changes=changes,
             added=sum(1 for c in changes if c.type == "added"),
             modified=sum(1 for c in changes if c.type == "modified"),
-            removed=sum(1 for c in changes if c.type == "removed"),
+            removed=len(all_removed_ids),
         )
 
-    async def start(self, incremental: bool = False) -> dict:
+    async def start(self, incremental: bool = False, source_ids: list[str] | None = None) -> dict:
         self.ensure_background_tasks()
         if self._task and not self._task.done():
             return {"version": self.progress.version, "status": self.progress.status}
         self._cancelled = False
         self._pause.set()
-        self._task = asyncio.create_task(self._run(incremental=incremental))
+        # Ensure callers see a "running" status immediately to avoid race conditions
+        # with the async task scheduling.
+        self.progress.status = "running"
+        self.progress.is_incremental = incremental
+        self.progress.phase = "queued"
+        self._task = asyncio.create_task(self._run(incremental=incremental, source_ids=source_ids))
         return {"version": self.progress.version, "status": "running"}
 
     async def pause(self) -> dict:
@@ -349,22 +411,34 @@ class IngestionRuntime:
         return {"status": "cancelled"}
 
     def _next_version(self) -> str:
+        self._ensure_db_ready()
         with sqlite3.connect(self._registry) as con:
             row = con.execute("SELECT version FROM ingestion_history ORDER BY rowid DESC LIMIT 1").fetchone()
         if not row:
             return "v1"
         return f"v{int(row[0].lstrip('v')) + 1}"
 
-    async def _run(self, incremental: bool) -> None:
+    async def _run(self, incremental: bool, source_ids: list[str] | None = None) -> None:
         self.ensure_background_tasks()
         settings = await asyncio.to_thread(settings_store.load_settings)
         if not settings.ingestion:
             logger.warning("Ingestion skipped: no ingestion config in settings")
             self.progress.status = "failed"
             return
-        source_root = Path(settings.ingestion.source.path).expanduser()
-        if not source_root.exists():
-            logger.warning("Ingestion skipped: source path does not exist: %s", source_root)
+        sources = self._resolve_sources(settings)
+        if not sources:
+            logger.warning("Ingestion skipped: no sources configured")
+            self.progress.status = "failed"
+            return
+        active_sources = [source for source in sources if source.enabled]
+        if source_ids:
+            allowed = set(source_ids)
+            active_sources = [source for source in active_sources if source.id in allowed]
+        if not active_sources:
+            logger.warning(
+                "Ingestion skipped: %s",
+                "no matching sources" if source_ids else "all sources are disabled",
+            )
             self.progress.status = "failed"
             return
 
@@ -387,28 +461,20 @@ class IngestionRuntime:
             vec_cfg = VectorStoreConfig.model_validate(settings.vector_store or {})
             lexical_cfg = self._resolve_lexical_config(settings)
             bm25_index = BM25Index(lexical_cfg)
-            bm25_index.load(self._bm25_index_dir())
+            if incremental:
+                bm25_index.load(self._bm25_index_dir())
             store = create_vector_store(vec_cfg)
             embedder = EmbeddingEngine(emb_cfg)
             chunker = create_chunker(chunk_cfg)
 
-            changes = self.detect_changes(settings)
-            registry_before = self._load_registry()
-            removed_paths = [change.path for change in changes.changes if change.type == "removed"]
-            modified_paths = {change.path for change in changes.changes if change.type == "modified"}
-            docs_added = sum(1 for change in changes.changes if change.type == "added")
-            docs_modified = sum(1 for change in changes.changes if change.type == "modified")
-            docs_removed = len(removed_paths)
-            docs, _ = await asyncio.to_thread(documents.analyze_documents, settings.ingestion)
-
-            to_process = docs
-            if incremental:
-                impacted = {c.path for c in changes.changes if c.type in {"added", "modified"}}
-                to_process = [d for d in docs if d.file_path in impacted]
-                docs_skipped = max(len(docs) - len(to_process), 0)
-
             dims = await asyncio.to_thread(embedder.resolve_dimensions)
             await store.create_snapshot(version)
+
+            if not incremental:
+                await store.delete_collection()
+                with sqlite3.connect(self._registry) as con:
+                    con.execute("DELETE FROM ingestion_registry")
+
             try:
                 await store.initialize(dims)
             except ValueError as exc:
@@ -424,19 +490,25 @@ class IngestionRuntime:
                 await store.delete_collection()
                 await store.initialize(dims)
 
-            # Keep index in sync when files were removed from the source folder.
-            for removed_path in removed_paths:
-                previous = registry_before.get(removed_path)
-                if not previous:
-                    continue
-                doc_id = previous.get("doc_id")
-                if not doc_id:
-                    continue
-                await store.delete_by_doc_id(str(doc_id))
-                bm25_index.remove_document_chunks(str(doc_id))
+            changes = await self.detect_changes(settings, source_ids=source_ids)
+            registry_before = self._load_registry()
+            
+            docs_added = changes.added
+            docs_modified = changes.modified
+            docs_removed = changes.removed
+
+            removed_ids = [change.doc_id for change in changes.changes if change.type == "removed" and change.doc_id]
+            
+            # Keep index in sync when files were removed
+            for doc_id in removed_ids:
+                await store.delete_by_doc_id(doc_id)
+                bm25_index.remove_document_chunks(doc_id)
                 with sqlite3.connect(self._registry) as con:
                     con.execute("DELETE FROM ingestion_registry WHERE doc_id = ?", (doc_id,))
 
+            # Process added and modified
+            to_process = [c for c in changes.changes if c.type in {"added", "modified"} and c.source_id and c.doc_id]
+            
             with sqlite3.connect(self._registry) as con:
                 con.execute(
                     "INSERT OR REPLACE INTO ingestion_history(version,started_at,status,total_docs,is_incremental,config_snapshot) VALUES(?,?,?,?,?,?)",
@@ -444,30 +516,92 @@ class IngestionRuntime:
                 )
             history_open = True
 
-            source_docs_count = await asyncio.to_thread(self._count_source_documents_fast, settings)
+            # We need connectors dict to avoid re-instantiating them for each file
+            connectors = {}
+            source_by_id = {source.id: source for source in active_sources}
+            for source in active_sources:
+                credential = self._get_credential(source)
+                connectors[source.id] = create_connector(source.type, source.id, source.config, credential)
+
             doc_times: list[float] = []
             last_elapsed = 0.0
             self.progress.doc_total = len(to_process)
-            for idx, doc in enumerate(to_process, start=1):
+            source_docs_count = await self._count_source_documents_fast(settings, source_ids=source_ids)
+            
+            seen_hashes: set[str] = set()
+            seen_token_sets: list[set[str]] = []
+
+            for idx, change in enumerate(to_process, start=1):
                 await self._pause.wait()
                 if self._cancelled:
                     break
 
                 self.progress.doc_index = idx
-                self.progress.current_doc = doc.filename
+                self.progress.current_doc = change.path
                 try:
                     self.progress.phase = "parsing"
                     try:
+                        connector = connectors.get(change.source_id)
+                        if not connector:
+                            raise RuntimeError(f"Connector non trouvé pour la source {change.source_id}")
+                            
                         text = await asyncio.wait_for(
-                            asyncio.to_thread(documents.get_document_text, settings.ingestion, doc),
+                            connector.fetch_document_content(change.doc_id),
                             timeout=300
                         )
+                        
+                        raw_doc = self._pending_docs_by_id.get(change.doc_id)
+                        if raw_doc is None:
+                            try:
+                                docs = await connector.list_documents()
+                                raw_doc = next((doc for doc in docs if doc.id == change.doc_id), None)
+                            except Exception:
+                                raw_doc = None
+                        if raw_doc is None:
+                            raw_doc = ConnectorDocument(
+                                id=change.doc_id,
+                                source_id=change.source_id or "",
+                                title=change.path or "Document",
+                                content="",
+                                content_type="text",
+                                url=change.path if change.path and change.path.startswith("http") else None,
+                                file_path=None if change.path and change.path.startswith("http") else change.path,
+                                file_type=None,
+                                file_size_bytes=change.file_size or 0,
+                                last_modified=change.last_modified or "",
+                            )
+
+                        doc = await asyncio.wait_for(
+                            asyncio.to_thread(documents.process_connector_document, raw_doc, text, settings.ingestion, seen_hashes, seen_token_sets),
+                            timeout=60
+                        )
+                        if doc:
+                            source_entry = source_by_id.get(change.source_id or "")
+                            if source_entry:
+                                doc.source_id = source_entry.id
+                                doc.source_type = source_entry.type.value
+                                doc.source_name = source_entry.name
+                                if raw_doc.url and not doc.original_url:
+                                    doc.original_url = raw_doc.url
+                        
+                        if not doc:
+                            # Deduplicated
+                            docs_skipped += 1
+                            self.logs.append(
+                                IngestionLogEntry(
+                                    timestamp=self._now(),
+                                    level="info",
+                                    message=f"{change.path} (ignoré, doublon)",
+                                )
+                            )
+                            continue
+                            
                         self.progress.phase = "chunking"
                         chunks = await asyncio.wait_for(
                             asyncio.to_thread(
                                 chunker.chunk,
                                 text,
-                                {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename},
+                                {"doc_id": doc.id, "doc_path": doc.file_path, "doc_title": doc.title or doc.filename, "source_id": doc.source_id},
                             ),
                             timeout=300
                         )
@@ -493,7 +627,7 @@ class IngestionRuntime:
                     self.progress.phase = "storing"
                     # For modified documents (or full re-index runs), remove all previous
                     # chunks first so obsolete chunks do not remain in the index.
-                    if (not incremental) or (doc.file_path in modified_paths):
+                    if (not incremental) or (change.type == "modified"):
                         await store.delete_by_doc_id(doc.id)
                         bm25_index.remove_document_chunks(doc.id)
 
@@ -508,6 +642,10 @@ class IngestionRuntime:
                                 "doc_path": doc.file_path,
                                 "doc_type": doc.file_type,
                                 "doc_language": doc.language,
+                                "source_id": doc.source_id,
+                                "source_type": doc.source_type,
+                                "source_name": doc.source_name,
+                                "original_url": doc.original_url,
                                 "category": doc.category,
                                 "keywords": list(doc.keywords),
                                 "tags": list(doc.tags),
@@ -533,12 +671,14 @@ class IngestionRuntime:
                             language=doc.language,
                         )
 
-                    file_abs = source_root / doc.file_path
-                    file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
+                    # Store connector-provided content hash for change detection
+                    file_hash = ""
+                    if "raw_doc" in locals() and raw_doc and getattr(raw_doc, "content_hash", ""):
+                        file_hash = raw_doc.content_hash
                     with sqlite3.connect(self._registry) as con:
                         con.execute(
-                            "INSERT OR REPLACE INTO ingestion_registry(doc_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?)",
-                            (doc.id, doc.file_path, file_hash, doc.file_size_bytes, doc.last_modified, len(chunks), version, self._now()),
+                            "INSERT OR REPLACE INTO ingestion_registry(doc_id,source_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                            (doc.id, doc.source_id, doc.file_path or doc.original_url or "", file_hash, doc.file_size_bytes, doc.last_modified, len(chunks), version, self._now()),
                         )
                     self.progress.docs_succeeded += 1
                     self.progress.total_chunks += len(chunks)
@@ -547,23 +687,39 @@ class IngestionRuntime:
                     )
                 except Exception as exc:  # pragma: no cover - defensive at runtime
                     self.progress.docs_failed += 1
+                    doc_label = change.path or "Document"
+                    if "doc" in locals() and doc:
+                        doc_label = doc.filename or doc_label
                     self.logs.append(
                         IngestionLogEntry(
                             timestamp=self._now(),
                             level="error",
-                            message=f"{doc.filename} — échec: {exc}",
+                            message=f"{doc_label} — échec: {exc}",
                         )
                     )
                     # Register failed docs with chunk_count=0 so they are not
                     # detected as "added" on the next change-detection scan,
                     # which would cause an infinite auto-ingestion loop.
                     try:
-                        file_abs = source_root / doc.file_path
-                        file_hash = hashlib.sha256(file_abs.read_bytes()).hexdigest() if file_abs.exists() else ""
+                        file_hash = ""
+                        if "raw_doc" in locals() and raw_doc and getattr(raw_doc, "content_hash", ""):
+                            file_hash = raw_doc.content_hash
+                        if "doc" in locals() and doc:
+                            doc_id = doc.id
+                            source_id = doc.source_id
+                            file_path = doc.file_path or doc.original_url or ""
+                            file_size = doc.file_size_bytes
+                            last_modified = doc.last_modified
+                        else:
+                            doc_id = change.doc_id or ""
+                            source_id = change.source_id
+                            file_path = change.path or ""
+                            file_size = change.file_size or 0
+                            last_modified = change.last_modified or self._now()
                         with sqlite3.connect(self._registry) as con:
                             con.execute(
-                                "INSERT OR REPLACE INTO ingestion_registry(doc_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?)",
-                                (doc.id, doc.file_path, file_hash, doc.file_size_bytes, doc.last_modified, 0, version, self._now()),
+                                "INSERT OR REPLACE INTO ingestion_registry(doc_id,source_id,file_path,file_hash,file_size,last_modified,chunk_count,ingestion_version,ingested_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                                (doc_id, source_id, file_path, file_hash, file_size, last_modified, 0, version, self._now()),
                             )
                     except Exception:
                         pass

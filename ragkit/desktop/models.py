@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -47,6 +49,38 @@ class TableExtractionStrategy(str, Enum):
 class OcrEngine(str, Enum):
     TESSERACT = "tesseract"
     EASYOCR = "easyocr"
+
+
+class SourceType(str, Enum):
+    LOCAL_DIRECTORY = "local_directory"
+    WEB_URL = "web_url"
+    RSS_FEED = "rss_feed"
+    GOOGLE_DRIVE = "google_drive"
+    ONEDRIVE = "onedrive"
+    DROPBOX = "dropbox"
+    CONFLUENCE = "confluence"
+    NOTION = "notion"
+    SQL_DATABASE = "sql_database"
+    REST_API = "rest_api"
+    S3_BUCKET = "s3_bucket"
+    EMAIL_IMAP = "email_imap"
+    GIT_REPO = "git_repo"
+
+
+class SyncFrequency(str, Enum):
+    MANUAL = "manual"
+    EVERY_15_MIN = "15min"
+    HOURLY = "1h"
+    EVERY_6H = "6h"
+    DAILY = "24h"
+    WEEKLY = "7d"
+
+
+class SourceStatus(str, Enum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    ERROR = "error"
+    SYNCING = "syncing"
 
 
 class DeduplicationStrategy(str, Enum):
@@ -116,8 +150,26 @@ class PreprocessingConfig(BaseModel):
     deduplication_threshold: float = Field(default=0.95, ge=0.0, le=1.0)
 
 
+class SourceEntry(BaseModel):
+    """Configuration d'une source individuelle dans la liste multi-sources."""
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    name: str
+    type: SourceType
+    enabled: bool = True
+    sync_frequency: SyncFrequency = SyncFrequency.MANUAL
+    status: SourceStatus = SourceStatus.ACTIVE
+    last_sync_at: str | None = None
+    last_sync_status: str | None = None
+    last_sync_error: str | None = None
+    document_count: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    config: dict[str, Any] = Field(default_factory=dict)
+    credential_key: str | None = None
+
+
 class IngestionConfig(BaseModel):
     source: SourceConfig
+    sources: list[SourceEntry] = Field(default_factory=list)
     parsing: ParsingConfig = Field(default_factory=ParsingConfig)
     preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
 
@@ -284,6 +336,11 @@ class DocumentInfo(BaseModel):
     # Qualite parsing
     parsing_quality: float | None = None  # Score 0-1
     parsing_warnings: list[str] = Field(default_factory=list)
+    # Traçabilité source multi-sources
+    source_id: str | None = None
+    source_type: str | None = None
+    source_name: str | None = None
+    original_url: str | None = None
     # Extensible
     custom: dict[str, Any] = Field(default_factory=dict)
 
@@ -333,6 +390,8 @@ class AnalysisResult(BaseModel):
 class IngestionChange(BaseModel):
     type: str
     path: str
+    doc_id: str | None = None
+    source_id: str | None = None
     file_size: int | None = None
     last_modified: str | None = None
 

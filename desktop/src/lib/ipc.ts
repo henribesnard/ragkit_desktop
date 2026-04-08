@@ -16,6 +16,20 @@ export const ipc = {
   updateVectorStoreConfig: (config: any) => invoke("update_vector_store_config", { config }),
   startIngestion: (incremental = false) => invoke("start_ingestion", { incremental }),
   getIngestionStatus: () => invoke("get_ingestion_status"),
+  
+  // Sources
+  getSources: () => invoke<any[]>("get_sources"),
+  getSource: (id: string) => invoke<any>("get_source", { id }),
+  addSource: (source: any) => invoke<any>("add_source", { source }),
+  updateSource: (id: string, source: any) => invoke<any>("update_source", { id, source }),
+  deleteSource: (id: string) => invoke<any>("delete_source", { id }),
+  testSourceConnection: (id: string) => invoke<any>("test_source_connection", { id }),
+  syncSource: (id: string, incremental: boolean = false) => invoke<any>("sync_source", { id, incremental }),
+  getSourceTypes: () => invoke<any[]>("get_source_types"),
+  startSourceOAuth: (id: string, provider: string) => invoke<any>("start_source_oauth", { id, provider }),
+  revokeSourceOAuth: (id: string) => invoke<any>("revoke_source_oauth", { id }),
+  
+  // Settings
   getGeneralSettings: () => invoke("get_general_settings"),
   updateGeneralSettings: (settings: any) => invoke("update_general_settings", { settings }),
   getSemanticSearchConfig: () => invoke("get_semantic_search_config"),

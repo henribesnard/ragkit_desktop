@@ -56,10 +56,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
-    from ragkit.desktop.api import wizard, ingestion, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
+    from ragkit.desktop.api import wizard, ingestion, sources, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
     from ragkit.desktop.ingestion_runtime import runtime
 
     app.include_router(wizard.router)
+    app.include_router(sources.router)
     app.include_router(ingestion.router)
     app.include_router(ingestion.settings_router)
     app.include_router(chunking.router)
@@ -82,6 +83,13 @@ def create_app() -> FastAPI:
         db = get_conversation_db()
         db.migrate_json_files()
         runtime.ensure_background_tasks()
+        from ragkit.desktop.sync_scheduler import sync_scheduler
+        await sync_scheduler.start()
+
+    @app.on_event("shutdown")
+    async def _stop_background_tasks():
+        from ragkit.desktop.sync_scheduler import sync_scheduler
+        await sync_scheduler.stop()
 
     @app.get("/health")
     async def health_check():

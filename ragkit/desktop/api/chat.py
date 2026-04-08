@@ -30,9 +30,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 _MEMORY_CACHE: dict[str, ConversationMemory] = {}
+# Backward-compatibility alias expected by some tests.
+_CONVERSATION_MEMORY: dict[str, ConversationMemory] | None = _MEMORY_CACHE
 _CACHE_LOCK = threading.Lock()
 _MAX_CACHE_SIZE = 50
 _DEFAULT_ID = "default"
+
+
+def _cache_store() -> dict[str, ConversationMemory]:
+    global _CONVERSATION_MEMORY
+    if _CONVERSATION_MEMORY is None:
+        _CONVERSATION_MEMORY = {}
+    return _CONVERSATION_MEMORY
 
 
 def _build_chat_response(
@@ -58,14 +67,15 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
     cid = conversation_id or _DEFAULT_ID
 
     with _CACHE_LOCK:
-        if cid in _MEMORY_CACHE:
+        cache = _cache_store()
+        if cid in cache:
             # Move to end so the eviction below removes least-recently-used
-            _MEMORY_CACHE[cid] = _MEMORY_CACHE.pop(cid)
-            return _MEMORY_CACHE[cid]
+            cache[cid] = cache.pop(cid)
+            return cache[cid]
 
-        if len(_MEMORY_CACHE) >= _MAX_CACHE_SIZE:
-            oldest_key = next(iter(_MEMORY_CACHE))
-            del _MEMORY_CACHE[oldest_key]
+        if len(cache) >= _MAX_CACHE_SIZE:
+            oldest_key = next(iter(cache))
+            del cache[oldest_key]
             logger.debug("Evicted LRU conversation cache entry: %s", oldest_key)
 
         db = get_conversation_db()
@@ -92,7 +102,7 @@ def _get_conversation_memory(conversation_id: str | None = None) -> Conversation
             summary=summary,
             total_messages=len(messages),
         )
-        _MEMORY_CACHE[cid] = memory
+        cache[cid] = memory
         logger.debug("Loaded conversation memory from DB: %s (%d messages)", cid, len(messages))
     return memory
 
@@ -271,7 +281,7 @@ async def chat_new(
         logger.info("Ensured conversation exists: %s", cid)
 
     with _CACHE_LOCK:
-        _MEMORY_CACHE.pop(cid, None)
+        _cache_store().pop(cid, None)
     return {"success": True}
 
 
@@ -336,7 +346,7 @@ async def delete_conversation_endpoint(conversation_id: str) -> dict[str, bool]:
     db = get_conversation_db()
     db.delete_conversation(conversation_id)
     with _CACHE_LOCK:
-        _MEMORY_CACHE.pop(conversation_id, None)
+        _cache_store().pop(conversation_id, None)
     logger.info("Deleted conversation: %s", conversation_id)
     return {"success": True}
 

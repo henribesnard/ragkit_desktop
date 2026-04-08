@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .models import DocumentInfo, SettingsPayload
+from .migration import migrate_settings_to_multi_sources
 
 
 def get_data_root() -> Path:
@@ -57,7 +58,10 @@ def load_settings() -> SettingsPayload:
         payload = json.loads(settings_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return SettingsPayload()
-    return SettingsPayload.model_validate(payload)
+    settings = SettingsPayload.model_validate(payload)
+    if settings.ingestion:
+        settings.ingestion = migrate_settings_to_multi_sources(settings.ingestion)
+    return settings
 
 
 def save_settings(settings: SettingsPayload) -> None:
