@@ -2,158 +2,205 @@
 
 ## Vue d'ensemble
 
-Le CI (`desktop.yml`) se declenche uniquement sur les tags `v*`.
-Un push sans tag ne lance aucun build.
+Le workflow CI principal est [`desktop.yml`](/C:/Users/henri/Projets/ragkit_desktop/.github/workflows/desktop.yml).
 
-Les releases doivent etre **publiees** (pas en draft) pour que l'auto-update Tauri fonctionne via GitHub Releases.
+Il peut etre lance de 2 manieres :
 
-```
-Modifier le code → Bump les 5 fichiers de version → Commit → Push → Tag → Push tag → CI build
+- automatiquement sur les tags `v*`
+- manuellement via `workflow_dispatch` pour reconstruire un tag existant
+
+Un push sur `main` sans tag ne lance pas la release desktop.
+
+Les releases GitHub doivent etre publiees, pas en draft, pour que l'auto-update Tauri fonctionne via GitHub Releases.
+
+```text
+Modifier le code -> Bump de version -> npm run lint -> npm run build -> Commit -> Push main -> Tag -> Push tag -> CI build -> Release publiee
 ```
 
 ---
 
-## 1. Fichiers de version (les 5 a synchroniser)
+## 1. Fichiers de version a synchroniser
 
-La version doit etre **identique** dans ces 5 fichiers :
+La version doit etre identique dans ces 5 fichiers :
 
-| Fichier | Champ | Exemple |
-|---------|-------|---------|
-| `desktop/src-tauri/tauri.conf.json` | `"version": "X.Y.Z"` | Frontend Tauri |
-| `desktop/src-tauri/Cargo.toml` | `version = "X.Y.Z"` | Rust sidecar |
-| `desktop/package.json` | `"version": "X.Y.Z"` | Node/npm |
-| `pyproject.toml` | `version = "X.Y.Z"` | Python package |
-| `ragkit/desktop/main.py` | `VERSION = "X.Y.Z"` | Backend runtime (affiche dans le footer) |
+| Fichier | Champ | Role |
+|---------|-------|------|
+| `desktop/src-tauri/tauri.conf.json` | `"version": "X.Y.Z"` | app Tauri |
+| `desktop/src-tauri/Cargo.toml` | `version = "X.Y.Z"` | crate Rust |
+| `desktop/package.json` | `"version": "X.Y.Z"` | package npm |
+| `pyproject.toml` | `version = "X.Y.Z"` | package Python |
+| `ragkit/desktop/main.py` | `VERSION = "X.Y.Z"` | version exposee par le backend |
 
-> **Piege courant** : `main.py` est souvent oublie car il n'est pas un fichier de config standard.
-> C'est pourtant lui qui alimente le `/health` endpoint et la version affichee dans la sidebar.
+Piege courant : `ragkit/desktop/main.py` est souvent oublie. C'est pourtant lui qui remonte dans `/health` et dans l'UI.
 
-### Commande de verification
+### Verification rapide
 
 ```bash
-grep -n '"version"' desktop/src-tauri/tauri.conf.json desktop/package.json
-grep -n '^version' desktop/src-tauri/Cargo.toml pyproject.toml
-grep -n 'VERSION = ' ragkit/desktop/main.py
+rg -n '"version": "X.Y.Z"|version = "X.Y.Z"|VERSION = "X.Y.Z"' desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
 ```
 
-Les 5 lignes doivent afficher le meme numero de version.
+Ou, pour verifier une version precise :
+
+```bash
+rg -n "1.4.37" desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
+```
 
 ---
 
-## 2. Procedure complete (pas a pas)
+## 2. Procedure standard
 
-### 2.1 Verifier que le code compile
-
-```bash
-cd desktop && npm run build
-```
-
-Cela lance `tsc` (TypeScript) puis `vite build`. Zero erreur attendue.
-
-### 2.2 Verifier le lint
+### 2.1 Verifier le lint
 
 ```bash
 cd desktop && npm run lint
 ```
 
-Zero erreur attendue. Le CI echoue sur les erreurs de lint.
+Zero erreur attendue.
+
+### 2.2 Verifier la build frontend
+
+```bash
+cd desktop && npm run build
+```
+
+Cela lance `tsc` puis `vite build`. Zero erreur bloquante attendue.
 
 ### 2.3 Bumper la version dans les 5 fichiers
 
-Remplacer `X.Y.Z` par le nouveau numero dans les 5 fichiers ci-dessus.
-Utiliser une recherche globale de l'ancien numero pour ne rien oublier :
-
-```bash
-grep -rn "1.4.17" desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
-```
+Remplacer `X.Y.Z` par la nouvelle version dans les 5 fichiers listes plus haut.
 
 ### 2.4 Commit et push
 
 ```bash
 git add desktop/src-tauri/tauri.conf.json desktop/src-tauri/Cargo.toml desktop/package.json pyproject.toml ragkit/desktop/main.py
 git add <autres fichiers modifies>
-git commit -m "fix: vX.Y.Z - Description du changement"
+git commit -m "feat: release vX.Y.Z"
 git push origin main
 ```
 
 ### 2.5 Creer le tag et le pousser
 
-**Nouveau tag :**
+Nouveau tag :
+
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-**Mettre a jour un tag existant (force) :**
+Mettre a jour un tag existant :
+
 ```bash
 git tag -f vX.Y.Z
 git push origin -f vX.Y.Z
 ```
 
-> Le push du tag declenche le workflow CI qui build les 3 plateformes.
+Le push du tag declenche automatiquement la release desktop.
 
 ### 2.6 Verifier le CI
 
-1. Aller sur **Actions** > verifier que les 4 jobs passent (lint + 3 builds)
-2. Aller sur **Releases** > verifier la release publiee avec les assets et les fichiers d'update :
-   - Windows : `.exe` (NSIS) + `.msi`
-   - macOS : `.dmg`
-   - Linux : `.AppImage` + `.deb`
-   - Updater : `latest.json` + signatures `.sig`
+Sur un push de tag normal, verifier dans GitHub Actions :
+
+1. `lint-frontend`
+2. `prepare-release`
+3. `build-windows`
+4. `build-other-platforms` sur Linux
+5. `build-other-platforms` sur macOS Intel
+6. `build-other-platforms` sur macOS Apple Silicon
+
+La release doit ensuite apparaitre dans GitHub Releases avec les assets de build et les artefacts updater.
 
 ---
 
-## 3. Erreurs frequentes
+## 3. Rebuild manuel d'un tag existant
 
-| Erreur | Cause | Solution |
-|--------|-------|----------|
-| Version "v1.4.15" affichee alors qu'on est en v1.4.17 | `main.py` oublie lors du bump | Toujours bumper les **5** fichiers |
-| CI ne se declenche pas | Pas de tag pousse | Verifier `git push origin vX.Y.Z` |
-| CI echoue sur lint | Erreur ESLint non detectee localement | Lancer `npm run lint` avant de push |
-| L'application ne voit pas la nouvelle version | Release GitHub encore en draft | Publier la release, `releases/latest` ignore les drafts |
-| La build release echoue pendant la generation updater | Secrets de signature absents | Ajouter `TAURI_SIGNING_PRIVATE_KEY` et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` dans GitHub |
-| Tag pointe sur un mauvais commit | Tag cree avant le dernier commit | `git tag -f vX.Y.Z && git push origin -f vX.Y.Z` |
-| `invoke` frontend "reussit" avec erreur backend | Rust `request()` ne verifie pas les codes HTTP | Voir MEMORY.md — comportement connu |
+Le workflow accepte aussi un lancement manuel.
 
----
+Depuis GitHub Actions :
 
-## 4. Checklist rapide
+1. ouvrir `Desktop Build`
+2. cliquer sur `Run workflow`
+3. renseigner `release_tag`
+4. choisir `build_scope`
 
-```
-[ ] npm run build — zero erreur
-[ ] npm run lint — zero erreur
-[ ] 5 fichiers de version synchronises (tauri.conf.json, Cargo.toml, package.json, pyproject.toml, main.py)
-[ ] Commit et push sur main
-[ ] Tag cree et pousse (git tag vX.Y.Z && git push origin vX.Y.Z)
-[ ] CI vert sur les 4 jobs
-[ ] Release publiee avec assets pour les 3 OS
-[ ] `latest.json` et fichiers `.sig` presents sur la release
-```
+Valeurs possibles pour `build_scope` :
+
+- `windows`
+- `all`
+
+Cas d'usage :
+
+- reconstruire `v1.4.37` sans recreer de tag
+- relancer seulement Windows si la build updater a rate
+- republier des assets manquants sur une release existante
 
 ---
 
-## 5. Prerequis systeme CI (Linux)
+## 4. Ce que la release doit contenir
 
-Dans `.github/workflows/desktop.yml`, les packages Tauri v2 requis :
+Assets attendus :
 
+- Windows : `.exe` NSIS et eventuellement `.msi`
+- Linux : `.AppImage` et `.deb`
+- macOS Intel : `.dmg`
+- macOS Apple Silicon : `.dmg`
+- Updater : `latest.json` et fichiers `.sig`
+
+Point important : l'updater Windows doit preferer l'installeur NSIS.
+
+---
+
+## 5. Erreurs frequentes
+
+| Erreur | Cause | Correction |
+|--------|-------|------------|
+| La mauvaise version s'affiche dans l'application | `main.py` n'a pas ete bump | resynchroniser les 5 fichiers |
+| La CI ne se lance pas | le tag n'a pas ete pousse | `git push origin vX.Y.Z` |
+| Le lint casse en CI | erreur ESLint non verifiee localement | lancer `npm run lint` avant le tag |
+| L'application ne voit pas la nouvelle version | release GitHub en draft | publier la release |
+| La generation updater echoue | secrets de signature absents | ajouter les secrets Tauri dans GitHub |
+| Le tag pointe sur le mauvais commit | tag cree trop tot | recreer le tag avec `-f` puis repousser |
+| Un rebuild manuel echoue sur un tag introuvable | `release_tag` ne correspond a aucun tag distant | recreer ou repousser le tag correct |
+
+---
+
+## 6. Checklist rapide
+
+```text
+[ ] npm run lint
+[ ] npm run build
+[ ] 5 fichiers de version synchronises
+[ ] commit et push sur main
+[ ] tag cree et pousse
+[ ] CI verte
+[ ] release publiee
+[ ] latest.json et .sig presents sur la release
 ```
+
+---
+
+## 7. Prerequis CI Linux
+
+Paquets systeme requis pour Tauri v2 :
+
+```text
 libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libappindicator3-dev librsvg2-dev patchelf
 ```
 
 Points critiques :
-- `libwebkit2gtk-4.1-dev` (pas `4.0`)
-- `libsoup-3.0-dev` (obligatoire pour Tauri v2)
 
-Le workflow doit avoir `permissions: contents: write` pour creer des releases.
+- `libwebkit2gtk-4.1-dev`, pas `4.0`
+- `libsoup-3.0-dev`, requis pour Tauri v2
+
+Le workflow doit garder `permissions: contents: write` pour publier la release.
 
 ---
 
-## 6. Secrets requis pour l'auto-update
+## 8. Secrets requis pour l'auto-update
 
-Le workflow GitHub a besoin de 2 secrets :
+Secrets GitHub obligatoires :
 
 - `TAURI_SIGNING_PRIVATE_KEY`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
-La cle publique est embarquee dans `desktop/src-tauri/tauri.conf.json`.
+La cle publique reste dans `desktop/src-tauri/tauri.conf.json`.
 La cle privee ne doit jamais etre committee.

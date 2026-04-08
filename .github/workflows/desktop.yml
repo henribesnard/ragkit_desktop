@@ -57,6 +57,8 @@ jobs:
     outputs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Resolve release tag
         id: tag
         shell: bash
@@ -77,23 +79,25 @@ jobs:
       - name: Ensure git tag exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
-          gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${{ steps.tag.outputs.tag_name }}" >/dev/null
+          gh api "repos/${GH_REPO}/git/ref/tags/${{ steps.tag.outputs.tag_name }}" >/dev/null
 
       - name: Create or publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           TAG="${{ steps.tag.outputs.tag_name }}"
           TITLE="RAGKIT Desktop ${TAG}"
           NOTES="See the assets to download this version and install."
 
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release edit "${TAG}" --draft=false --prerelease=false --title "${TITLE}" --notes "${NOTES}"
+          if gh release view "${TAG}" --repo "${GH_REPO}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" --repo "${GH_REPO}" --draft=false --prerelease=false --title "${TITLE}" --notes "${NOTES}"
           else
-            gh release create "${TAG}" --draft=false --prerelease=false --title "${TITLE}" --notes "${NOTES}"
+            gh release create "${TAG}" --repo "${GH_REPO}" --verify-tag --draft=false --prerelease=false --title "${TITLE}" --notes "${NOTES}"
           fi
 
   build-windows:
