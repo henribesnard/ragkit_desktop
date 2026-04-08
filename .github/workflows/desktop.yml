@@ -149,46 +149,51 @@ jobs:
         run: |
           set -euo pipefail
 
-          KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
-          if [[ -z "${KEY}" ]]; then
+          KEY_RAW="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
+          if [[ -z "${KEY_RAW}" ]]; then
             echo "No updater private key found after detection; check secrets configuration." >&2
             exit 1
           fi
 
-          PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+          PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD//$'\r'/}"
           if [[ -z "${PASSWORD}" ]]; then
             echo "No updater private key password found after detection; check secrets configuration." >&2
             exit 1
           fi
 
           # Handle secrets stored with literal \n
-          if [[ "${KEY}" == *"\\n"* ]]; then
-            KEY="$(printf '%b' "${KEY}")"
+          if [[ "${KEY_RAW}" == *"\\n"* ]]; then
+            KEY_RAW="$(printf '%b' "${KEY_RAW}")"
           fi
 
-          # Handle secrets stored as base64
-          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
-            if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
-              KEY="${DECODED}"
-            elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
-              KEY="${DECODED}"
+          KEY_RAW="${KEY_RAW//$'\r'/}"
+          if [[ "${KEY_RAW}" == *"\\n"* ]]; then
+            KEY_RAW="$(printf '%b' "${KEY_RAW}")"
+          fi
+
+          # Tauri expects TAURI_SIGNING_PRIVATE_KEY in base64 form.
+          if grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY_RAW}"; then
+            KEY_TEXT="${KEY_RAW}"
+            KEY_B64="$(printf '%s' "${KEY_TEXT}" | base64 | tr -d '\r\n')"
+          else
+            KEY_B64="$(printf '%s' "${KEY_RAW}" | tr -d '\r\n')"
+            if DECODED="$(printf '%s' "${KEY_B64}" | base64 -d 2>/dev/null)"; then
+              KEY_TEXT="${DECODED}"
+            elif DECODED="$(printf '%s' "${KEY_B64}" | base64 -D 2>/dev/null)"; then
+              KEY_TEXT="${DECODED}"
+            else
+              echo "TAURI_SIGNING_PRIVATE_KEY is neither a valid base64 key nor decoded minisign/rsign text." >&2
+              exit 1
             fi
           fi
 
-          KEY="${KEY//$'\r'/}"
-          if [[ "${KEY}" == *"\\n"* ]]; then
-            KEY="$(printf '%b' "${KEY}")"
-          fi
-
-          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY_TEXT}"; then
             echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign/rsign secret key content." >&2
             exit 1
           fi
 
           {
-            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
-            printf '%s\n' "${KEY}"
-            echo "EOF"
+            echo "TAURI_SIGNING_PRIVATE_KEY=${KEY_B64}"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<EOF"
             printf '%s\n' "${PASSWORD}"
             echo "EOF"
@@ -311,46 +316,51 @@ jobs:
         run: |
           set -euo pipefail
 
-          KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
-          if [[ -z "${KEY}" ]]; then
+          KEY_RAW="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
+          if [[ -z "${KEY_RAW}" ]]; then
             echo "No updater private key found after detection; check secrets configuration." >&2
             exit 1
           fi
 
-          PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+          PASSWORD="${RAW_TAURI_SIGNING_PRIVATE_KEY_PASSWORD//$'\r'/}"
           if [[ -z "${PASSWORD}" ]]; then
             echo "No updater private key password found after detection; check secrets configuration." >&2
             exit 1
           fi
 
           # Handle secrets stored with literal \n
-          if [[ "${KEY}" == *"\\n"* ]]; then
-            KEY="$(printf '%b' "${KEY}")"
+          if [[ "${KEY_RAW}" == *"\\n"* ]]; then
+            KEY_RAW="$(printf '%b' "${KEY_RAW}")"
           fi
 
-          # Handle secrets stored as base64
-          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
-            if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
-              KEY="${DECODED}"
-            elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
-              KEY="${DECODED}"
+          KEY_RAW="${KEY_RAW//$'\r'/}"
+          if [[ "${KEY_RAW}" == *"\\n"* ]]; then
+            KEY_RAW="$(printf '%b' "${KEY_RAW}")"
+          fi
+
+          # Tauri expects TAURI_SIGNING_PRIVATE_KEY in base64 form.
+          if grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY_RAW}"; then
+            KEY_TEXT="${KEY_RAW}"
+            KEY_B64="$(printf '%s' "${KEY_TEXT}" | base64 | tr -d '\r\n')"
+          else
+            KEY_B64="$(printf '%s' "${KEY_RAW}" | tr -d '\r\n')"
+            if DECODED="$(printf '%s' "${KEY_B64}" | base64 -d 2>/dev/null)"; then
+              KEY_TEXT="${DECODED}"
+            elif DECODED="$(printf '%s' "${KEY_B64}" | base64 -D 2>/dev/null)"; then
+              KEY_TEXT="${DECODED}"
+            else
+              echo "TAURI_SIGNING_PRIVATE_KEY is neither a valid base64 key nor decoded minisign/rsign text." >&2
+              exit 1
             fi
           fi
 
-          KEY="${KEY//$'\r'/}"
-          if [[ "${KEY}" == *"\\n"* ]]; then
-            KEY="$(printf '%b' "${KEY}")"
-          fi
-
-          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY}"; then
+          if ! grep -Eq "untrusted comment: (minisign secret key|rsign encrypted secret key)" <<< "${KEY_TEXT}"; then
             echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign/rsign secret key content." >&2
             exit 1
           fi
 
           {
-            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
-            printf '%s\n' "${KEY}"
-            echo "EOF"
+            echo "TAURI_SIGNING_PRIVATE_KEY=${KEY_B64}"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<EOF"
             printf '%s\n' "${PASSWORD}"
             echo "EOF"
