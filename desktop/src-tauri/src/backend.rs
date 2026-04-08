@@ -19,6 +19,7 @@ pub struct BackendState {
 }
 
 pub enum ChildProcess {
+    #[cfg(debug_assertions)]
     Std(std::process::Child),
     #[cfg(not(debug_assertions))]
     Sidecar(CommandChild),
@@ -116,6 +117,7 @@ pub async fn stop_backend(app: &AppHandle) {
          if let Some(child) = child_guard.take() {
              tracing::info!("Force killing backend process...");
              match child {
+                 #[cfg(debug_assertions)]
                  ChildProcess::Std(mut c) => { 
                      pid_to_kill = Some(c.id());
                      let _ = c.kill(); 

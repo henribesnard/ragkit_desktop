@@ -142,11 +142,53 @@ jobs:
           mkdir -p desktop/src-tauri/binaries
           cp "dist/ragkit-backend.exe" "desktop/src-tauri/binaries/ragkit-backend-x86_64-pc-windows-msvc.exe"
 
+      - name: Normalize updater private key
+        shell: bash
+        env:
+          RAW_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
+          if [[ -z "${KEY}" ]]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY is empty" >&2
+            exit 1
+          fi
+
+          # Handle secrets stored with literal \n
+          if [[ "${KEY}" == *"\\n"* ]]; then
+            KEY="$(printf '%b' "${KEY}")"
+          fi
+
+          # Handle secrets stored as base64
+          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+            if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
+              KEY="${DECODED}"
+            elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
+              KEY="${DECODED}"
+            fi
+          fi
+
+          KEY="${KEY//$'\r'/}"
+          if [[ "${KEY}" == *"\\n"* ]]; then
+            KEY="$(printf '%b' "${KEY}")"
+          fi
+
+          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign secret key content." >&2
+            exit 1
+          fi
+
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
+            printf '%s\n' "${KEY}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: desktop
@@ -224,11 +266,53 @@ jobs:
           mkdir -p desktop/src-tauri/binaries
           cp "dist/ragkit-backend" "desktop/src-tauri/binaries/ragkit-backend-${{ matrix.target_suffix }}"
 
+      - name: Normalize updater private key
+        shell: bash
+        env:
+          RAW_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          KEY="${RAW_TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
+          if [[ -z "${KEY}" ]]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY is empty" >&2
+            exit 1
+          fi
+
+          # Handle secrets stored with literal \n
+          if [[ "${KEY}" == *"\\n"* ]]; then
+            KEY="$(printf '%b' "${KEY}")"
+          fi
+
+          # Handle secrets stored as base64
+          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+            if DECODED="$(printf '%s' "${KEY}" | base64 -d 2>/dev/null)"; then
+              KEY="${DECODED}"
+            elif DECODED="$(printf '%s' "${KEY}" | base64 -D 2>/dev/null)"; then
+              KEY="${DECODED}"
+            fi
+          fi
+
+          KEY="${KEY//$'\r'/}"
+          if [[ "${KEY}" == *"\\n"* ]]; then
+            KEY="$(printf '%b' "${KEY}")"
+          fi
+
+          if ! grep -q "untrusted comment: minisign secret key" <<< "${KEY}"; then
+            echo "TAURI_SIGNING_PRIVATE_KEY has invalid format. Expected minisign secret key content." >&2
+            exit 1
+          fi
+
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
+            printf '%s\n' "${KEY}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: desktop
