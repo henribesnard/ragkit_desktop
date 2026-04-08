@@ -94,7 +94,7 @@ export function RestApiForm({ config, onChange }: RestApiFormProps) {
                             />
                             <input
                                 type="text"
-                                value={item.value}
+                                value={String(item.value ?? "")}
                                 onChange={(e) => updatePairs("headers", index, "value", e.target.value)}
                                 placeholder="Bearer ${API_KEY}"
                                 className="block w-1/2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -135,7 +135,7 @@ export function RestApiForm({ config, onChange }: RestApiFormProps) {
                             />
                             <input
                                 type="text"
-                                value={item.value as string}
+                                value={String(item.value ?? "")}
                                 onChange={(e) => updatePairs("query_params", index, "value", e.target.value)}
                                 placeholder="published"
                                 className="block w-1/2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"

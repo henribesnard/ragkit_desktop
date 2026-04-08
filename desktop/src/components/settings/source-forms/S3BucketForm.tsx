@@ -15,7 +15,8 @@ export function S3BucketForm({ config, onChange }: S3BucketFormProps) {
         if (hasValue) {
             onChange({ ...config, credential: next });
         } else {
-            const { credential: _removed, ...rest } = config;
+            const rest = { ...config };
+            delete rest.credential;
             onChange(rest);
         }
     };

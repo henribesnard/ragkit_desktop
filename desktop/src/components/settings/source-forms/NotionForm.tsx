@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Plus, X } from "lucide-react";
 
@@ -7,18 +7,37 @@ interface NotionFormProps {
     onChange: (config: any) => void;
 }
 
+interface NotionFiltersFieldProps {
+    value: any;
+    onChange: (value: string) => void;
+}
+
+function serializeFilters(value: any) {
+    return value ? JSON.stringify(value, null, 2) : "";
+}
+
+function NotionFiltersField({ value, onChange }: NotionFiltersFieldProps) {
+    const [filtersText, setFiltersText] = useState(() => serializeFilters(value));
+
+    return (
+        <textarea
+            value={filtersText}
+            onChange={(e) => {
+                const nextValue = e.target.value;
+                setFiltersText(nextValue);
+                onChange(nextValue);
+            }}
+            rows={4}
+            placeholder='{"Status": {"select": {"equals": "Published"}}}'
+            className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+        />
+    );
+}
+
 export function NotionForm({ config, onChange }: NotionFormProps) {
     const databaseIds = config.database_ids || [""];
     const pageIds = config.page_ids || [];
     const credential = config.credential || {};
-
-    const [filtersText, setFiltersText] = useState(() =>
-        config.property_filters ? JSON.stringify(config.property_filters, null, 2) : ""
-    );
-
-    useEffect(() => {
-        setFiltersText(config.property_filters ? JSON.stringify(config.property_filters, null, 2) : "");
-    }, [config.property_filters]);
 
     const updateList = (key: string, index: number, value: string) => {
         const current = [...(config[key] || [])];
@@ -43,7 +62,8 @@ export function NotionForm({ config, onChange }: NotionFormProps) {
         if (hasValue) {
             onChange({ ...config, credential: next });
         } else {
-            const { credential: _removed, ...rest } = config;
+            const rest = { ...config };
+            delete rest.credential;
             onChange(rest);
         }
     };
@@ -53,9 +73,9 @@ export function NotionForm({ config, onChange }: NotionFormProps) {
     };
 
     const handleFiltersChange = (value: string) => {
-        setFiltersText(value);
         if (!value.trim()) {
-            const { property_filters: _removed, ...rest } = config;
+            const rest = { ...config };
+            delete rest.property_filters;
             onChange(rest);
             return;
         }
@@ -174,12 +194,10 @@ export function NotionForm({ config, onChange }: NotionFormProps) {
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtres (JSON Notion)</label>
-                <textarea
-                    value={filtersText}
-                    onChange={(e) => handleFiltersChange(e.target.value)}
-                    rows={4}
-                    placeholder='{"Status": {"select": {"equals": "Published"}}}'
-                    className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                <NotionFiltersField
+                    key={serializeFilters(config.property_filters)}
+                    value={config.property_filters}
+                    onChange={handleFiltersChange}
                 />
             </div>
         </div>

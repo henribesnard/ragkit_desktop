@@ -134,6 +134,22 @@
     "disconnected": "Backend disconnected",
     "reconnecting": "Reconnecting..."
   },
+  "updater": {
+    "availableTitle": "Update available",
+    "availableMessage": "Version {{version}} is available. The app will download the update and restart to install it.",
+    "installNow": "Update and restart",
+    "later": "Later",
+    "downloadingTitle": "Downloading update",
+    "downloadingMessage": "The update package is being downloaded.",
+    "downloadingProgress": "Downloading update: {{percent}}%.",
+    "downloadingButton": "Downloading...",
+    "installingTitle": "Installing update",
+    "installingMessage": "The update is ready. The app will restart automatically.",
+    "installingButton": "Restarting...",
+    "errorTitle": "Update failed",
+    "errorMessage": "The update could not be installed: {{error}}",
+    "retryInstall": "Retry"
+  },
   "monitoring": {
     "status": {
       "ok": "OK",

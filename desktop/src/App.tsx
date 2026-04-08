@@ -10,6 +10,7 @@ import { useSetupStatus } from "./hooks/useSetupStatus";
 import { ConversationsProvider, useConversations } from "./hooks/useConversations";
 import { invoke } from "@tauri-apps/api/core";
 import i18n from "./i18n";
+import { AppUpdateManager } from "./components/ui/AppUpdateManager";
 
 /**
  * Chat page wrapper: auto-creates a conversation when landing on /chat without
@@ -116,29 +117,35 @@ export default function App() {
 
     if (!hasCompletedSetup) {
         return (
-            <BrowserRouter>
-                <Onboarding />
-            </BrowserRouter>
+            <>
+                <AppUpdateManager />
+                <BrowserRouter>
+                    <Onboarding />
+                </BrowserRouter>
+            </>
         );
     }
 
     return (
-        <BrowserRouter>
-            <ConversationsProvider>
-                <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-                    <Sidebar />
-                    <main className="flex-1 overflow-hidden">
-                        <Routes>
-                            <Route path="/chat" element={<ChatPage />} />
-                            <Route path="/chat/:id" element={<ChatPage />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="/settings/:section" element={<Settings />} />
-                            <Route path="*" element={<Navigate to="/chat" replace />} />
-                        </Routes>
-                    </main>
-                </div>
-            </ConversationsProvider>
-        </BrowserRouter>
+        <>
+            <AppUpdateManager />
+            <BrowserRouter>
+                <ConversationsProvider>
+                    <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                        <Sidebar />
+                        <main className="flex-1 overflow-hidden">
+                            <Routes>
+                                <Route path="/chat" element={<ChatPage />} />
+                                <Route path="/chat/:id" element={<ChatPage />} />
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/settings" element={<Settings />} />
+                                <Route path="/settings/:section" element={<Settings />} />
+                                <Route path="*" element={<Navigate to="/chat" replace />} />
+                            </Routes>
+                        </main>
+                    </div>
+                </ConversationsProvider>
+            </BrowserRouter>
+        </>
     );
 }

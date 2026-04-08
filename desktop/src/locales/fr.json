@@ -134,6 +134,22 @@
     "disconnected": "Backend déconnecté",
     "reconnecting": "Reconnexion en cours..."
   },
+  "updater": {
+    "availableTitle": "Mise à jour disponible",
+    "availableMessage": "La version {{version}} est disponible. L'application va télécharger la mise à jour puis redémarrer pour l'installer.",
+    "installNow": "Mettre à jour et redémarrer",
+    "later": "Plus tard",
+    "downloadingTitle": "Téléchargement de la mise à jour",
+    "downloadingMessage": "Le package de mise à jour est en cours de téléchargement.",
+    "downloadingProgress": "Téléchargement en cours : {{percent}}%.",
+    "downloadingButton": "Téléchargement...",
+    "installingTitle": "Installation de la mise à jour",
+    "installingMessage": "La mise à jour est préparée. L'application va redémarrer automatiquement.",
+    "installingButton": "Redémarrage...",
+    "errorTitle": "Échec de la mise à jour",
+    "errorMessage": "La mise à jour n'a pas pu être installée : {{error}}",
+    "retryInstall": "Réessayer"
+  },
   "monitoring": {
     "status": {
       "ok": "OK",

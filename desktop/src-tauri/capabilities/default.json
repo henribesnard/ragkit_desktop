@@ -7,11 +7,13 @@
     ],
     "permissions": [
         "core:default",
+        "process:default",
         "shell:allow-open",
         "dialog:allow-open",
         "dialog:allow-save",
         "dialog:allow-message",
         "dialog:allow-ask",
-        "dialog:allow-confirm"
+        "dialog:allow-confirm",
+        "updater:default"
     ]
 }

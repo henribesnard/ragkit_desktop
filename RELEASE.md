@@ -5,6 +5,8 @@
 Le CI (`desktop.yml`) se declenche uniquement sur les tags `v*`.
 Un push sans tag ne lance aucun build.
 
+Les releases doivent etre **publiees** (pas en draft) pour que l'auto-update Tauri fonctionne via GitHub Releases.
+
 ```
 Modifier le code → Bump les 5 fichiers de version → Commit → Push → Tag → Push tag → CI build
 ```
@@ -93,10 +95,11 @@ git push origin -f vX.Y.Z
 ### 2.6 Verifier le CI
 
 1. Aller sur **Actions** > verifier que les 4 jobs passent (lint + 3 builds)
-2. Aller sur **Releases** > verifier la draft release avec les assets :
+2. Aller sur **Releases** > verifier la release publiee avec les assets et les fichiers d'update :
    - Windows : `.exe` (NSIS) + `.msi`
    - macOS : `.dmg`
    - Linux : `.AppImage` + `.deb`
+   - Updater : `latest.json` + signatures `.sig`
 
 ---
 
@@ -107,6 +110,8 @@ git push origin -f vX.Y.Z
 | Version "v1.4.15" affichee alors qu'on est en v1.4.17 | `main.py` oublie lors du bump | Toujours bumper les **5** fichiers |
 | CI ne se declenche pas | Pas de tag pousse | Verifier `git push origin vX.Y.Z` |
 | CI echoue sur lint | Erreur ESLint non detectee localement | Lancer `npm run lint` avant de push |
+| L'application ne voit pas la nouvelle version | Release GitHub encore en draft | Publier la release, `releases/latest` ignore les drafts |
+| La build release echoue pendant la generation updater | Secrets de signature absents | Ajouter `TAURI_SIGNING_PRIVATE_KEY` et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` dans GitHub |
 | Tag pointe sur un mauvais commit | Tag cree avant le dernier commit | `git tag -f vX.Y.Z && git push origin -f vX.Y.Z` |
 | `invoke` frontend "reussit" avec erreur backend | Rust `request()` ne verifie pas les codes HTTP | Voir MEMORY.md — comportement connu |
 
@@ -121,7 +126,8 @@ git push origin -f vX.Y.Z
 [ ] Commit et push sur main
 [ ] Tag cree et pousse (git tag vX.Y.Z && git push origin vX.Y.Z)
 [ ] CI vert sur les 4 jobs
-[ ] Draft release avec assets pour les 3 OS
+[ ] Release publiee avec assets pour les 3 OS
+[ ] `latest.json` et fichiers `.sig` presents sur la release
 ```
 
 ---
@@ -139,3 +145,15 @@ Points critiques :
 - `libsoup-3.0-dev` (obligatoire pour Tauri v2)
 
 Le workflow doit avoir `permissions: contents: write` pour creer des releases.
+
+---
+
+## 6. Secrets requis pour l'auto-update
+
+Le workflow GitHub a besoin de 2 secrets :
+
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+La cle publique est embarquee dans `desktop/src-tauri/tauri.conf.json`.
+La cle privee ne doit jamais etre committee.

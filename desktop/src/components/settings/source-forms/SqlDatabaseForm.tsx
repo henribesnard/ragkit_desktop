@@ -16,7 +16,8 @@ export function SqlDatabaseForm({ config, onChange }: SqlDatabaseFormProps) {
         if (hasValue) {
             onChange({ ...config, credential: next });
         } else {
-            const { credential: _removed, ...rest } = config;
+            const rest = { ...config };
+            delete rest.credential;
             onChange(rest);
         }
     };
