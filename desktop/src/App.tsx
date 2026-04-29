@@ -11,6 +11,7 @@ import { ConversationsProvider, useConversations } from "./hooks/useConversation
 import { invoke } from "@tauri-apps/api/core";
 import i18n from "./i18n";
 import { AppUpdateManager } from "./components/ui/AppUpdateManager";
+import { AppUpdaterProvider } from "./hooks/useAppUpdater";
 
 /**
  * Chat page wrapper: auto-creates a conversation when landing on /chat without
@@ -117,17 +118,17 @@ export default function App() {
 
     if (!hasCompletedSetup) {
         return (
-            <>
+            <AppUpdaterProvider>
                 <AppUpdateManager />
                 <BrowserRouter>
                     <Onboarding />
                 </BrowserRouter>
-            </>
+            </AppUpdaterProvider>
         );
     }
 
     return (
-        <>
+        <AppUpdaterProvider>
             <AppUpdateManager />
             <BrowserRouter>
                 <ConversationsProvider>
@@ -146,6 +147,6 @@ export default function App() {
                     </div>
                 </ConversationsProvider>
             </BrowserRouter>
-        </>
+        </AppUpdaterProvider>
     );
 }

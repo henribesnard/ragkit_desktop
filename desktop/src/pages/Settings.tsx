@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Layers, FileText, Scissors, Brain, Database, Search, Activity, Shield } from "lucide-react";
+import { Layers, FileText, Scissors, Brain, Database, Search, Activity, Shield, Info } from "lucide-react";
 import { useState } from "react";
 import { IngestionSettings } from "@/components/settings/IngestionSettings";
 import { ChunkingSettings } from "@/components/settings/ChunkingSettings";
@@ -15,6 +15,7 @@ import { AgentsSettings } from "@/components/settings/AgentsSettings";
 import { MonitoringSettings } from "@/components/settings/MonitoringSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { PipelineLatencyEstimator } from "@/components/settings/PipelineLatencyEstimator";
+import { AboutSettings } from "@/components/settings/AboutSettings";
 import { useExpertiseLevel } from "@/hooks/useExpertiseLevel";
 import { useLatencyEstimator } from "@/hooks/useLatencyEstimator";
 import { useLLMConfig } from "@/hooks/useLLMConfig";
@@ -23,7 +24,7 @@ import { useRerankConfig } from "@/hooks/useRerankConfig";
 import { useSemanticSearchConfig } from "@/hooks/useSemanticSearchConfig";
 import { isSectionVisible } from "@/lib/visibility";
 
-type Section = "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring" | "security";
+type Section = "general" | "ingestion" | "chunking" | "embedding" | "vector" | "semantic" | "lexical" | "hybrid" | "rerank" | "llm" | "agents" | "monitoring" | "security" | "about";
 
 const SECTION_VISIBILITY_MAP: Record<string, string> = {
   ingestion: "ingestion_source",
@@ -70,7 +71,7 @@ export function Settings() {
   const showEstimator = PIPELINE_SECTIONS.has(activeSection);
 
   const isVisible = (section: Section) => {
-    if (section === "general") return true;
+    if (section === "general" || section === "about") return true;
     const visibilityKey = SECTION_VISIBILITY_MAP[section] || section;
     return isSectionVisible(visibilityKey, level);
   };
@@ -157,6 +158,16 @@ export function Settings() {
               {navButton("agents", <Search className="w-4 h-4" />, t("settings.agents", "Agents"))}
               {navButton("monitoring", <Activity className="w-4 h-4" />, t("settings.monitoring", "Monitoring"))}
               {navButton("security", <Shield className="w-4 h-4" />, t("settings.security", "Sécurité"))}
+
+              <div className="pt-3 pb-1">
+                <span
+                  className="px-3 text-xs font-semibold uppercase"
+                  style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em" }}
+                >
+                  {t("settings.info", "Info")}
+                </span>
+              </div>
+              {navButton("about", <Info className="w-4 h-4" />, t("updater.aboutTitle", "À propos"))}
             </nav>
           </div>
 
@@ -178,6 +189,7 @@ export function Settings() {
             {activeSection === "agents" && <AgentsSettings />}
             {activeSection === "monitoring" && <MonitoringSettings />}
             {activeSection === "security" && <SecuritySettings />}
+            {activeSection === "about" && <AboutSettings />}
           </div>
         </div>
       </div>

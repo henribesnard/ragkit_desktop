@@ -6,6 +6,7 @@ import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { useConversations } from "../../hooks/useConversations";
 import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
+import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { ConversationList } from "./ConversationList";
 import { ConversationSearch } from "./ConversationSearch";
 
@@ -28,6 +29,14 @@ export function Sidebar() {
         searchConversations,
     } = useConversations();
     const { isRunning: isIngesting, progress: ingestionProgress } = usePersistentIngestion();
+    const {
+        status: updateStatus,
+        availableVersion: updateVersion,
+        dismissedVersion: dismissedUpdateVersion,
+    } = useAppUpdater();
+    const badgeVersion =
+        updateStatus === "available" ? updateVersion : dismissedUpdateVersion;
+    const hasUpdate = Boolean(badgeVersion);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [isConversationsOpen, setIsConversationsOpen] = useState(true);
@@ -360,10 +369,15 @@ export function Sidebar() {
                     {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
                 </button>
 
-                {/* Backend Status */}
+                {/* Backend Status + Update Badge */}
                 <div
-                    className="flex items-center gap-1.5"
-                    title={isBackendHealthy ? t("backend.connected") : t("backend.disconnected")}
+                    className="flex items-center gap-1.5 cursor-pointer"
+                    title={
+                        hasUpdate
+                            ? t("updater.newVersionAvailable") + " (" + (badgeVersion ?? "") + ")"
+                            : isBackendHealthy ? t("backend.connected") : t("backend.disconnected")
+                    }
+                    onClick={() => navigate("/settings")}
                 >
                     <div
                         className="w-2 h-2 rounded-full"
@@ -379,6 +393,12 @@ export function Sidebar() {
                     >
                         {backendVersion ? `v${backendVersion}` : "..."}
                     </span>
+                    {hasUpdate && (
+                        <div
+                            className="w-2 h-2 rounded-full animate-pulse"
+                            style={{ background: "var(--primary-500)" }}
+                        />
+                    )}
                 </div>
             </div>
         </div>
