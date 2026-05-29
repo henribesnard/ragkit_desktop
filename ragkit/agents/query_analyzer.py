@@ -41,8 +41,14 @@ class QueryAnalyzer:
         history_str = self._format_history(history or [])
         intents_str = ", ".join(intent.value for intent in self.config.detect_intents)
         prompt = (
-            self.config.prompt_analyzer.replace("{conversation_history}", history_str)
-            .replace("{user_message}", message)
+            self.config.prompt_analyzer.replace(
+                "{conversation_history}",
+                f"<conversation_history>\n{history_str}\n</conversation_history>",
+            )
+            .replace(
+                "{user_message}",
+                f"<user_input>\n{message}\n</user_input>",
+            )
             .replace("{intents_list}", intents_str)
         )
 

@@ -4,6 +4,7 @@ mod backend;
 mod commands;
 
 use std::sync::Mutex;
+use uuid::Uuid;
 use backend::BackendState;
 
 fn get_log_dir() -> std::path::PathBuf {
@@ -40,6 +41,7 @@ fn main() {
             chat_stream_cancel: Mutex::new(std::sync::Arc::new(
                 std::sync::atomic::AtomicBool::new(false),
             )),
+            backend_secret: Uuid::new_v4().to_string(),
         })
         .setup(|app| {
             let app_handle = app.handle().clone();

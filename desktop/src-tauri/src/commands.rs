@@ -546,6 +546,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
 
     let port = (*state.port.lock().map_err(|e| e.to_string())?)
         .ok_or_else(|| "Backend not ready".to_string())?;
+    let secret = state.backend_secret.clone();
     let url = format!("http://127.0.0.1:{}/api/chat/stream", port);
 
     let client = reqwest::Client::builder()
@@ -554,6 +555,7 @@ pub async fn chat_stream(window: Window, query: serde_json::Value) -> Result<Str
         .map_err(|e| e.to_string())?;
     let response = client
         .post(&url)
+        .header("X-Backend-Token", &secret)
         .json(&query)
         .send()
         .await
@@ -872,6 +874,7 @@ pub async fn export_query_logs(app: AppHandle, filters: serde_json::Value) -> Re
     let state = app.state::<BackendState>();
     let port = (*state.port.lock().map_err(|e| e.to_string())?)
         .ok_or_else(|| "Backend not ready".to_string())?;
+    let secret = state.backend_secret.clone();
     let url = format!("http://127.0.0.1:{}{}", port, endpoint);
 
     let client = reqwest::Client::builder()
@@ -879,7 +882,7 @@ pub async fn export_query_logs(app: AppHandle, filters: serde_json::Value) -> Re
         .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| e.to_string())?;
-    let response = client.get(url).send().await.map_err(|e| e.to_string())?;
+    let response = client.get(url).header("X-Backend-Token", &secret).send().await.map_err(|e| e.to_string())?;
     let status = response.status();
     if !status.is_success() {
         let text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());

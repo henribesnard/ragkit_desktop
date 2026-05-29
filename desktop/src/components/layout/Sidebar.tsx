@@ -1,7 +1,18 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { SquarePen, LayoutDashboard, Settings, Moon, Sun, Globe, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import {
+    SquarePen,
+    MessagesSquare,
+    LayoutDashboard,
+    SlidersHorizontal,
+    Moon,
+    Sun,
+    Globe,
+    ChevronDown,
+    ChevronRight,
+    Loader2,
+} from "lucide-react";
 import { useBackendHealth } from "../../hooks/useBackendHealth";
 import { useTheme } from "../../hooks/useTheme";
 import { useConversations } from "../../hooks/useConversations";
@@ -9,6 +20,7 @@ import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { ConversationList } from "./ConversationList";
 import { ConversationSearch } from "./ConversationSearch";
+import { LokoGlyph } from "../brand/LokoGlyph";
 
 export function Sidebar() {
     const { t, i18n } = useTranslation();
@@ -71,137 +83,101 @@ export function Sidebar() {
     const isNavActive = (path: string) => location.pathname.startsWith(path);
 
     return (
-        <div
+        <nav
             className="flex flex-col h-screen"
             style={{
                 width: "var(--sidebar-width)",
-                background: "var(--bg-secondary)",
-                borderRight: "1px solid var(--border-default)",
-                padding: 8,
+                background: "var(--surface)",
+                borderRight: "1px solid var(--border)",
+                padding: "16px 14px",
                 flexShrink: 0,
             }}
         >
-            {/* Header — LOKO Wordmark */}
-            <div style={{ padding: "4px 8px", marginBottom: 4 }}>
-                <span
-                    style={{
-                        fontSize: 18,
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
-                        color: theme === "dark" ? "var(--primary-400)" : "var(--primary-800)",
-                    }}
-                >
-                    LOKO
-                </span>
+            {/* Brand lockup */}
+            <div className="nav-brand">
+                <LokoGlyph size={28} />
+                <span className="wm">LOKO</span>
             </div>
 
-            {/* New Conversation Button */}
-            <button
-                onClick={handleNewConversation}
-                className="flex items-center gap-2 w-full transition-colors"
-                style={{
-                    padding: "6px 10px",
-                    borderRadius: "var(--radius-md)",
-                    background: "transparent",
-                    color: "var(--text-secondary)",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    height: 32,
-                }}
-                onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
-                }}
-                onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "transparent";
-                }}
-            >
-                <SquarePen size={18} />
-                {t("sidebar.newChat")}
-            </button>
+            {/* Primary nav section */}
+            <div className="nav-section">{t("sidebar.workspace", "Espace de travail")}</div>
 
-            {/* Separator */}
+            {/* Chat nav item */}
             <div
-                style={{
-                    height: 1,
-                    background: "var(--border-default)",
-                    margin: "6px 8px 4px",
-                }}
-            />
+                className={`nav-item${isNavActive("/chat") ? " active" : ""}`}
+                onClick={() => navigate("/chat")}
+            >
+                <MessagesSquare size={18} />
+                <span className="lbl">{t("navigation.chat", "Chat")}</span>
+                <SquarePen
+                    size={15}
+                    style={{ color: "var(--text-3)", cursor: "pointer" }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleNewConversation();
+                    }}
+                />
+            </div>
 
-            {/* Conversations Header */}
+            {/* Conversations toggle */}
             <button
                 onClick={() => setIsConversationsOpen(!isConversationsOpen)}
-                className="w-full flex items-center justify-between transition-colors"
+                className="w-full flex items-center justify-between"
                 style={{
                     padding: "4px 10px",
+                    marginTop: 4,
                     background: "transparent",
-                    color: "var(--text-tertiary)",
+                    color: "var(--text-3)",
                     fontSize: 11,
                     fontWeight: 600,
                     textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                }}
-                onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
-                }}
-                onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                    letterSpacing: "0.07em",
+                    border: "none",
+                    cursor: "pointer",
                 }}
             >
                 {t("sidebar.conversations", "Conversations")}
                 {isConversationsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
 
-            {/* Search (if > 5 conversations) */}
+            {/* Search */}
             {showSearch && isConversationsOpen && (
                 <div style={{ padding: "2px 0 6px 0" }}>
-                    <ConversationSearch
-                        value={searchQuery}
-                        onChange={setSearchQuery}
-                    />
+                    <ConversationSearch value={searchQuery} onChange={setSearchQuery} />
                 </div>
             )}
 
-            {/* Conversations List — Scrollable */}
+            {/* Conversations List */}
             {isConversationsOpen && (
-                <div
-                    className="flex-1 overflow-y-auto"
-                    style={{ marginBottom: 4 }}
-                >
+                <div className="flex-1 overflow-y-auto loko-scroll" style={{ marginBottom: 4 }}>
                     {filteredConversations ? (
-                        // Search results — flat list
                         <div className="space-y-0.5">
                             {filteredConversations.length === 0 ? (
-                                <div
-                                    className="text-center py-4 text-xs"
-                                    style={{ color: "var(--text-tertiary)" }}
-                                >
+                                <div className="text-center py-4 text-xs" style={{ color: "var(--text-3)" }}>
                                     {t("chat.emptyResults")}
                                 </div>
                             ) : (
                                 filteredConversations.map((conv) => (
                                     <div
                                         key={conv.id}
-                                        className="cursor-pointer transition-colors"
+                                        className="cursor-pointer"
                                         style={{
                                             padding: "6px 10px",
-                                            borderRadius: "var(--radius-md)",
-                                            background: conv.id === activeId ? "var(--bg-hover)" : "transparent",
+                                            borderRadius: 9,
+                                            background: conv.id === activeId ? "var(--brand-weak)" : "transparent",
+                                            color: conv.id === activeId ? "var(--brand)" : "var(--text-2)",
+                                            fontSize: 13.5,
+                                            fontWeight: 500,
                                         }}
                                         onClick={() => handleSelectConversation(conv.id)}
                                         onMouseEnter={(e) => {
-                                            (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                                            if (conv.id !== activeId) (e.currentTarget.style.background = "var(--surface-2)");
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (conv.id !== activeId) {
-                                                (e.currentTarget as HTMLElement).style.background = "transparent";
-                                            }
+                                            if (conv.id !== activeId) (e.currentTarget.style.background = "transparent");
                                         }}
                                     >
-                                        <span
-                                            className="text-sm truncate block"
-                                            style={{ color: "var(--text-primary)" }}
-                                        >
+                                        <span className="truncate block">
                                             {conv.title || t("sidebar.newChat")}
                                         </span>
                                     </div>
@@ -219,19 +195,14 @@ export function Sidebar() {
                         />
                     )}
 
-                    {/* Archives link */}
                     {archivedCount > 0 && !filteredConversations && (
                         <div
-                            className="text-xs mt-4 px-3 cursor-pointer transition-colors"
-                            style={{ color: "var(--text-tertiary)" }}
-                            onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
-                            }}
-                            onMouseLeave={(e) => {
-                                (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
-                            }}
+                            className="text-xs mt-4 px-3 cursor-pointer"
+                            style={{ color: "var(--text-3)" }}
+                            onMouseEnter={(e) => { (e.currentTarget.style.color = "var(--text-2)"); }}
+                            onMouseLeave={(e) => { (e.currentTarget.style.color = "var(--text-3)"); }}
                         >
-                            📁 {t("sidebar.archiveCount", { count: archivedCount })}
+                            {t("sidebar.archiveCount", { count: archivedCount })}
                         </div>
                     )}
                 </div>
@@ -239,15 +210,43 @@ export function Sidebar() {
 
             {!isConversationsOpen && <div className="flex-1" />}
 
+            {/* Secondary navigation */}
+            <div className="nav-section">{t("sidebar.navigation", "Navigation")}</div>
+
+            <Link
+                to="/dashboard"
+                className={`nav-item${isNavActive("/dashboard") ? " active" : ""}`}
+                style={{ textDecoration: "none" }}
+            >
+                <LayoutDashboard size={18} />
+                <span className="lbl">{t("navigation.dashboard", "Tableau de bord")}</span>
+            </Link>
+
+            <Link
+                to="/settings"
+                className={`nav-item${isNavActive("/settings") ? " active" : ""}`}
+                style={{ textDecoration: "none" }}
+            >
+                <SlidersHorizontal size={18} />
+                <span className="lbl">{t("navigation.settings", "Paramètres")}</span>
+                {hasUpdate && (
+                    <span
+                        className="w-2 h-2 rounded-full animate-pulse"
+                        style={{ background: "var(--brand)" }}
+                    />
+                )}
+            </Link>
+
             {/* Ingestion Status */}
             {isIngesting && (
                 <div
-                    className="flex items-center gap-2 mx-1 mb-2"
+                    className="flex items-center gap-2"
                     style={{
-                        padding: "6px 8px",
-                        borderRadius: "var(--radius-md)",
-                        background: theme === "dark" ? "rgba(6, 78, 59, 0.25)" : "var(--primary-50)",
-                        color: theme === "dark" ? "var(--primary-300)" : "var(--primary-700)",
+                        padding: "8px 10px",
+                        marginTop: 6,
+                        borderRadius: 10,
+                        background: "var(--brand-weak)",
+                        color: "var(--brand)",
                         fontSize: 12,
                         fontWeight: 500,
                     }}
@@ -260,87 +259,60 @@ export function Sidebar() {
                 </div>
             )}
 
-            {/* Separator */}
-            <div
-                style={{
-                    height: 1,
-                    background: "var(--border-default)",
-                    margin: "0 8px 6px",
-                }}
-            />
+            <div className="nav-spacer" />
 
-            {/* Secondary Navigation */}
-            <nav className="space-y-0.5 mb-2">
-                {[
-                    { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard },
-                    { path: "/settings", label: t("navigation.settings"), icon: Settings },
-                ].map((item) => {
-                    const active = isNavActive(item.path);
-                    const Icon = item.icon;
-                    return (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className="flex items-center gap-2 transition-colors"
-                            style={{
-                                padding: "6px 10px",
-                                borderRadius: "var(--radius-md)",
-                                fontSize: 13,
-                                color: active ? "var(--primary-500)" : "var(--text-secondary)",
-                                background: active ? "var(--bg-hover)" : "transparent",
-                                fontWeight: active ? 500 : 400,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!active) {
-                                    (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
-                                    (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!active) {
-                                    (e.currentTarget as HTMLElement).style.background = "transparent";
-                                    (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
-                                }
-                            }}
-                        >
-                            <Icon size={18} />
-                            {item.label}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            {/* Separator */}
+            {/* Backend status card */}
             <div
-                style={{
-                    height: 1,
-                    background: "var(--border-default)",
-                    margin: "0 8px 6px",
-                }}
-            />
-
-            {/* Footer */}
-            <div
-                className="flex items-center justify-between"
-                style={{ padding: "0 4px" }}
+                className="nav-status"
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate("/settings")}
+                title={
+                    hasUpdate
+                        ? t("updater.newVersionAvailable") + " (" + (badgeVersion ?? "") + ")"
+                        : isBackendHealthy
+                            ? t("backend.connected")
+                            : t("backend.disconnected")
+                }
             >
-                {/* Language Toggle */}
+                <span
+                    className="dot"
+                    style={
+                        isBackendHealthy
+                            ? {}
+                            : { background: "var(--danger)", boxShadow: "0 0 0 3px var(--danger-bg)" }
+                    }
+                />
+                <div style={{ flex: 1 }}>
+                    <b>
+                        {isBackendHealthy
+                            ? t("backend.connected", "Backend actif")
+                            : t("backend.disconnected", "Backend inactif")}
+                    </b>
+                    <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                        {backendVersion ? `v${backendVersion}` : "..."}
+                        {hasUpdate && (
+                            <span style={{ marginLeft: 6, color: "var(--brand)" }}>
+                                {badgeVersion}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex items-center justify-between" style={{ padding: "10px 4px 0" }}>
                 <button
                     onClick={toggleLanguage}
-                    className="flex items-center gap-1 transition-colors"
+                    className="flex items-center gap-1"
                     style={{
                         fontSize: 11,
                         fontWeight: 500,
-                        color: "var(--text-tertiary)",
+                        color: "var(--text-3)",
                         background: "transparent",
                         padding: "4px 6px",
-                        borderRadius: "var(--radius-sm)",
-                    }}
-                    onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-                    }}
-                    onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                        borderRadius: 6,
+                        border: "none",
+                        cursor: "pointer",
                     }}
                     title={i18n.language.toUpperCase()}
                 >
@@ -348,59 +320,26 @@ export function Sidebar() {
                     {i18n.language.toUpperCase()}
                 </button>
 
-                {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    className="transition-colors"
                     style={{
-                        color: "var(--text-tertiary)",
+                        color: "var(--text-3)",
                         background: "transparent",
                         padding: 6,
-                        borderRadius: "var(--radius-sm)",
-                    }}
-                    onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-                    }}
-                    onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                        borderRadius: 6,
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11.5,
                     }}
                     title={theme === "light" ? t("layout.darkMode") : t("layout.lightMode")}
                 >
-                    {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+                    {theme === "light" ? <Sun size={14} /> : <Moon size={14} />}
+                    {theme === "light" ? t("layout.light", "Clair") : t("layout.dark", "Sombre")}
                 </button>
-
-                {/* Backend Status + Update Badge */}
-                <div
-                    className="flex items-center gap-1.5 cursor-pointer"
-                    title={
-                        hasUpdate
-                            ? t("updater.newVersionAvailable") + " (" + (badgeVersion ?? "") + ")"
-                            : isBackendHealthy ? t("backend.connected") : t("backend.disconnected")
-                    }
-                    onClick={() => navigate("/settings")}
-                >
-                    <div
-                        className="w-2 h-2 rounded-full"
-                        style={{
-                            background: isBackendHealthy ? "var(--success)" : "var(--error)",
-                        }}
-                    />
-                    <span
-                        style={{
-                            fontSize: 10,
-                            color: "var(--text-tertiary)",
-                        }}
-                    >
-                        {backendVersion ? `v${backendVersion}` : "..."}
-                    </span>
-                    {hasUpdate && (
-                        <div
-                            className="w-2 h-2 rounded-full animate-pulse"
-                            style={{ background: "var(--primary-500)" }}
-                        />
-                    )}
-                </div>
             </div>
-        </div>
+        </nav>
     );
 }

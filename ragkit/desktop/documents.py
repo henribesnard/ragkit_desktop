@@ -578,23 +578,37 @@ def _extract_keywords(text: str, max_keywords: int = 8) -> list[str]:
     return [word for word, _count in counts.most_common(max_keywords)]
 
 
+# Maximum file size for extraction (100 MB)
+_MAX_EXTRACT_SIZE_BYTES = 100 * 1024 * 1024
+
+
 def _extract_content(path: Path) -> ParsedContent:
     # 1. Check for empty file
-    if path.stat().st_size == 0:
+    file_size = path.stat().st_size
+    if file_size == 0:
         return ParsedContent(text="", page_count=None, title=None, author=None, creation_date=None, encoding=None)
 
-    # 2. Check for OLE2 legacy Word format
-    try:
-        with open(path, "rb") as f:
-            header = f.read(8)
-            if header == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1":
-                return _extract_doc_legacy(path)
-    except Exception:
-        pass
+    # 2. Reject files that exceed the safety limit
+    if file_size > _MAX_EXTRACT_SIZE_BYTES:
+        raise ValueError(
+            f"File too large ({file_size / 1024 / 1024:.0f} MB > "
+            f"{_MAX_EXTRACT_SIZE_BYTES / 1024 / 1024:.0f} MB limit): {path.name}"
+        )
+
+    # 3. Detect real file type via magic bytes before trusting the extension
+    real_type = _detect_file_type_by_magic(path)
+
+    # 4. Check for OLE2 legacy Word format
+    if real_type == "ole2":
+        return _extract_doc_legacy(path)
 
     extension = _normalize_extension(path.suffix)
-    if extension == "pdf":
+
+    # 5. Validate that claimed extension is plausible given magic bytes
+    if real_type == "pdf" or extension == "pdf":
         return _extract_pdf(path)
+    if real_type == "zip" and extension in {"docx", "doc"}:
+        return _extract_docx(path)
     if extension in {"docx", "doc"}:
         return _extract_docx(path)
     if extension == "json":
@@ -604,6 +618,23 @@ def _extract_content(path: Path) -> ParsedContent:
     if extension == "html":
         return _extract_html(path)
     return _extract_text(path)
+
+
+def _detect_file_type_by_magic(path: Path) -> str | None:
+    """Detect file type from magic bytes (first 8 bytes)."""
+    try:
+        with open(path, "rb") as f:
+            header = f.read(8)
+    except Exception:
+        return None
+
+    if header[:4] == b"%PDF":
+        return "pdf"
+    if header == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1":
+        return "ole2"
+    if header[:4] == b"PK\x03\x04":
+        return "zip"  # DOCX, XLSX, etc. are ZIP archives
+    return None
 
 
 def _extract_doc_legacy(path: Path) -> ParsedContent:
@@ -700,19 +731,28 @@ def _validate_extracted_title(title: str | None, filename_stem: str) -> str | No
     return s
 
 
+# Maximum number of PDF pages to process (DoS protection)
+_MAX_PDF_PAGES = 2000
+
+
 def _extract_pdf(path: Path) -> ParsedContent:
     if PdfReader is None:  # pragma: no cover - optional dependency branch
         return ParsedContent(text="", page_count=None, title=None, author=None, creation_date=None, encoding=None)
 
     reader = PdfReader(str(path))
     page_count = len(reader.pages)
+    if page_count > _MAX_PDF_PAGES:
+        raise ValueError(
+            f"PDF has too many pages ({page_count} > {_MAX_PDF_PAGES} limit): {path.name}"
+        )
+
     text_chunks = []
     has_images = False
     for page in reader.pages:
         text_chunks.append(page.extract_text() or "")
         if not has_images and '/XObject' in page: # simplified check
              # Deep check requires iterating resources
-             pass 
+             pass
         # pypdf images access is expensive, maybe skip for speed or do better check if reliable
         try:
             if len(page.images) > 0:

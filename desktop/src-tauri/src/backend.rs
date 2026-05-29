@@ -16,6 +16,7 @@ pub struct BackendState {
     pub child: Mutex<Option<ChildProcess>>,
     pub client: Client,
     pub chat_stream_cancel: Mutex<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub backend_secret: String,
 }
 
 pub enum ChildProcess {
@@ -27,8 +28,10 @@ pub enum ChildProcess {
 
 pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let port = portpicker::pick_unused_port().ok_or("No free port found")?;
-    
+
     tracing::info!("Allocated port for backend: {}", port);
+
+    let secret = app.state::<BackendState>().backend_secret.clone();
 
     // Update state
     if let Some(state) = app.try_state::<BackendState>() {
@@ -42,7 +45,7 @@ pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
         let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let project_root = manifest_dir.parent().unwrap().parent().unwrap();
         cmd.current_dir(project_root)
-           .args(["-m", "ragkit.desktop.main", "--port", &port.to_string()]);
+           .args(["-m", "ragkit.desktop.main", "--port", &port.to_string(), "--secret", &secret]);
         #[cfg(target_os = "windows")]
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
@@ -56,7 +59,7 @@ pub async fn start_backend(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
     {
         tracing::info!("Starting backend in PROD mode (sidecar)");
         let sidecar = app.shell().sidecar("ragkit-backend")?;
-        let (_rx, child) = sidecar.args(["--port", &port.to_string()]).spawn()?;
+        let (_rx, child) = sidecar.args(["--port", &port.to_string(), "--secret", &secret]).spawn()?;
         if let Some(state) = app.try_state::<BackendState>() {
             *state.child.lock().unwrap_or_else(|e| e.into_inner()) = Some(ChildProcess::Sidecar(child));
         }
@@ -73,7 +76,7 @@ async fn wait_for_backend(port: u16) -> Result<(), String> {
     let url = format!("http://127.0.0.1:{}/health", port);
     let client = Client::builder().timeout(Duration::from_secs(1)).build()
         .map_err(|e| format!("Failed to build health check client: {}", e))?;
-    
+
     for i in 0..30 {
         tracing::debug!("Health check attempt {}...", i + 1);
         if let Ok(resp) = client.get(&url).send().await {
@@ -97,10 +100,12 @@ pub async fn stop_backend(app: &AppHandle) {
     }
 
     if let Some(port) = port_opt {
+        let secret = app.state::<BackendState>().backend_secret.clone();
         // Try graceful shutdown via API
         if let Ok(client) = Client::builder().timeout(Duration::from_secs(3)).build() {
             let _ = client
                 .post(format!("http://127.0.0.1:{}/shutdown", port))
+                .header("X-Backend-Token", &secret)
                 .send()
                 .await;
         }
@@ -118,15 +123,15 @@ pub async fn stop_backend(app: &AppHandle) {
              tracing::info!("Force killing backend process...");
              match child {
                  #[cfg(debug_assertions)]
-                 ChildProcess::Std(mut c) => { 
+                 ChildProcess::Std(mut c) => {
                      pid_to_kill = Some(c.id());
-                     let _ = c.kill(); 
-                     let _ = c.wait(); 
+                     let _ = c.kill();
+                     let _ = c.wait();
                  }
                  #[cfg(not(debug_assertions))]
-                 ChildProcess::Sidecar(c) => { 
+                 ChildProcess::Sidecar(c) => {
                      pid_to_kill = Some(c.pid());
-                     let _ = c.kill(); 
+                     let _ = c.kill();
                  }
              }
          }
@@ -221,17 +226,18 @@ pub async fn request(
     body: Option<serde_json::Value>,
     app: &AppHandle
 ) -> Result<serde_json::Value, String> {
-    let port = {
+    let (port, secret) = {
         let state = app.state::<BackendState>();
         let port_value = *state.port.lock().map_err(|e| format!("Port lock poisoned: {}", e))?;
-        port_value
+        (port_value, state.backend_secret.clone())
     };
 
     if let Some(p) = port {
         let url = format!("http://127.0.0.1:{}{}", p, endpoint);
         let state = app.state::<BackendState>();
-        let mut builder = state.client.request(method, &url);
-        
+        let mut builder = state.client.request(method, &url)
+            .header("X-Backend-Token", &secret);
+
         if let Some(b) = body {
             builder = builder.json(&b);
         }

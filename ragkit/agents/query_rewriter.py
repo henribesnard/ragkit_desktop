@@ -37,8 +37,14 @@ class QueryRewriter:
 
         for _ in range(self.config.query_rewriting.num_rewrites):
             prompt = (
-                self.config.prompt_rewriting.replace("{conversation_history}", history_str)
-                .replace("{user_query}", query)
+                self.config.prompt_rewriting.replace(
+                    "{conversation_history}",
+                    f"<conversation_history>\n{history_str}\n</conversation_history>",
+                )
+                .replace(
+                    "{user_query}",
+                    f"<user_input>\n{query}\n</user_input>",
+                )
             )
             response = await self.llm.generate(
                 messages=[LLMMessage(role="user", content=prompt)],

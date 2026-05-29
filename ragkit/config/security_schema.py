@@ -20,6 +20,11 @@ class PIIType(str, Enum):
     ADDRESS = "address"
     CREDIT_CARD = "credit_card"
     IBAN = "iban"
+    API_KEY = "api_key"
+    PRIVATE_KEY = "private_key"
+    IP_ADDRESS = "ip_address"
+    DATE_OF_BIRTH = "date_of_birth"
+    PASSPORT = "passport"
 
 
 class ExpertiseLevel(str, Enum):

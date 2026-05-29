@@ -18,15 +18,27 @@ logger = logging.getLogger(__name__)
 def _validate_path(path_str: str) -> Path:
     """Resolve a user-supplied path and ensure it stays within the user's home directory.
 
-    Raises HTTPException(400) for path traversal attempts.
+    Raises HTTPException(400) for path traversal attempts or symlink escapes.
     """
     resolved = Path(path_str).expanduser().resolve()
     home = Path.home().resolve()
-    if not str(resolved).startswith(str(home)):
+
+    # Use is_relative_to (Python 3.9+) instead of error-prone string comparison
+    if not resolved.is_relative_to(home):
         raise HTTPException(
             status_code=400,
             detail="Path must be within the user's home directory",
         )
+
+    # Block symlinks that point outside the home directory
+    if resolved.is_symlink():
+        real_target = resolved.resolve(strict=True)
+        if not real_target.is_relative_to(home):
+            raise HTTPException(
+                status_code=400,
+                detail="Symbolic links pointing outside the home directory are not allowed",
+            )
+
     return resolved
 
 _SECURITY_CONFIG: SecurityConfig | None = None
@@ -141,7 +153,8 @@ async def export_config(payload: dict[str, str]) -> dict[str, Any]:
         result_path = ConfigExporter().export(path)
         return {"success": True, "path": result_path}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Config export failed")
+        raise HTTPException(status_code=500, detail="Export failed") from exc
 
 
 @router.post("/config/import/validate")
@@ -157,7 +170,8 @@ async def validate_import(payload: dict[str, str]) -> dict[str, Any]:
         preview = ConfigImporter().validate(path)
         return preview
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.exception("Config import validation failed")
+        raise HTTPException(status_code=400, detail="Invalid configuration file") from exc
 
 
 @router.post("/config/import")
@@ -178,7 +192,8 @@ async def import_config(payload: dict[str, str]) -> dict[str, bool]:
             importer.import_replace(path)
         return {"success": True}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Config import failed")
+        raise HTTPException(status_code=500, detail="Import failed") from exc
 
 
 # --- Conversation Export ---
@@ -216,7 +231,8 @@ async def export_conversation(payload: dict[str, str]) -> dict[str, Any]:
             result_path = path
         return {"success": True, "path": result_path}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Conversation export failed")
+        raise HTTPException(status_code=500, detail="Conversation export failed") from exc
 
 
 # --- Test Question ---

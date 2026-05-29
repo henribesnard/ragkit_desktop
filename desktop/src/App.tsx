@@ -72,8 +72,8 @@ export function ChatPage() {
 
     if (!id) {
         return (
-            <div className="h-full flex items-center justify-center" style={{ background: "var(--bg-primary)" }}>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "var(--primary-500)" }} />
+            <div className="h-full flex items-center justify-center" style={{ background: "var(--bg)" }}>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "var(--brand)" }} />
             </div>
         );
     }
@@ -85,9 +85,9 @@ function SplashScreen() {
     return (
         <div
             className="h-screen w-screen flex items-center justify-center"
-            style={{ background: "var(--bg-primary)" }}
+            style={{ background: "var(--bg)" }}
         >
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: "var(--primary-500)" }}></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: "var(--brand)" }}></div>
         </div>
     );
 }
@@ -132,9 +132,9 @@ export default function App() {
             <AppUpdateManager />
             <BrowserRouter>
                 <ConversationsProvider>
-                    <div className="flex h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                    <div className="flex h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
                         <Sidebar />
-                        <main className="flex-1 overflow-hidden">
+                        <main className="flex-1 overflow-hidden" style={{ display: "flex", flexDirection: "column", minWidth: 0, background: "var(--bg)" }}>
                             <Routes>
                                 <Route path="/chat" element={<ChatPage />} />
                                 <Route path="/chat/:id" element={<ChatPage />} />
