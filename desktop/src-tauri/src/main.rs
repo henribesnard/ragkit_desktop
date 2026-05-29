@@ -189,6 +189,7 @@ fn main() {
             commands::generate_test_question,
             commands::get_expertise_level,
             commands::set_expertise_level,
+            commands::stop_backend_for_update,
         ])
         .build(tauri::generate_context!())
         .expect("error while building RAGKIT Desktop")

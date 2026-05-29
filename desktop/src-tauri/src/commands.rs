@@ -1042,3 +1042,15 @@ pub async fn revoke_source_oauth(app: AppHandle, id: String) -> Result<serde_jso
     let endpoint = format!("/api/sources/{}/oauth/revoke", _encode_query_value(&id));
     request(Method::POST, &endpoint, None, &app).await
 }
+
+/// Stop the backend sidecar before an auto-update so the NSIS installer
+/// can replace ragkit-backend.exe without "file in use" errors.
+#[tauri::command]
+pub async fn stop_backend_for_update(app: AppHandle) -> Result<(), String> {
+    tracing::info!("Stopping backend for update…");
+    crate::backend::stop_backend(&app).await;
+    // Extra grace period so Windows fully releases the file handle
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tracing::info!("Backend stopped, ready for update.");
+    Ok(())
+}

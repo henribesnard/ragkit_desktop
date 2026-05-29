@@ -11,6 +11,7 @@ import {
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,14 @@ export function AppUpdaterProvider({ children }: { children: ReactNode }) {
         let totalBytes: number | null = null;
 
         try {
+            // Stop the backend sidecar so the NSIS installer can replace
+            // ragkit-backend.exe without "file in use" errors.
+            try {
+                await invoke("stop_backend_for_update");
+            } catch (err) {
+                console.warn("[updater] Failed to stop backend before update:", err);
+            }
+
             await updateRef.current.downloadAndInstall((event) => {
                 if (event.event === "Started") {
                     downloadedBytes = 0;
