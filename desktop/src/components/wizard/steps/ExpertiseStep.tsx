@@ -1,4 +1,4 @@
-import { User, Settings2, Sliders } from "lucide-react";
+import { User, SlidersHorizontal, Settings2, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function ExpertiseStep({ wizard }: { wizard: any }) {
@@ -14,64 +14,97 @@ export function ExpertiseStep({ wizard }: { wizard: any }) {
         });
     };
 
+    const levels = [
+        {
+            id: "simple" as const,
+            icon: User,
+            title: t('wizard.expertise.simple'),
+            desc: t('wizard.expertise.simpleDesc'),
+        },
+        {
+            id: "intermediate" as const,
+            icon: SlidersHorizontal,
+            title: t('wizard.expertise.intermediate'),
+            desc: t('wizard.expertise.intermediateDesc'),
+        },
+        {
+            id: "expert" as const,
+            icon: Settings2,
+            title: t('wizard.expertise.expert'),
+            desc: t('wizard.expertise.expertDesc'),
+        },
+    ];
+
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.expertise.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 840, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.expertise.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 28 }}>
                 {t('wizard.expertise.subtitle')}
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <button
-                    onClick={() => setExpertise("simple")}
-                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "simple"
-                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                        : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-                        }`}
-                >
-                    <div className={`p-3 rounded-lg mb-4 ${currentLevel === "simple" ? "bg-brand-100 dark:bg-brand-900" : "bg-gray-100 dark:bg-gray-800"}`}>
-                        <User className={`w-6 h-6 ${currentLevel === "simple" ? "text-brand-600 dark:text-brand-400" : "text-gray-600 dark:text-gray-400"}`} />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.simple')}</h3>
-                    <p className="text-sm text-gray-500">
-                        {t('wizard.expertise.simpleDesc')}
-                    </p>
-                </button>
-
-                <button
-                    onClick={() => setExpertise("intermediate")}
-                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "intermediate"
-                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                        : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-                        }`}
-                >
-                    <div className={`p-3 rounded-lg mb-4 ${currentLevel === "intermediate" ? "bg-brand-100 dark:bg-brand-900" : "bg-gray-100 dark:bg-gray-800"}`}>
-                        <Sliders className={`w-6 h-6 ${currentLevel === "intermediate" ? "text-brand-600 dark:text-brand-400" : "text-gray-600 dark:text-gray-400"}`} />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.intermediate')}</h3>
-                    <p className="text-sm text-gray-500">
-                        {t('wizard.expertise.intermediateDesc')}
-                    </p>
-                </button>
-
-                <button
-                    onClick={() => setExpertise("expert")}
-                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left ${currentLevel === "expert"
-                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                        : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-                        }`}
-                >
-                    <div className={`p-3 rounded-lg mb-4 ${currentLevel === "expert" ? "bg-brand-100 dark:bg-brand-900" : "bg-gray-100 dark:bg-gray-800"}`}>
-                        <Settings2 className={`w-6 h-6 ${currentLevel === "expert" ? "text-brand-600 dark:text-brand-400" : "text-gray-600 dark:text-gray-400"}`} />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2">{t('wizard.expertise.expert')}</h3>
-                    <p className="text-sm text-gray-500">
-                        {t('wizard.expertise.expertDesc')}
-                    </p>
-                </button>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                {levels.map((lvl) => {
+                    const active = currentLevel === lvl.id;
+                    const Icon = lvl.icon;
+                    return (
+                        <button
+                            key={lvl.id}
+                            onClick={() => setExpertise(lvl.id)}
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-start",
+                                padding: 24,
+                                borderRadius: 14,
+                                border: active
+                                    ? "2px solid var(--brand)"
+                                    : "1px solid var(--border)",
+                                background: active ? "var(--brand-weak)" : "var(--surface)",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                position: "relative",
+                                transition: "border-color .14s, background .14s",
+                            }}
+                        >
+                            {active && (
+                                <CheckCircle2
+                                    size={20}
+                                    style={{
+                                        position: "absolute",
+                                        top: 16,
+                                        right: 16,
+                                        color: "var(--brand)",
+                                    }}
+                                />
+                            )}
+                            <div
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 10,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: active ? "var(--brand)" : "var(--surface-2)",
+                                    color: active ? "var(--brand-fg)" : "var(--text-2)",
+                                    marginBottom: 18,
+                                    transition: "background .14s, color .14s",
+                                }}
+                            >
+                                <Icon size={22} />
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: "var(--text)" }}>
+                                {lvl.title}
+                            </div>
+                            <div style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.45 }}>
+                                {lvl.desc}
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
-
-
         </div>
     );
 }

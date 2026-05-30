@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/Button";
 import { ipc } from "@/lib/ipc";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle, Cpu, Download, Cloud } from "lucide-react";
@@ -116,63 +115,96 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.embedding.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.embedding.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.embedding.subtitle')}
             </p>
 
-            {/* Provider Category Selection — 3 buttons like LLMStep */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+            {/* Provider Category Selection -- 3 buttons like LLMStep */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 12 }}>
                 <button
                     onClick={handleSwitchToLocal}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isHuggingface ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    style={{
+                        padding: 16,
+                        borderRadius: 14,
+                        border: isHuggingface ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: isHuggingface ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <Download className={`w-5 h-5 ${isHuggingface ? "text-brand-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">{t('wizard.embedding.localRecommend')}</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                        <Download style={{ width: 20, height: 20, color: isHuggingface ? "var(--brand)" : "var(--text-3)" }} />
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{t('wizard.embedding.localRecommend')}</div>
                     </div>
-                    <p className="text-sm text-gray-500">{t('wizard.embedding.localRecommendDesc')}</p>
+                    <p style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.embedding.localRecommendDesc')}</p>
                 </button>
 
                 <button
                     onClick={handleSwitchToOllama}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isOllama ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    style={{
+                        padding: 16,
+                        borderRadius: 14,
+                        border: isOllama ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: isOllama ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <Cpu className={`w-5 h-5 ${isOllama ? "text-brand-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">{t('wizard.embedding.ollamaLocal')}</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                        <Cpu style={{ width: 20, height: 20, color: isOllama ? "var(--brand)" : "var(--text-3)" }} />
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{t('wizard.embedding.ollamaLocal')}</div>
                     </div>
-                    <p className="text-sm text-gray-500">{t('wizard.embedding.ollamaLocalDesc')}</p>
+                    <p style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.embedding.ollamaLocalDesc')}</p>
                 </button>
 
                 <button
                     onClick={() => handleSwitchToApi()}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isApiProvider ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    style={{
+                        padding: 16,
+                        borderRadius: 14,
+                        border: isApiProvider ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: isApiProvider ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <Cloud className={`w-5 h-5 ${isApiProvider ? "text-brand-600" : "text-gray-400"}`} />
-                        <h3 className="font-semibold text-lg">{t('wizard.embedding.apiProvider')}</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                        <Cloud style={{ width: 20, height: 20, color: isApiProvider ? "var(--brand)" : "var(--text-3)" }} />
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{t('wizard.embedding.apiProvider')}</div>
                     </div>
-                    <p className="text-sm text-gray-500">{t('wizard.embedding.apiProviderDesc')}</p>
+                    <p style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.embedding.apiProviderDesc')}</p>
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 {/* API provider sub-selector */}
                 {isApiProvider && (
                     <>
                         <div>
-                            <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.providerLabel')}</label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t('wizard.embedding.providerLabel')}</label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                                 {API_PROVIDERS.map(p => (
                                     <button
                                         key={p.value}
                                         onClick={() => handleSwitchToApi(p.value)}
-                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${provider === p.value
-                                            ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300"
-                                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
-                                            }`}
+                                        style={{
+                                            padding: "8px 12px",
+                                            borderRadius: 10,
+                                            border: provider === p.value ? "2px solid var(--brand)" : "1px solid var(--border)",
+                                            background: provider === p.value ? "var(--brand-weak)" : "transparent",
+                                            color: provider === p.value ? "var(--brand)" : "var(--text-2)",
+                                            fontSize: 13,
+                                            fontWeight: 500,
+                                            cursor: "pointer",
+                                            transition: "border-color .14s, background .14s",
+                                        }}
                                     >
                                         {p.label}
                                     </button>
@@ -182,25 +214,25 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
                         {/* API Key */}
                         <div>
-                            <label className="block font-medium mb-1 text-sm">
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>
                                 {t('wizard.embedding.apiKeyLabel')} {API_PROVIDERS.find(p => p.value === provider)?.label}
                             </label>
                             <input
                                 type="password"
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                 placeholder={t('wizard.embedding.apiKeyPlaceholder')}
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                             />
-                            <p className="text-xs text-gray-500 mt-1">{t('wizard.embedding.apiKeyDesc')}</p>
+                            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{t('wizard.embedding.apiKeyDesc')}</p>
                         </div>
 
                         {/* Model selector for API provider */}
                         <div>
-                            <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.modelLabel')}</label>
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t('wizard.embedding.modelLabel')}</label>
                             {provider === "openai" && (
                                 <select
-                                    className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                     value={model}
                                     onChange={(e) => updateEmbedding({ model: e.target.value })}
                                 >
@@ -210,7 +242,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                             )}
                             {provider === "cohere" && (
                                 <select
-                                    className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                     value={model}
                                     onChange={(e) => updateEmbedding({ model: e.target.value })}
                                 >
@@ -225,18 +257,18 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                 {/* Ollama */}
                 {isOllama && (
                     <div>
-                        <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.ollamaModel')}</label>
+                        <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t('wizard.embedding.ollamaModel')}</label>
                         {loadingModels ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-3)", padding: 8 }}>
                                 <Loader2 className="w-4 h-4 animate-spin" /> {t('wizard.embedding.loadingModels')}
                             </div>
                         ) : ollamaModels.length === 0 ? (
-                            <div className="text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
+                            <div style={{ color: "var(--danger)", background: "var(--danger-bg)", padding: 12, borderRadius: 8, fontSize: 13 }}>
                                 {t('wizard.embedding.noOllamaModels')}
                             </div>
                         ) : (
                             <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                 value={model}
                                 onChange={(e) => updateEmbedding({ model: e.target.value })}
                             >
@@ -250,26 +282,36 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
                 {/* HuggingFace (Local) */}
                 {isHuggingface && (
-                    <div className="flex flex-col gap-2">
-                        <label className="block font-medium mb-1 text-sm">{t('wizard.embedding.localModel')}</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t('wizard.embedding.localModel')}</label>
                         <input
                             type="text"
-                            className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700 bg-gray-50 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                            style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface-2)", color: "var(--text-2)", cursor: "not-allowed" }}
                             value={model}
                             readOnly
                         />
-                        <p className="text-xs text-gray-500">{t('wizard.embedding.localModelDesc')}</p>
+                        <p style={{ fontSize: 12, color: "var(--text-3)" }}>{t('wizard.embedding.localModelDesc')}</p>
                     </div>
                 )}
 
                 {/* Test connection */}
-                <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3">
-                    <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (isApiProvider && !apiKey)}>
+                <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
+                    <button className="btn btn-secondary" onClick={handleTest} disabled={isTesting || (isApiProvider && !apiKey)} style={{ alignSelf: "flex-start" }}>
                         {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.embedding.testingConnection')}</> : t('wizard.embedding.testConnection')}
-                    </Button>
+                    </button>
 
                     {testResult && (
-                        <div className={`p-3 rounded-md text-sm flex items-start gap-2 ${testResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                        <div style={{
+                            padding: 12,
+                            borderRadius: 8,
+                            fontSize: 13,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                            background: testResult.success ? "var(--brand-weak)" : "var(--danger-bg)",
+                            color: testResult.success ? "var(--brand)" : "var(--danger)",
+                            border: testResult.success ? "1px solid var(--brand)" : "1px solid var(--danger)",
+                        }}>
                             {testResult.success ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
                             <span>{testResult.msg}</span>
                         </div>

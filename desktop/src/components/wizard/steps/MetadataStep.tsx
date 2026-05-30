@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/Button";
 import { Loader2, CheckSquare, Settings2, Save, FileText } from "lucide-react";
 import { ipc } from "@/lib/ipc";
 import { useTranslation } from "react-i18next";
@@ -132,51 +131,84 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
     const singleFile = getSingleSelectedFile();
 
+    const inputStyle: React.CSSProperties = {
+        width: "100%",
+        fontSize: 13,
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        padding: "8px 10px",
+        background: "var(--surface)",
+        color: "var(--text)",
+    };
+
+    const selectStyle: React.CSSProperties = {
+        ...inputStyle,
+    };
+
+    const labelStyle: React.CSSProperties = {
+        display: "block",
+        fontSize: 12,
+        fontWeight: 600,
+        color: "var(--text)",
+        marginBottom: 4,
+    };
+
     return (
-        <div className="max-w-6xl mx-auto h-full flex flex-col">
-            <div className="mb-3 text-center">
-                <h2 className="text-lg font-bold">{t('wizard.metadata.title')}</h2>
-                <p className="text-sm text-gray-500 mt-2">
+        <div style={{ maxWidth: 1100, margin: "0 auto", height: "100%", display: "flex", flexDirection: "column" }}>
+            <div style={{ marginBottom: 12, textAlign: "center" }}>
+                <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                    {t('wizard.metadata.title')}
+                </h1>
+                <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>
                     {t('wizard.metadata.subtitle')}
                 </p>
             </div>
 
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", gap: 16 }}>
 
                 {/* Left side: Table */}
-                <div className={`flex-1 flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${selectedPaths.size > 0 ? 'lg:w-2/3' : 'w-full'}`}>
-                    <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                <div
+                    className="loko-panel"
+                    style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                        transition: "all .3s",
+                    }}
+                >
+                    <div style={{ padding: 12, borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
                         <input
                             type="text"
                             placeholder={t('wizard.metadata.filterPlaceholder')}
                             value={searchFilter}
                             onChange={e => setSearchFilter(e.target.value)}
-                            className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                            style={{ ...inputStyle, background: "var(--surface)" }}
                         />
                     </div>
                     {isLoading ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500 gap-3">
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", gap: 12 }}>
                             <Loader2 className="w-5 h-5 animate-spin" /> {t('wizard.metadata.analyzing')}
                         </div>
                     ) : filteredFiles.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500">{t('wizard.metadata.noFiles')}</div>
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)" }}>{t('wizard.metadata.noFiles')}</div>
                     ) : (
-                        <div className="flex-1 overflow-y-auto">
-                            <table className="w-full text-left text-sm whitespace-nowrap">
-                                <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+                        <div style={{ flex: 1, overflowY: "auto" }}>
+                            <table style={{ width: "100%", textAlign: "left", fontSize: 13, whiteSpace: "nowrap" }}>
+                                <thead style={{ background: "var(--surface-2)", color: "var(--text-2)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}>
                                     <tr>
-                                        <th className="p-3 w-10">
-                                            <button onClick={handleSelectAll} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors" title="Tout sélectionner">
-                                                <CheckSquare className={`w-4 h-4 ${filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? 'text-brand-500' : 'text-gray-400'}`} />
+                                        <th style={{ padding: 12, width: 40 }}>
+                                            <button onClick={handleSelectAll} style={{ padding: 4, borderRadius: 4, cursor: "pointer", background: "transparent", border: "none" }} title="Tout selectionner">
+                                                <CheckSquare style={{ width: 16, height: 16, color: filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? "var(--brand)" : "var(--text-3)" }} />
                                             </button>
                                         </th>
-                                        <th className="p-3 font-semibold">{t('wizard.metadata.file')}</th>
-                                        <th className="p-3 font-semibold w-48">{t('wizard.metadata.docTitle')}</th>
-                                        <th className="p-3 font-semibold w-40">{t('wizard.metadata.author')}</th>
-                                        <th className="p-3 font-semibold w-32">{t('wizard.metadata.domain')}</th>
+                                        <th style={{ padding: 12, fontWeight: 600 }}>{t('wizard.metadata.file')}</th>
+                                        <th style={{ padding: 12, fontWeight: 600, width: 192 }}>{t('wizard.metadata.docTitle')}</th>
+                                        <th style={{ padding: 12, fontWeight: 600, width: 160 }}>{t('wizard.metadata.author')}</th>
+                                        <th style={{ padding: 12, fontWeight: 600, width: 128 }}>{t('wizard.metadata.domain')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                <tbody>
                                     {filteredFiles.map(f => {
                                         const fileOverrides = overrides[f.path] || {};
                                         const isSelected = selectedPaths.has(f.path);
@@ -185,30 +217,35 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             <tr
                                                 key={f.path}
                                                 onClick={() => handleToggleSelection(f.path)}
-                                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-brand-50/50 dark:bg-brand-900/20' : ''}`}
+                                                style={{
+                                                    cursor: "pointer",
+                                                    background: isSelected ? "var(--brand-weak)" : "transparent",
+                                                    borderBottom: "1px solid var(--border)",
+                                                    transition: "background .1s",
+                                                }}
                                             >
-                                                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <td style={{ padding: 12, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => handleToggleSelection(f.path)}
-                                                        className="w-4 h-4 text-brand-600 rounded border-gray-300 pointer-events-auto"
+                                                        className="w-4 h-4 text-brand-600 rounded pointer-events-auto"
                                                     />
                                                 </td>
-                                                <td className="p-3">
-                                                    <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                                        <FileText className="w-3.5 h-3.5 text-brand-400" />
-                                                        <span className="truncate max-w-[200px]" title={f.name}>{f.name}</span>
+                                                <td style={{ padding: 12 }}>
+                                                    <div style={{ fontWeight: 500, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
+                                                        <FileText style={{ width: 14, height: 14, color: "var(--brand)" }} />
+                                                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }} title={f.name}>{f.name}</span>
                                                     </div>
-                                                    <div className="text-xs text-gray-400 truncate mt-0.5 max-w-[200px]" title={f.path}>{f.path}</div>
+                                                    <div style={{ fontSize: 12, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2, maxWidth: 200 }} title={f.path}>{f.path}</div>
                                                 </td>
-                                                <td className="p-3 truncate max-w-[150px] text-gray-600 dark:text-gray-300" title={fileOverrides.title || f.name.replace(/\.[^/.]+$/, "")}>
-                                                    {fileOverrides.title || <span className="text-gray-500 italic">{f.name.replace(/\.[^/.]+$/, "")}</span>}
+                                                <td style={{ padding: 12, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150, color: "var(--text-2)" }} title={fileOverrides.title || f.name.replace(/\.[^/.]+$/, "")}>
+                                                    {fileOverrides.title || <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>{f.name.replace(/\.[^/.]+$/, "")}</span>}
                                                 </td>
-                                                <td className="p-3 truncate max-w-[120px] text-gray-600 dark:text-gray-300">
+                                                <td style={{ padding: 12, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120, color: "var(--text-2)" }}>
                                                     {fileOverrides.author || '-'}
                                                 </td>
-                                                <td className="p-3 truncate max-w-[100px] text-gray-600 dark:text-gray-300">
+                                                <td style={{ padding: 12, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 100, color: "var(--text-2)" }}>
                                                     {fileOverrides.domain || '-'}
                                                 </td>
                                             </tr>
@@ -222,29 +259,39 @@ export function MetadataStep({ wizard }: { wizard: any }) {
 
                 {/* Right side: Dynamic Edit Panel */}
                 {selectedPaths.size > 0 && (
-                    <div className="w-full lg:w-1/3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300 lg:sticky lg:top-6 self-start max-h-full">
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-3">
-                            <Settings2 className="w-5 h-5 text-brand-500" />
+                    <div
+                        className="loko-panel animate-in slide-in-from-right-4 duration-300"
+                        style={{
+                            width: "33%",
+                            display: "flex",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                            alignSelf: "flex-start",
+                            maxHeight: "100%",
+                        }}
+                    >
+                        <div style={{ padding: 16, borderBottom: "1px solid var(--border)", background: "var(--surface-2)", display: "flex", alignItems: "center", gap: 12 }}>
+                            <Settings2 style={{ width: 20, height: 20, color: "var(--brand)" }} />
                             <div>
-                                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
                                     {selectedPaths.size === 1 ? t('wizard.metadata.editSingle') : t('wizard.metadata.editBulk')}
-                                </h3>
-                                <p className="text-xs text-gray-500">{t('wizard.metadata.selectedCount', { count: selectedPaths.size })}</p>
+                                </div>
+                                <p style={{ fontSize: 12, color: "var(--text-3)" }}>{t('wizard.metadata.selectedCount', { count: selectedPaths.size })}</p>
                             </div>
                         </div>
 
-                        <div className="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+                        <div style={{ padding: 20, overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
                             {/* Title (Only for single edit) */}
                             {selectedPaths.size === 1 && singleFile && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.docTitle')}</label>
+                                    <label style={labelStyle}>{t('wizard.metadata.docTitle')}</label>
                                     <input
                                         type="text"
                                         value={(overrides[singleFile.path] || {}).title || ""}
                                         onChange={e => handleIndividualEdit(singleFile.path, 'title', e.target.value)}
                                         placeholder={singleFile.name}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                                        style={inputStyle}
                                     />
                                 </div>
                             )}
@@ -258,7 +305,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                 { id: 'category', label: t('wizard.metadata.category'), placeholder: t('wizard.metadata.placeholderCategory') },
                             ].map(field => (
                                 <div key={field.id}>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{field.label}</label>
+                                    <label style={labelStyle}>{field.label}</label>
                                     <input
                                         type="text"
                                         value={selectedPaths.size === 1 ? ((overrides[singleFile?.path || ""] || {})[field.id] || "") : (bulkForm as any)[field.id]}
@@ -270,13 +317,13 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             }
                                         }}
                                         placeholder={field.placeholder}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                                        style={inputStyle}
                                     />
                                 </div>
                             ))}
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.tags')}</label>
+                                <label style={labelStyle}>{t('wizard.metadata.tags')}</label>
                                 <input
                                     type="text"
                                     value={selectedPaths.size === 1 ? (((overrides[singleFile?.path || ""] || {}).tags || []).join(', ')) : bulkForm.tags}
@@ -289,13 +336,13 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                         }
                                     }}
                                     placeholder={t('wizard.metadata.placeholderTags') as string}
-                                    className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                                    style={inputStyle}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.confidentiality')}</label>
+                                    <label style={labelStyle}>{t('wizard.metadata.confidentiality')}</label>
                                     <select
                                         value={selectedPaths.size === 1 ? ((overrides[singleFile?.path || ""] || {}).confidentiality || "") : bulkForm.confidentiality}
                                         onChange={e => {
@@ -305,7 +352,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                 setBulkForm({ ...bulkForm, confidentiality: e.target.value });
                                             }
                                         }}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                                        style={selectStyle}
                                     >
                                         <option value="">{t('wizard.metadata.confidentialityNone')}</option>
                                         <option value="public">{t('wizard.metadata.confidentialityPublic')}</option>
@@ -315,7 +362,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('wizard.metadata.status')}</label>
+                                    <label style={labelStyle}>{t('wizard.metadata.status')}</label>
                                     <select
                                         value={selectedPaths.size === 1 ? ((overrides[singleFile?.path || ""] || {}).status || "") : bulkForm.status}
                                         onChange={e => {
@@ -325,7 +372,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                 setBulkForm({ ...bulkForm, status: e.target.value });
                                             }
                                         }}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
+                                        style={selectStyle}
                                     >
                                         <option value="">{t('wizard.metadata.statusNone')}</option>
                                         <option value="draft">{t('wizard.metadata.statusDraft')}</option>
@@ -338,16 +385,17 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                         </div>
 
                         {/* Apply / Save Button */}
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20 shrink-0">
+                        <div style={{ padding: 16, borderTop: "1px solid var(--border)", background: "var(--surface-2)", flexShrink: 0 }}>
                             {selectedPaths.size === 1 ? (
-                                <p className="text-xs text-center text-gray-400">{t('wizard.metadata.autoSaved')}</p>
+                                <p style={{ fontSize: 12, textAlign: "center", color: "var(--text-3)" }}>{t('wizard.metadata.autoSaved')}</p>
                             ) : (
-                                <Button
+                                <button
+                                    className="btn btn-primary"
                                     onClick={handleApplyBulk}
-                                    className="w-full flex items-center justify-center gap-2 font-medium"
+                                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 500 }}
                                 >
-                                    <Save className="w-4 h-4" /> {t('wizard.metadata.applyBulk', { count: selectedPaths.size })}
-                                </Button>
+                                    <Save style={{ width: 16, height: 16 }} /> {t('wizard.metadata.applyBulk', { count: selectedPaths.size })}
+                                </button>
                             )}
                         </div>
                     </div>
@@ -358,4 +406,3 @@ export function MetadataStep({ wizard }: { wizard: any }) {
         </div>
     );
 }
-

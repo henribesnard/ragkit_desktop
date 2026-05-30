@@ -1,25 +1,46 @@
-import { Toggle } from "@/components/ui/Toggle";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CalibrationQuestionProps {
     id: string;
     question: string;
     tooltip: string;
+    icon?: React.ReactNode;
     value: boolean;
     onChange: (id: string) => void;
 }
 
-export function CalibrationQuestion({ id, question, tooltip, value, onChange }: CalibrationQuestionProps) {
+export function CalibrationQuestion({ id, question, tooltip, icon, value, onChange }: CalibrationQuestionProps) {
+    const { t } = useTranslation();
+
     return (
-        <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700 dark:text-gray-300">{question}</span>
-                <Tooltip content={tooltip}>
-                    <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                </Tooltip>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 0",
+                borderBottom: "1px solid var(--border)",
+            }}
+        >
+            {icon && (
+                <span style={{ color: "var(--text-3)", display: "flex", flexShrink: 0 }}>{icon}</span>
+            )}
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500, color: "var(--text)" }}>
+                {question}
+            </span>
+            <Tooltip content={tooltip}>
+                <Info size={14} style={{ color: "var(--text-3)", cursor: "help", flexShrink: 0 }} />
+            </Tooltip>
+            <div className="yn">
+                <button className={value ? "on" : ""} onClick={() => { if (!value) onChange(id); }}>
+                    {t('common.yes', 'Oui')}
+                </button>
+                <button className={!value ? "on" : ""} onClick={() => { if (value) onChange(id); }}>
+                    {t('common.no', 'Non')}
+                </button>
             </div>
-            <Toggle checked={value} onChange={() => onChange(id)} />
         </div>
     );
 }

@@ -1,9 +1,6 @@
 import { ChevronRight, ChevronDown, Folder, FolderOpen, Check } from "lucide-react";
 import { useState } from "react";
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-    return inputs.filter(Boolean).join(" ");
-}
+import { useTranslation } from "react-i18next";
 
 interface FolderNode {
     name: string;
@@ -21,45 +18,83 @@ interface FolderTreeProps {
 }
 
 const TreeNode = ({ node, depth, excludedFolders, onToggleExclusion }: { node: FolderNode, depth: number, excludedFolders: string[], onToggleExclusion: (path: string) => void }) => {
-    const [isOpen, setIsOpen] = useState(depth < 1); // Expand first level by default
+    const [isOpen, setIsOpen] = useState(depth < 1);
     const isExcluded = excludedFolders.includes(node.path);
     const hasChildren = node.children && node.children.length > 0;
 
     return (
-        <div className="select-none">
+        <div>
             <div
-                className={cn(
-                    "flex items-center py-1 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-sm",
-                    isExcluded && "opacity-50"
-                )}
-                style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "4px 8px",
+                    paddingLeft: depth * 16 + 8,
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    opacity: isExcluded ? 0.5 : 1,
+                    transition: "background .1s",
+                }}
+                className="folder-tree-row"
             >
                 <div
-                    className="mr-1 p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-700"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setIsOpen(!isOpen);
-                    }}
+                    style={{ marginRight: 4, padding: 2, borderRadius: 3 }}
+                    onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
                 >
                     {hasChildren ? (
-                        isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />
-                    ) : <div className="w-4 h-4" />}
+                        isOpen ? <ChevronDown size={14} style={{ color: "var(--text-3)" }} /> : <ChevronRight size={14} style={{ color: "var(--text-3)" }} />
+                    ) : <div style={{ width: 14, height: 14 }} />}
                 </div>
 
                 <div
-                    className="mr-2 cursor-pointer flex items-center justify-center w-4 h-4 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleExclusion(node.path);
+                    style={{
+                        marginRight: 8,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 16,
+                        height: 16,
+                        border: "1px solid var(--border-strong)",
+                        borderRadius: 4,
+                        background: "var(--surface)",
                     }}
+                    onClick={(e) => { e.stopPropagation(); onToggleExclusion(node.path); }}
                 >
-                    {!isExcluded && <Check className="w-3 h-3 text-brand-500" />}
+                    {!isExcluded && <Check size={12} style={{ color: "var(--brand)" }} />}
                 </div>
 
-                <div className="flex items-center gap-2 flex-1" onClick={() => setIsOpen(!isOpen)}>
-                    {isOpen ? <FolderOpen className="w-4 h-4 text-brand-500" /> : <Folder className="w-4 h-4 text-brand-500" />}
-                    <span className={cn("truncate", isExcluded && "line-through text-gray-400")}>{node.name}</span>
-                    <span className="text-xs text-gray-400 ml-auto">{node.file_count} fichiers</span>
+                <div
+                    style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    {isOpen
+                        ? <FolderOpen size={15} style={{ color: "var(--brand)", flexShrink: 0 }} />
+                        : <Folder size={15} style={{ color: "var(--brand)", flexShrink: 0 }} />
+                    }
+                    <span
+                        style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            textDecoration: isExcluded ? "line-through" : "none",
+                            color: isExcluded ? "var(--text-3)" : "var(--text)",
+                        }}
+                    >
+                        {node.name}
+                    </span>
+                    <span
+                        style={{
+                            marginLeft: "auto",
+                            fontSize: 11,
+                            color: "var(--text-3)",
+                            fontFamily: "var(--font-mono)",
+                            flexShrink: 0,
+                        }}
+                    >
+                        {node.file_count}
+                    </span>
                 </div>
             </div>
 
@@ -81,31 +116,71 @@ const TreeNode = ({ node, depth, excludedFolders, onToggleExclusion }: { node: F
 };
 
 export function FolderTree({ path, tree, excludedFolders, onToggleExclusion }: FolderTreeProps) {
+    const { t } = useTranslation();
+
     if (!path) {
         return (
-            <div className="border rounded-md p-8 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-sm h-48 flex flex-col items-center justify-center text-gray-400">
-                <Folder className="w-8 h-8 mb-2 opacity-50" />
-                <p>Veuillez sélectionner un dossier pour voir son contenu.</p>
+            <div
+                className="loko-panel"
+                style={{
+                    padding: 32,
+                    height: 192,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--text-3)",
+                    fontSize: 13,
+                }}
+            >
+                <Folder size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <p>{t('wizard.source.selectFolderPrompt', 'Veuillez sélectionner un dossier pour voir son contenu.')}</p>
             </div>
         );
     }
 
     if (!tree) {
         return (
-            <div className="border rounded-md p-8 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-sm h-48 flex items-center justify-center text-gray-500 italic">
-                Analyse du dossier en cours...
+            <div
+                className="loko-panel"
+                style={{
+                    padding: 32,
+                    height: 192,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--text-3)",
+                    fontSize: 13,
+                    fontStyle: "italic",
+                }}
+            >
+                {t('wizard.source.analyzingFolder', 'Analyse du dossier en cours...')}
             </div>
         );
     }
 
     return (
-        <div className="border rounded-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-sm h-64 flex flex-col">
-            <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 flex justify-between">
-                <span>Arborescence</span>
-                <span>{excludedFolders.length} dossier(s) exclu(s)</span>
+        <div
+            className="loko-panel"
+            style={{ display: "flex", flexDirection: "column", height: 256, fontSize: 13 }}
+        >
+            <div
+                style={{
+                    padding: "8px 12px",
+                    borderBottom: "1px solid var(--border)",
+                    background: "var(--surface-2)",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    borderRadius: "12px 12px 0 0",
+                }}
+            >
+                <span>{t('wizard.source.treeView', 'Arborescence')}</span>
+                <span>{excludedFolders.length} {t('wizard.source.excluded', 'exclu(s)')}</span>
             </div>
-
-            <div className="overflow-y-auto flex-1 p-2">
+            <div className="loko-scroll" style={{ flex: 1, overflow: "auto", padding: 8 }}>
                 <TreeNode
                     node={tree}
                     depth={0}

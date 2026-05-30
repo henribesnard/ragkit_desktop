@@ -15,49 +15,102 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.searchType.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.searchType.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.searchType.subtitle')}
             </p>
 
-            <div className="space-y-4 mb-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 <button
                     onClick={() => setType("hybrid")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "hybrid" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 16,
+                        padding: 20,
+                        borderRadius: 14,
+                        border: searchType === "hybrid" ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: searchType === "hybrid" ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "hybrid" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
-                        <Layers className="w-6 h-6" />
+                    <div style={{
+                        padding: 12,
+                        borderRadius: 10,
+                        background: searchType === "hybrid" ? "var(--brand)" : "var(--surface-2)",
+                        color: searchType === "hybrid" ? "var(--brand-fg)" : "var(--text-3)",
+                    }}>
+                        <Layers style={{ width: 24, height: 24 }} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.hybrid')}</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.hybridDesc')}</p>
+                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: "var(--text)" }}>{t('wizard.searchType.hybrid')}</div>
+                        <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>{t('wizard.searchType.hybridDesc')}</p>
                     </div>
                 </button>
 
                 <button
                     onClick={() => setType("semantic")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "semantic" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 16,
+                        padding: 20,
+                        borderRadius: 14,
+                        border: searchType === "semantic" ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: searchType === "semantic" ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "semantic" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
-                        <Search className="w-6 h-6" />
+                    <div style={{
+                        padding: 12,
+                        borderRadius: 10,
+                        background: searchType === "semantic" ? "var(--brand)" : "var(--surface-2)",
+                        color: searchType === "semantic" ? "var(--brand-fg)" : "var(--text-3)",
+                    }}>
+                        <Search style={{ width: 24, height: 24 }} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.semantic')}</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.semanticDesc')}</p>
+                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: "var(--text)" }}>{t('wizard.searchType.semantic')}</div>
+                        <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>{t('wizard.searchType.semanticDesc')}</p>
                     </div>
                 </button>
 
                 <button
                     onClick={() => setType("lexical")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "lexical" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 16,
+                        padding: 20,
+                        borderRadius: 14,
+                        border: searchType === "lexical" ? "2px solid var(--brand)" : "1px solid var(--border)",
+                        background: searchType === "lexical" ? "var(--brand-weak)" : "var(--surface)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "border-color .14s, background .14s",
+                    }}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "lexical" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
-                        <TextSearch className="w-6 h-6" />
+                    <div style={{
+                        padding: 12,
+                        borderRadius: 10,
+                        background: searchType === "lexical" ? "var(--brand)" : "var(--surface-2)",
+                        color: searchType === "lexical" ? "var(--brand-fg)" : "var(--text-3)",
+                    }}>
+                        <TextSearch style={{ width: 24, height: 24 }} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-lg mb-1">{t('wizard.searchType.lexical')}</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">{t('wizard.searchType.lexicalDesc')}</p>
+                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: "var(--text)" }}>{t('wizard.searchType.lexical')}</div>
+                        <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>{t('wizard.searchType.lexicalDesc')}</p>
                     </div>
                 </button>
             </div>

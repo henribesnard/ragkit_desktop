@@ -17,15 +17,17 @@ export function ChunkingStep({ wizard }: { wizard: any }) {
     const overlap = chunkCfg.chunk_overlap || 50;
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.chunking.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.chunking.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.chunking.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 <div>
-                    <label className="block font-medium mb-2">{t('wizard.chunking.chunkSize')}</label>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.chunking.chunkSize')}</label>
                     <input
                         type="range"
                         min="128"
@@ -35,15 +37,15 @@ export function ChunkingStep({ wizard }: { wizard: any }) {
                         onChange={(e) => updateChunking({ chunk_size: parseInt(e.target.value) })}
                         className="w-full cursor-pointer"
                     />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                         <span>128 ({t('wizard.chunking.sizePrecise')})</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{size} {t('wizard.chunking.tokens')}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text)" }}>{size} {t('wizard.chunking.tokens')}</span>
                         <span>2048 ({t('wizard.chunking.sizeLarge')})</span>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block font-medium mb-2">{t('wizard.chunking.overlap')}</label>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.chunking.overlap')}</label>
                     <input
                         type="range"
                         min="0"
@@ -53,18 +55,18 @@ export function ChunkingStep({ wizard }: { wizard: any }) {
                         onChange={(e) => updateChunking({ chunk_overlap: parseInt(e.target.value) })}
                         className="w-full cursor-pointer"
                     />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                         <span>0</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{overlap} {t('wizard.chunking.tokens')}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text)" }}>{overlap} {t('wizard.chunking.tokens')}</span>
                         <span>500</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">{t('wizard.chunking.overlapDesc')}</p>
+                    <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>{t('wizard.chunking.overlapDesc')}</p>
                 </div>
 
-                <label className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 16, borderTop: "1px solid var(--border)" }}>
                     <div>
-                        <span className="block font-medium">{t('wizard.chunking.chunkIndex')}</span>
-                        <span className="text-sm text-gray-500">{t('wizard.chunking.chunkIndexDesc')}</span>
+                        <span style={{ display: "block", fontWeight: 500 }}>{t('wizard.chunking.chunkIndex')}</span>
+                        <span style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.chunking.chunkIndexDesc')}</span>
                     </div>
                     <input
                         type="checkbox"

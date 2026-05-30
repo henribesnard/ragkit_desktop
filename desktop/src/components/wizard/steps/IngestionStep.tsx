@@ -61,23 +61,27 @@ export function IngestionStep({ wizard }: { wizard: any }) {
     const preproc = ingCfg.preprocessing || {};
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.ingestion.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.ingestion.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.ingestion.subtitle')}
             </p>
 
-            <div className="space-y-4 mb-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 {/* Mode d'ingestion */}
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.mode')}</h3>
+                <div className="loko-panel" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                        {t('wizard.ingestion.mode')}
+                    </div>
 
                     {expertiseLevel === "simple" ? (
                         /* Debutant: simple toggle avec recommandation */
-                        <label className="flex items-center justify-between cursor-pointer">
+                        <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
                             <div>
-                                <span className="block font-medium">{t('wizard.ingestion.automatic')}</span>
-                                <span className="text-sm text-gray-500">
+                                <span style={{ display: "block", fontWeight: 500 }}>{t('wizard.ingestion.automatic')}</span>
+                                <span style={{ fontSize: 13, color: "var(--text-3)" }}>
                                     {t('wizard.ingestion.autoRecommended')}
                                 </span>
                             </div>
@@ -90,33 +94,57 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                         </label>
                     ) : (
                         /* Intermediaire / Avance: choix explicite avec descriptions */
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                                 <button
                                     type="button"
-                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${ingestionMode === "manual"
-                                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                                        }`}
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        padding: 16,
+                                        borderRadius: 10,
+                                        border: ingestionMode === "manual"
+                                            ? "2px solid var(--brand)"
+                                            : "1px solid var(--border)",
+                                        background: ingestionMode === "manual" ? "var(--brand-weak)" : "transparent",
+                                        cursor: "pointer",
+                                        transition: "border-color .14s, background .14s",
+                                    }}
                                     onClick={() => setIngestionMode("manual")}
                                 >
-                                    <Hand className={`w-6 h-6 ${ingestionMode === "manual" ? "text-brand-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "manual" ? "text-brand-700 dark:text-brand-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.manual')}</span>
-                                    <span className="text-xs text-gray-500 text-center">
+                                    <Hand style={{ width: 24, height: 24, color: ingestionMode === "manual" ? "var(--brand)" : "var(--text-3)" }} />
+                                    <span style={{ fontWeight: 500, fontSize: 13, color: ingestionMode === "manual" ? "var(--brand)" : "var(--text)" }}>
+                                        {t('wizard.ingestion.manual')}
+                                    </span>
+                                    <span style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>
                                         {t('wizard.ingestion.manualDesc')}
                                     </span>
                                 </button>
                                 <button
                                     type="button"
-                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${ingestionMode === "automatic"
-                                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                                        }`}
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        padding: 16,
+                                        borderRadius: 10,
+                                        border: ingestionMode === "automatic"
+                                            ? "2px solid var(--brand)"
+                                            : "1px solid var(--border)",
+                                        background: ingestionMode === "automatic" ? "var(--brand-weak)" : "transparent",
+                                        cursor: "pointer",
+                                        transition: "border-color .14s, background .14s",
+                                    }}
                                     onClick={() => setIngestionMode("automatic")}
                                 >
-                                    <Eye className={`w-6 h-6 ${ingestionMode === "automatic" ? "text-brand-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-brand-700 dark:text-brand-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.automatic')}</span>
-                                    <span className="text-xs text-gray-500 text-center">
+                                    <Eye style={{ width: 24, height: 24, color: ingestionMode === "automatic" ? "var(--brand)" : "var(--text-3)" }} />
+                                    <span style={{ fontWeight: 500, fontSize: 13, color: ingestionMode === "automatic" ? "var(--brand)" : "var(--text)" }}>
+                                        {t('wizard.ingestion.automatic')}
+                                    </span>
+                                    <span style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>
                                         {t('wizard.ingestion.autoDesc')}
                                     </span>
                                 </button>
@@ -124,8 +152,8 @@ export function IngestionStep({ wizard }: { wizard: any }) {
 
                             {/* Avance: intervalle de surveillance */}
                             {expertiseLevel === "expert" && ingestionMode === "automatic" && (
-                                <div className="pt-3 animate-in fade-in slide-in-from-top-2">
-                                    <label className="block font-medium mb-2 text-sm">
+                                <div className="animate-in fade-in slide-in-from-top-2" style={{ paddingTop: 12 }}>
+                                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8, fontSize: 13 }}>
                                         {t('wizard.ingestion.watchInterval')}
                                     </label>
                                     <input
@@ -137,9 +165,9 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                         onChange={(e) => updateGeneral({ auto_ingestion_delay: parseInt(e.target.value, 10) })}
                                         className="w-full cursor-pointer"
                                     />
-                                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                                         <span>10s</span>
-                                        <span className="font-bold text-gray-900 dark:text-white">{watchInterval}s</span>
+                                        <span style={{ fontWeight: 700, color: "var(--text)" }}>{watchInterval}s</span>
                                         <span>300s</span>
                                     </div>
                                 </div>
@@ -148,14 +176,16 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                     )}
                 </div>
                 {/* Parsing Settings */}
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.parsing')}</h3>
+                <div className="loko-panel" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                        {t('wizard.ingestion.parsing')}
+                    </div>
 
-                    <div className="space-y-4">
-                        <label className="flex items-center justify-between">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <div>
-                                <span className="block font-medium">{t('wizard.ingestion.ocr')}</span>
-                                <span className="text-sm text-gray-500">{t('wizard.ingestion.ocrDesc')}</span>
+                                <span style={{ display: "block", fontWeight: 500 }}>{t('wizard.ingestion.ocr')}</span>
+                                <span style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.ingestion.ocrDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -165,10 +195,10 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                             />
                         </label>
 
-                        <div className="pt-2">
-                            <label className="block font-medium mb-1">{t('wizard.ingestion.tableStrategy')}</label>
+                        <div style={{ paddingTop: 8 }}>
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>{t('wizard.ingestion.tableStrategy')}</label>
                             <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                 value={parsing.table_extraction_strategy || "preserve"}
                                 onChange={(e) => updateParsing({ table_extraction_strategy: e.target.value })}
                             >
@@ -182,14 +212,16 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                 </div>
 
                 {/* Preprocessing Settings */}
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold mb-4 border-b pb-2">{t('wizard.ingestion.preprocessing')}</h3>
+                <div className="loko-panel" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                        {t('wizard.ingestion.preprocessing')}
+                    </div>
 
-                    <div className="space-y-4">
-                        <label className="flex items-center justify-between">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <div>
-                                <span className="block font-medium">{t('wizard.ingestion.cleanWhitespace')}</span>
-                                <span className="text-sm text-gray-500">{t('wizard.ingestion.cleanWhitespaceDesc')}</span>
+                                <span style={{ display: "block", fontWeight: 500 }}>{t('wizard.ingestion.cleanWhitespace')}</span>
+                                <span style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.ingestion.cleanWhitespaceDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -198,10 +230,10 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                             />
                         </label>
 
-                        <label className="flex items-center justify-between">
+                        <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <div>
-                                <span className="block font-medium">{t('wizard.ingestion.removeUrls')}</span>
-                                <span className="text-sm text-gray-500">{t('wizard.ingestion.removeUrlsDesc')}</span>
+                                <span style={{ display: "block", fontWeight: 500 }}>{t('wizard.ingestion.removeUrls')}</span>
+                                <span style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.ingestion.removeUrlsDesc')}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -210,10 +242,10 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                             />
                         </label>
 
-                        <div className="pt-2">
-                            <label className="block font-medium mb-1">{t('wizard.ingestion.deduplication')}</label>
+                        <div style={{ paddingTop: 8 }}>
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>{t('wizard.ingestion.deduplication')}</label>
                             <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                 value={preproc.deduplication_strategy || "fuzzy"}
                                 onChange={(e) => updatePreproc({ deduplication_strategy: e.target.value })}
                             >

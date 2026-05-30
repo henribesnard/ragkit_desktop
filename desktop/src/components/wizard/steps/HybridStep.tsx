@@ -19,15 +19,17 @@ export function HybridStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.hybrid.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.hybrid.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.hybrid.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 <div>
-                    <label className="block font-medium mb-2">{t('wizard.hybrid.topK')}</label>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.hybrid.topK')}</label>
                     <input
                         type="range"
                         min="1"
@@ -37,17 +39,27 @@ export function HybridStep({ wizard }: { wizard: any }) {
                         onChange={(e) => updateHybrid({ top_k: parseInt(e.target.value) })}
                         className="w-full cursor-pointer"
                     />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                         <span>1</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.hybrid.documents')}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text)" }}>{topK} {t('wizard.hybrid.documents')}</span>
                         <span>20</span>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block font-medium mb-2">{t('wizard.hybrid.fusionMethod')}</label>
-                    <div className="grid grid-cols-2 gap-4">
-                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'rrf' ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.hybrid.fusionMethod')}</label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                        <label style={{
+                            border: fusion === 'rrf' ? "2px solid var(--brand)" : "1px solid var(--border)",
+                            background: fusion === 'rrf' ? "var(--brand-weak)" : "transparent",
+                            borderRadius: 10,
+                            padding: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            transition: "border-color .14s, background .14s",
+                        }}>
                             <input
                                 type="radio"
                                 name="fusion"
@@ -57,11 +69,21 @@ export function HybridStep({ wizard }: { wizard: any }) {
                                 className="text-brand-600"
                             />
                             <div>
-                                <span className="block font-medium text-sm">{t('wizard.hybrid.rrf')}</span>
-                                <span className="text-xs text-gray-500">{t('wizard.hybrid.rrfDesc')}</span>
+                                <span style={{ display: "block", fontWeight: 500, fontSize: 13 }}>{t('wizard.hybrid.rrf')}</span>
+                                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{t('wizard.hybrid.rrfDesc')}</span>
                             </div>
                         </label>
-                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'linear' ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <label style={{
+                            border: fusion === 'linear' ? "2px solid var(--brand)" : "1px solid var(--border)",
+                            background: fusion === 'linear' ? "var(--brand-weak)" : "transparent",
+                            borderRadius: 10,
+                            padding: 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            transition: "border-color .14s, background .14s",
+                        }}>
                             <input
                                 type="radio"
                                 name="fusion"
@@ -71,8 +93,8 @@ export function HybridStep({ wizard }: { wizard: any }) {
                                 className="text-brand-600"
                             />
                             <div>
-                                <span className="block font-medium text-sm">{t('wizard.hybrid.linear')}</span>
-                                <span className="text-xs text-gray-500">{t('wizard.hybrid.linearDesc')}</span>
+                                <span style={{ display: "block", fontWeight: 500, fontSize: 13 }}>{t('wizard.hybrid.linear')}</span>
+                                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{t('wizard.hybrid.linearDesc')}</span>
                             </div>
                         </label>
                     </div>
@@ -80,7 +102,7 @@ export function HybridStep({ wizard }: { wizard: any }) {
 
                 {fusion === 'linear' && (
                     <div>
-                        <label className="block font-medium mb-2">{t('wizard.hybrid.weighting')}</label>
+                        <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.hybrid.weighting')}</label>
                         <input
                             type="range"
                             min="0"
@@ -90,9 +112,9 @@ export function HybridStep({ wizard }: { wizard: any }) {
                             onChange={(e) => updateHybrid({ semantic_weight: parseFloat(e.target.value) })}
                             className="w-full cursor-pointer"
                         />
-                        <div className="flex justify-between text-sm text-gray-500 mt-1">
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                             <span>{t('wizard.hybrid.lexicalOnly')}</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{Math.round(semanticWeight * 100)}% {t('wizard.hybrid.semanticPercent')}</span>
+                            <span style={{ fontWeight: 700, color: "var(--text)" }}>{Math.round(semanticWeight * 100)}% {t('wizard.hybrid.semanticPercent')}</span>
                             <span>{t('wizard.hybrid.semanticOnly')}</span>
                         </div>
                     </div>

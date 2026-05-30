@@ -17,32 +17,34 @@ export function VectorStoreStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.vectorStore.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.vectorStore.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.vectorStore.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
-                <div className="flex items-center gap-4 p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-100 dark:border-brand-900">
-                    <Database className="w-8 h-8 text-brand-600 dark:text-brand-400 shrink-0" />
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, background: "var(--brand-weak)", borderRadius: 10, border: "1px solid var(--brand)" }}>
+                    <Database style={{ width: 32, height: 32, color: "var(--brand)", flexShrink: 0 }} />
                     <div>
-                        <h3 className="font-semibold text-brand-900 dark:text-brand-100">{t('wizard.vectorStore.localQdrant')}</h3>
-                        <p className="text-sm text-brand-700 dark:text-brand-300">
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{t('wizard.vectorStore.localQdrant')}</div>
+                        <p style={{ fontSize: 13, color: "var(--text-2)" }}>
                             {t('wizard.vectorStore.localQdrantDesc')}
                         </p>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block font-medium mb-1 text-sm">{t('wizard.vectorStore.collectionName')}</label>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t('wizard.vectorStore.collectionName')}</label>
                     <input
                         type="text"
-                        className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                        style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                         value={collectionName}
                         onChange={(e) => updateVectorStore({ collection_name: e.target.value.replace(/[^a-zA-Z0-9_-]/g, '') })}
                     />
-                    <p className="text-xs text-gray-500 mt-1">{t('wizard.vectorStore.collectionDesc')}</p>
+                    <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{t('wizard.vectorStore.collectionDesc')}</p>
                 </div>
             </div>
 

@@ -18,15 +18,17 @@ export function LexicalStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.lexical.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.lexical.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.lexical.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
                 <div>
-                    <label className="block font-medium mb-2">{t('wizard.lexical.topK')}</label>
+                    <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.lexical.topK')}</label>
                     <input
                         type="range"
                         min="1"
@@ -36,13 +38,13 @@ export function LexicalStep({ wizard }: { wizard: any }) {
                         onChange={(e) => updateLexical({ top_k: parseInt(e.target.value) })}
                         className="w-full cursor-pointer"
                     />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                         <span>1</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{topK} {t('wizard.lexical.documents')}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text)" }}>{topK} {t('wizard.lexical.documents')}</span>
                         <span>20</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">{t('wizard.lexical.topKDesc')}</p>
-                    <div className="mt-2">
+                    <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>{t('wizard.lexical.topKDesc')}</p>
+                    <div style={{ marginTop: 8 }}>
                         <LatencyImpactBadge level="low" description={t("latency.topKLexicalDesc")} />
                     </div>
                 </div>

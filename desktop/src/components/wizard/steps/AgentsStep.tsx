@@ -17,21 +17,29 @@ export function AgentsStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.agents.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.agents.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.agents.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
-                <label className="flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-lg ${enabled ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
-                            <Bot className="w-6 h-6" />
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <div style={{
+                            padding: 12,
+                            borderRadius: 10,
+                            background: enabled ? "var(--brand)" : "var(--surface-2)",
+                            color: enabled ? "var(--brand-fg)" : "var(--text-3)",
+                            transition: "background .14s, color .14s",
+                        }}>
+                            <Bot style={{ width: 24, height: 24 }} />
                         </div>
                         <div>
-                            <span className="block font-medium text-lg">{t('wizard.agents.enable')}</span>
-                            <span className="text-sm text-gray-500 max-w-sm block mt-1">{t('wizard.agents.enableDesc')}</span>
+                            <span style={{ display: "block", fontWeight: 500, fontSize: 16 }}>{t('wizard.agents.enable')}</span>
+                            <span style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 380, display: "block", marginTop: 4 }}>{t('wizard.agents.enableDesc')}</span>
                         </div>
                     </div>
                     <input
@@ -43,10 +51,10 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                 </label>
 
                 {enabled && (
-                    <div className="pt-4 border-t border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 space-y-3">
+                    <div className="animate-in fade-in slide-in-from-top-2" style={{ paddingTop: 16, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
                         <LatencyImpactBadge level="high" description={t("latency.analyzerActiveDesc")} />
                         <LatencyImpactBadge level="high" description={t("latency.rewritingActiveDesc")} />
-                        <p className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <p style={{ fontSize: 13, color: "var(--danger)", background: "var(--danger-bg)", padding: 12, borderRadius: 10, border: "1px solid var(--danger)" }}>
                             <strong>{t('wizard.agents.perfNoteTitle')}</strong> {t('wizard.agents.perfNote')}
                         </p>
                     </div>

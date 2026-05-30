@@ -1,8 +1,8 @@
 import { useWizard } from "@/hooks/useWizard";
 import { WizardProgress } from "./WizardProgress";
-import { Globe, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Globe, Loader2, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Lockup } from "@/components/brand/Lockup";
 import {
     SystemCheckStep, ExpertiseStep, ProfileStep, SourceStep,
     IngestionStep, ChunkingStep, EmbeddingStep, VectorStoreStep,
@@ -20,7 +20,7 @@ function LanguageToggle() {
     return (
         <button
             onClick={toggle}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="btn btn-ghost btn-sm"
             title={i18n.language === "fr" ? "Switch to English" : "Passer en français"}
         >
             <Globe size={14} />
@@ -35,7 +35,11 @@ export function WizardContainer() {
     const { state } = wizard;
 
     if (state.isLoading) {
-        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>;
+        return (
+            <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
+            </div>
+        );
     }
 
     const steps = [
@@ -60,66 +64,85 @@ export function WizardContainer() {
     const isLastStep = state.step === steps.length - 1;
 
     return (
-        <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans">
-            {state.step > 0 ? (
-                <header className="h-12 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
-                    <div className="font-bold text-lg flex items-center gap-2 tracking-tight">
-                        {t('wizard.container.title')} <span className="text-gray-400 font-normal text-sm">{t('wizard.container.subtitle')}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <WizardProgress currentStep={state.step} totalSteps={15} />
-                        <LanguageToggle />
-                    </div>
-                </header>
-            ) : (
-                <div className="absolute top-4 right-6 z-50">
-                    <LanguageToggle />
-                </div>
-            )}
+        <div
+            className="h-screen flex flex-col"
+            style={{
+                background: "var(--bg)",
+                color: "var(--text)",
+                fontFamily: "var(--font-sans)",
+                fontSize: 14,
+                lineHeight: 1.5,
+            }}
+        >
+            {/* Header: brand lockup + step rail */}
+            <header
+                className="flex items-center shrink-0"
+                style={{
+                    height: 60,
+                    padding: "0 40px",
+                    borderBottom: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    gap: 28,
+                }}
+            >
+                <Lockup glyph={24} text={18} />
+                <div style={{ flex: 1 }} />
+                <WizardProgress currentStep={state.step} totalSteps={steps.length} />
+                <LanguageToggle />
+            </header>
 
-            <main className="flex-1 overflow-y-auto relative p-4 pt-6">
-                <div className="max-w-5xl mx-auto h-full animate-in fade-in duration-500 slide-in-from-bottom-4">
+            {/* Body */}
+            <main
+                className="flex-1 min-h-0 overflow-y-auto loko-scroll"
+                style={{ padding: "34px 40px" }}
+            >
+                <div style={{ width: "100%", maxWidth: 940, margin: "0 auto" }}>
                     {steps[state.step]}
                 </div>
             </main>
 
-            {/* Sticky Navigation Footer */}
-            {state.step >= 0 && (
-                <footer className="h-14 border-t border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-6 flex items-center justify-center z-50">
-                    <div className="max-w-5xl w-full flex justify-between items-center">
-                        <Button
-                            variant="outline"
-                            onClick={() => wizard.prevStep()}
-                            disabled={state.step === 0 || state.isLoading}
-                            className="px-8 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-all"
-                        >
-                            {t('wizard.container.back')}
-                        </Button>
-
-                        <div className="flex-1 text-center text-xs text-gray-400 px-4">
-                            {t('wizard.container.autoSave')}
-                        </div>
-
-                        {isLastStep ? (
-                            <Button
-                                onClick={() => wizard.completeWizard()}
-                                disabled={state.isLoading}
-                                className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
-                            >
-                                {state.isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t('wizard.container.finish')}
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={() => wizard.nextStep()}
-                                disabled={state.isLoading || !state.stepValid}
-                                className="px-8 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl transition-all shadow-lg"
-                            >
-                                {t('wizard.container.continue')}
-                            </Button>
-                        )}
-                    </div>
-                </footer>
-            )}
+            {/* Footer */}
+            <footer
+                className="flex items-center shrink-0"
+                style={{
+                    padding: "16px 40px",
+                    borderTop: "1px solid var(--border)",
+                    background: "var(--surface)",
+                }}
+            >
+                <button
+                    className="btn btn-ghost"
+                    onClick={() => wizard.prevStep()}
+                    disabled={state.step === 0 || state.isLoading}
+                    style={{ opacity: state.step === 0 ? 0.4 : 1 }}
+                >
+                    <ArrowLeft size={16} />
+                    {t('wizard.container.back')}
+                </button>
+                <div style={{ flex: 1 }} />
+                <span style={{ fontSize: 12.5, color: "var(--text-3)", marginRight: 14 }}>
+                    {t('wizard.container.autoSave')}
+                </span>
+                {isLastStep ? (
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => wizard.completeWizard()}
+                        disabled={state.isLoading}
+                    >
+                        <Sparkles size={16} />
+                        {state.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('wizard.container.finish')}
+                    </button>
+                ) : (
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => wizard.nextStep()}
+                        disabled={state.isLoading || !state.stepValid}
+                    >
+                        {t('wizard.container.continue')}
+                        <ArrowRight size={16} />
+                    </button>
+                )}
+            </footer>
         </div>
     );
 }

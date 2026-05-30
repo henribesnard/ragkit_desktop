@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { LatencyImpactBadge } from "@/components/ui/LatencyImpactBadge";
 import { ipc } from "@/lib/ipc";
 import { useTranslation } from "react-i18next";
@@ -18,7 +17,7 @@ interface RerankModelInfo {
 
 const RERANK_DEFAULTS = { provider: "huggingface", top_n: 3 };
 
-const API_KEY_SECRETS: Record<string, string> = {
+const RERANK_KEY_PATHS: Record<string, string> = {
     cohere: "loko.rerank.cohere.api_key",
     jina: "loko.rerank.jina.api_key",
     voyage: "loko.rerank.voyage.api_key",
@@ -59,8 +58,8 @@ export function RerankingStep({ wizard }: { wizard: any }) {
         return () => { cancelled = true; };
     }, [provider, enabled]);
 
-    // Si le reranking est activé (ex: via analyze_profile) mais que
-    // le provider n'est pas encore défini, écrire les valeurs par défaut.
+    // Si le reranking est active (ex: via analyze_profile) mais que
+    // le provider n'est pas encore defini, ecrire les valeurs par defaut.
     useEffect(() => {
         if (enabled && !rerankCfg.provider) {
             updateRerank({ ...RERANK_DEFAULTS });
@@ -73,7 +72,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
     const updateRerank = (patch: any) => {
         updateConfig((cfg: any) => {
             if (!cfg.rerank) cfg.rerank = {};
-            // Quand on active le reranking, écrire les defaults s'ils sont absents
+            // Quand on active le reranking, ecrire les defaults s'ils sont absents
             if (patch.enabled === true) {
                 if (!cfg.rerank.provider) cfg.rerank.provider = RERANK_DEFAULTS.provider;
                 if (!cfg.rerank.top_n) cfg.rerank.top_n = RERANK_DEFAULTS.top_n;
@@ -86,7 +85,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             return cfg;
         });
         setTestResult(null);
-        // Disabled → can continue freely; enabled → must test first
+        // Disabled -> can continue freely; enabled -> must test first
         if (patch.enabled === false) {
             setStepValid(true);
         } else {
@@ -98,7 +97,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
         setIsTesting(true);
         setTestResult(null);
         try {
-            const secretKey = API_KEY_SECRETS[provider];
+            const secretKey = RERANK_KEY_PATHS[provider];
             if (secretKey && apiKey) {
                 await invoke("store_secret", { keyName: secretKey, value: apiKey });
             }
@@ -133,18 +132,20 @@ export function RerankingStep({ wizard }: { wizard: any }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.reranking.title')}</h1>
-            <p className="text-gray-500 mb-4">
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.reranking.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
                 {t('wizard.reranking.subtitle')}
             </p>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
-                <label className="flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-700 pb-4">
+            <div className="loko-panel" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", borderBottom: "1px solid var(--border)", paddingBottom: 16 }}>
                     <div>
-                        <span className="block font-medium text-lg text-brand-900 dark:text-brand-100">{t('wizard.reranking.enable')}</span>
-                        <span className="text-sm text-gray-500">{t('wizard.reranking.enableDesc')}</span>
-                        <div className="mt-2">
+                        <span style={{ display: "block", fontWeight: 500, fontSize: 16, color: "var(--text)" }}>{t('wizard.reranking.enable')}</span>
+                        <span style={{ fontSize: 13, color: "var(--text-3)" }}>{t('wizard.reranking.enableDesc')}</span>
+                        <div style={{ marginTop: 8 }}>
                             <LatencyImpactBadge level="medium" description={t("latency.rerankEnabledDesc")} />
                         </div>
                     </div>
@@ -157,11 +158,11 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                 </label>
 
                 {enabled && (
-                    <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="animate-in fade-in slide-in-from-top-2" style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 8 }}>
                         <div>
-                            <label className="block font-medium mb-2">{t('wizard.reranking.provider')}</label>
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.reranking.provider')}</label>
                             <select
-                                className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                 value={provider}
                                 onChange={(e) => updateRerank({ provider: e.target.value })}
                             >
@@ -174,9 +175,9 @@ export function RerankingStep({ wizard }: { wizard: any }) {
 
                         {models.length > 0 && (
                             <div>
-                                <label className="block font-medium mb-2">{t('wizard.reranking.model')}</label>
+                                <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.reranking.model')}</label>
                                 <select
-                                    className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                     value={selectedModel}
                                     onChange={(e) => updateRerank({ model: e.target.value })}
                                 >
@@ -189,7 +190,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                                     const info = models.find((m) => m.id === selectedModel);
                                     if (!info) return null;
                                     return (
-                                        <div className="mt-2 text-xs text-gray-500 space-y-0.5">
+                                        <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 2 }}>
                                             {info.languages && <div>{t('wizard.reranking.languages')}: {info.languages}</div>}
                                             {info.quality_rating && <div>{t('wizard.reranking.quality')}: {info.quality_rating}/5</div>}
                                             {info.latency_hint && <div>{t('wizard.reranking.latency')}: {info.latency_hint}</div>}
@@ -201,20 +202,20 @@ export function RerankingStep({ wizard }: { wizard: any }) {
 
                         {isCloudProvider(provider) && (
                             <div>
-                                <label className="block font-medium mb-1 text-sm">{t(`wizard.reranking.${provider}Key`)}</label>
+                                <label style={{ display: "block", fontWeight: 500, marginBottom: 4, fontSize: 13 }}>{t(`wizard.reranking.${provider}Key`)}</label>
                                 <input
                                     type="password"
-                                    className="w-full rounded-md border border-gray-300 p-2 dark:bg-gray-700"
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: 8, background: "var(--surface)", color: "var(--text)" }}
                                     placeholder="API Key..."
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">{t(`wizard.reranking.${provider}KeyDesc`)}</p>
+                                <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{t(`wizard.reranking.${provider}KeyDesc`)}</p>
                             </div>
                         )}
 
                         <div>
-                            <label className="block font-medium mb-2">{t('wizard.reranking.topN')}</label>
+                            <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{t('wizard.reranking.topN')}</label>
                             <input
                                 type="range"
                                 min="1"
@@ -224,24 +225,34 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                                 onChange={(e) => updateRerank({ top_n: parseInt(e.target.value) })}
                                 className="w-full cursor-pointer"
                             />
-                            <div className="flex justify-between text-sm text-gray-500 mt-1">
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
                                 <span>1</span>
-                                <span className="font-bold text-gray-900 dark:text-white">{topN} {t('wizard.reranking.documents')}</span>
+                                <span style={{ fontWeight: 700, color: "var(--text)" }}>{topN} {t('wizard.reranking.documents')}</span>
                                 <span>10</span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-2">{t('wizard.reranking.topNDesc')}</p>
+                            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>{t('wizard.reranking.topNDesc')}</p>
                         </div>
                     </div>
                 )}
 
                 {enabled && (
-                    <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-                        <Button onClick={handleTest} variant="outline" className="w-full sm:w-auto self-start" disabled={isTesting || (isCloudProvider(provider) && !apiKey)}>
+                    <div className="animate-in fade-in slide-in-from-top-2" style={{ paddingTop: 16, marginTop: 8, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
+                        <button className="btn btn-secondary" onClick={handleTest} disabled={isTesting || (isCloudProvider(provider) && !apiKey)} style={{ alignSelf: "flex-start" }}>
                             {isTesting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('wizard.reranking.testingConnection')}</> : t('wizard.reranking.testConnection')}
-                        </Button>
+                        </button>
 
                         {testResult && (
-                            <div className={`p-3 rounded-md text-sm flex items-start gap-2 ${testResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                            <div style={{
+                                padding: 12,
+                                borderRadius: 8,
+                                fontSize: 13,
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 8,
+                                background: testResult.success ? "var(--brand-weak)" : "var(--danger-bg)",
+                                color: testResult.success ? "var(--brand)" : "var(--danger)",
+                                border: testResult.success ? "1px solid var(--brand)" : "1px solid var(--danger)",
+                            }}>
                                 {testResult.success ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
                                 <span>{testResult.msg}</span>
                             </div>

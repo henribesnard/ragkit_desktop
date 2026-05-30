@@ -17,51 +17,73 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
     }, []);
 
     return (
-        <div className="max-w-2xl mx-auto py-4">
-            <h1 className="text-xl font-bold mb-4">{t('wizard.system.title')}</h1>
-            <p className="text-gray-500 mb-4">{t('wizard.system.subtitle')}</p>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.025em", marginBottom: 6 }}>
+                {t('wizard.system.title')}
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", marginBottom: 22 }}>
+                {t('wizard.system.subtitle')}
+            </p>
 
             {loading ? (
-                <div className="flex items-center justify-center p-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+                <div className="flex items-center justify-center" style={{ padding: 48 }}>
+                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
                 </div>
             ) : (
-                <div className="space-y-4 mb-4">
-                    <div className="p-4 rounded-lg border flex items-center justify-between">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* Ollama */}
+                    <div
+                        className="loko-panel"
+                        style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    >
                         <div>
-                            <h3 className="font-semibold">{t('wizard.system.ollama')}</h3>
-                            <p className="text-sm text-gray-500">{t('wizard.system.ollamaDesc')}</p>
+                            <div style={{ fontSize: 14.5, fontWeight: 600 }}>{t('wizard.system.ollama')}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>{t('wizard.system.ollamaDesc')}</div>
                         </div>
-                        {env?.ollama_available ? <CheckCircle2 className="text-green-500 w-6 h-6" /> : <XCircle className="text-gray-400 w-6 h-6" />}
+                        {env?.ollama_available
+                            ? <CheckCircle2 size={22} style={{ color: "var(--brand)", flexShrink: 0 }} />
+                            : <XCircle size={22} style={{ color: "var(--text-3)", flexShrink: 0 }} />
+                        }
                     </div>
 
-                    <div className="p-4 rounded-lg border flex items-center justify-between">
+                    {/* GPU */}
+                    <div
+                        className="loko-panel"
+                        style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    >
                         <div>
-                            <h3 className="font-semibold">{t('wizard.system.gpu')}</h3>
-                            <p className="text-sm text-gray-500">{t('wizard.system.gpuDesc')}</p>
+                            <div style={{ fontSize: 14.5, fontWeight: 600 }}>{t('wizard.system.gpu')}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>{t('wizard.system.gpuDesc')}</div>
                         </div>
-                        {env?.gpu_available ? <CheckCircle2 className="text-green-500 w-6 h-6" /> : <XCircle className="text-gray-400 w-6 h-6" />}
+                        {env?.gpu_available
+                            ? <CheckCircle2 size={22} style={{ color: "var(--brand)", flexShrink: 0 }} />
+                            : <XCircle size={22} style={{ color: "var(--text-3)", flexShrink: 0 }} />
+                        }
                     </div>
 
+                    {/* Models */}
                     {(env?.ollama_llm_models?.length > 0 || env?.ollama_embedding_models?.length > 0) ? (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
+                        <div className="loko-panel" style={{ padding: "16px 20px" }}>
                             {env?.ollama_llm_models?.length > 0 && (
-                                <div>
-                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.llmModels')}</h4>
-                                    <div className="flex flex-wrap gap-2">
+                                <div style={{ marginBottom: env?.ollama_embedding_models?.length > 0 ? 16 : 0 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                                        {t('wizard.system.llmModels')}
+                                    </div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                         {env.ollama_llm_models.map((m: string) => (
-                                            <span key={m} className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-md text-xs">{m}</span>
+                                            <span key={m} className="loko-badge loko-badge-brand">{m}</span>
                                         ))}
                                     </div>
                                 </div>
                             )}
-
                             {env?.ollama_embedding_models?.length > 0 && (
                                 <div>
-                                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.embeddingModels')}</h4>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                                        {t('wizard.system.embeddingModels')}
+                                    </div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                         {env.ollama_embedding_models.map((m: string) => (
-                                            <span key={m} className="px-2 py-1 bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-md text-xs">{m}</span>
+                                            <span key={m} className="loko-badge loko-badge-neutral">{m}</span>
                                         ))}
                                     </div>
                                 </div>
@@ -69,16 +91,18 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
                         </div>
                     ) : (
                         env?.ollama_available && (
-                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.detectedModels')}</h4>
-                                <span className="text-sm text-gray-500 italic">{t('wizard.system.noModels')}</span>
+                            <div className="loko-panel" style={{ padding: "16px 20px" }}>
+                                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                                    {t('wizard.system.detectedModels')}
+                                </div>
+                                <span style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "italic" }}>
+                                    {t('wizard.system.noModels')}
+                                </span>
                             </div>
                         )
                     )}
                 </div>
             )}
-
-
         </div>
     );
 }
