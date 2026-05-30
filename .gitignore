@@ -62,3 +62,7 @@ local-build/
 
 # Local updater signing keys
 .updater-keys/
+
+# Handoff/Design temporary files
+_handoff_tmp/
+ragkit-handoff.zip
