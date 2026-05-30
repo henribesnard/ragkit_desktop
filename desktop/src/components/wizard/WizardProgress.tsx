@@ -18,7 +18,7 @@ export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps)
                         className={cn(
                             "w-3 h-3 rounded-full transition-colors duration-300",
                             step <= currentStep
-                                ? "bg-blue-600 dark:bg-blue-500"
+                                ? "bg-brand-600 dark:bg-brand-500"
                                 : "bg-gray-200 dark:bg-gray-700"
                         )}
                     />

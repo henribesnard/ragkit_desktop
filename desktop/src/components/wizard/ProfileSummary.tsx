@@ -31,11 +31,11 @@ export function ProfileSummary({ profile, calibration }: ProfileSummaryProps) {
     }, [profile, calibration, t]);
 
     return (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mt-6">
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+        <div className="bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-lg p-4 mt-6">
+            <h3 className="text-sm font-semibold text-brand-900 dark:text-brand-100 mb-2">
                 {t('wizard.profileSummary.title')}
             </h3>
-            <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
+            <div className="space-y-1 text-sm text-brand-800 dark:text-brand-200">
                 <div className="flex justify-between">
                     <span>{t('wizard.profileSummary.detectedProfile')}</span>
                     <span className="font-medium">{summary.name}</span>

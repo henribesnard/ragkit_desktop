@@ -159,7 +159,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                         className="w-full flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
-                            <SelectedIcon className="w-5 h-5 text-blue-500" />
+                            <SelectedIcon className="w-5 h-5 text-brand-500" />
                             <span className="font-medium text-sm">{t(`wizard.source.type.${sourceType}`)}</span>
                         </div>
                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
@@ -183,10 +183,10 @@ export function SourceStep({ wizard }: { wizard: any }) {
                                             src.available
                                                 ? "hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                                                 : "opacity-50 cursor-not-allowed"
-                                        } ${src.id === sourceType ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                                        } ${src.id === sourceType ? "bg-brand-50 dark:bg-brand-900/20" : ""}`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <Icon className={`w-5 h-5 ${src.id === sourceType ? "text-blue-500" : "text-gray-400"}`} />
+                                            <Icon className={`w-5 h-5 ${src.id === sourceType ? "text-brand-500" : "text-gray-400"}`} />
                                             <span className="text-sm font-medium">{t(`wizard.source.type.${src.id}`)}</span>
                                         </div>
                                         {!src.available && (
@@ -248,7 +248,7 @@ export function SourceStep({ wizard }: { wizard: any }) {
                             <div className="bg-white dark:bg-gray-800 p-4 flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-3">
                                 <h3 className="font-semibold flex items-center gap-2">
                                     {t('wizard.source.detectedTypes')}
-                                    {isScanning && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                                    {isScanning && <Loader2 className="w-4 h-4 animate-spin text-brand-500" />}
                                 </h3>
 
                                 {!isScanning && scanResult?.supported_types && (
@@ -259,9 +259,9 @@ export function SourceStep({ wizard }: { wizard: any }) {
                                                     type="checkbox"
                                                     checked={isIncluded(type.extension)}
                                                     onChange={() => { }}
-                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                                    className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
                                                 />
-                                                <span className="font-mono text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded uppercase w-16 text-center">
+                                                <span className="font-mono text-sm bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded uppercase w-16 text-center">
                                                     {type.display_name}
                                                 </span>
                                                 <div className="flex-1 flex justify-between text-sm text-gray-600 dark:text-gray-400">

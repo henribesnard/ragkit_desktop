@@ -142,7 +142,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 <label className="flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-700 pb-4">
                     <div>
-                        <span className="block font-medium text-lg text-blue-900 dark:text-blue-100">{t('wizard.reranking.enable')}</span>
+                        <span className="block font-medium text-lg text-brand-900 dark:text-brand-100">{t('wizard.reranking.enable')}</span>
                         <span className="text-sm text-gray-500">{t('wizard.reranking.enableDesc')}</span>
                         <div className="mt-2">
                             <LatencyImpactBadge level="medium" description={t("latency.rerankEnabledDesc")} />
@@ -152,7 +152,7 @@ export function RerankingStep({ wizard }: { wizard: any }) {
                         type="checkbox"
                         checked={enabled}
                         onChange={(e) => updateRerank({ enabled: e.target.checked })}
-                        className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                        className="w-5 h-5 text-brand-600 rounded cursor-pointer"
                     />
                 </label>
 

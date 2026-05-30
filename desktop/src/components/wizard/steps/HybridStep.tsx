@@ -47,28 +47,28 @@ export function HybridStep({ wizard }: { wizard: any }) {
                 <div>
                     <label className="block font-medium mb-2">{t('wizard.hybrid.fusionMethod')}</label>
                     <div className="grid grid-cols-2 gap-4">
-                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'rrf' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'rrf' ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                             <input
                                 type="radio"
                                 name="fusion"
                                 value="rrf"
                                 checked={fusion === 'rrf'}
                                 onChange={() => updateHybrid({ fusion_method: 'rrf' })}
-                                className="text-blue-600"
+                                className="text-brand-600"
                             />
                             <div>
                                 <span className="block font-medium text-sm">{t('wizard.hybrid.rrf')}</span>
                                 <span className="text-xs text-gray-500">{t('wizard.hybrid.rrfDesc')}</span>
                             </div>
                         </label>
-                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'linear' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <label className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${fusion === 'linear' ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                             <input
                                 type="radio"
                                 name="fusion"
                                 value="linear"
                                 checked={fusion === 'linear'}
                                 onChange={() => updateHybrid({ fusion_method: 'linear' })}
-                                className="text-blue-600"
+                                className="text-brand-600"
                             />
                             <div>
                                 <span className="block font-medium text-sm">{t('wizard.hybrid.linear')}</span>

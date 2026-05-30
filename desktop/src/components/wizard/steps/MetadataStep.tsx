@@ -151,7 +151,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                             placeholder={t('wizard.metadata.filterPlaceholder')}
                             value={searchFilter}
                             onChange={e => setSearchFilter(e.target.value)}
-                            className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                            className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                         />
                     </div>
                     {isLoading ? (
@@ -167,7 +167,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                     <tr>
                                         <th className="p-3 w-10">
                                             <button onClick={handleSelectAll} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors" title="Tout sélectionner">
-                                                <CheckSquare className={`w-4 h-4 ${filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? 'text-blue-500' : 'text-gray-400'}`} />
+                                                <CheckSquare className={`w-4 h-4 ${filteredFiles.length > 0 && filteredFiles.every(f => selectedPaths.has(f.path)) ? 'text-brand-500' : 'text-gray-400'}`} />
                                             </button>
                                         </th>
                                         <th className="p-3 font-semibold">{t('wizard.metadata.file')}</th>
@@ -185,19 +185,19 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             <tr
                                                 key={f.path}
                                                 onClick={() => handleToggleSelection(f.path)}
-                                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-brand-50/50 dark:bg-brand-900/20' : ''}`}
                                             >
                                                 <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => handleToggleSelection(f.path)}
-                                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 pointer-events-auto"
+                                                        className="w-4 h-4 text-brand-600 rounded border-gray-300 pointer-events-auto"
                                                     />
                                                 </td>
                                                 <td className="p-3">
                                                     <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                                        <FileText className="w-3.5 h-3.5 text-blue-400" />
+                                                        <FileText className="w-3.5 h-3.5 text-brand-400" />
                                                         <span className="truncate max-w-[200px]" title={f.name}>{f.name}</span>
                                                     </div>
                                                     <div className="text-xs text-gray-400 truncate mt-0.5 max-w-[200px]" title={f.path}>{f.path}</div>
@@ -224,7 +224,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                 {selectedPaths.size > 0 && (
                     <div className="w-full lg:w-1/3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300 lg:sticky lg:top-6 self-start max-h-full">
                         <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-3">
-                            <Settings2 className="w-5 h-5 text-blue-500" />
+                            <Settings2 className="w-5 h-5 text-brand-500" />
                             <div>
                                 <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                                     {selectedPaths.size === 1 ? t('wizard.metadata.editSingle') : t('wizard.metadata.editBulk')}
@@ -244,7 +244,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                         value={(overrides[singleFile.path] || {}).title || ""}
                                         onChange={e => handleIndividualEdit(singleFile.path, 'title', e.target.value)}
                                         placeholder={singleFile.name}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                                     />
                                 </div>
                             )}
@@ -270,7 +270,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                             }
                                         }}
                                         placeholder={field.placeholder}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                                     />
                                 </div>
                             ))}
@@ -289,7 +289,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                         }
                                     }}
                                     placeholder={t('wizard.metadata.placeholderTags') as string}
-                                    className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                                    className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                                 />
                             </div>
 
@@ -305,7 +305,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                 setBulkForm({ ...bulkForm, confidentiality: e.target.value });
                                             }
                                         }}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                                     >
                                         <option value="">{t('wizard.metadata.confidentialityNone')}</option>
                                         <option value="public">{t('wizard.metadata.confidentialityPublic')}</option>
@@ -325,7 +325,7 @@ export function MetadataStep({ wizard }: { wizard: any }) {
                                                 setBulkForm({ ...bulkForm, status: e.target.value });
                                             }
                                         }}
-                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-brand-500/20"
                                     >
                                         <option value="">{t('wizard.metadata.statusNone')}</option>
                                         <option value="draft">{t('wizard.metadata.statusDraft')}</option>

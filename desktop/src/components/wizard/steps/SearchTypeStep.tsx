@@ -24,9 +24,9 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
             <div className="space-y-4 mb-4">
                 <button
                     onClick={() => setType("hybrid")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "hybrid" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "hybrid" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "hybrid" ? "bg-blue-100 dark:bg-blue-900 text-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                    <div className={`p-3 rounded-lg ${searchType === "hybrid" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
                         <Layers className="w-6 h-6" />
                     </div>
                     <div>
@@ -37,9 +37,9 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={() => setType("semantic")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "semantic" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "semantic" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "semantic" ? "bg-blue-100 dark:bg-blue-900 text-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                    <div className={`p-3 rounded-lg ${searchType === "semantic" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
                         <Search className="w-6 h-6" />
                     </div>
                     <div>
@@ -50,9 +50,9 @@ export function SearchTypeStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={() => setType("lexical")}
-                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "lexical" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-800"}`}
+                    className={`w-full flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all ${searchType === "lexical" ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-800"}`}
                 >
-                    <div className={`p-3 rounded-lg ${searchType === "lexical" ? "bg-blue-100 dark:bg-blue-900 text-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                    <div className={`p-3 rounded-lg ${searchType === "lexical" ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
                         <TextSearch className="w-6 h-6" />
                     </div>
                     <div>

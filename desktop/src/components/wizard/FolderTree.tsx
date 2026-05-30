@@ -53,11 +53,11 @@ const TreeNode = ({ node, depth, excludedFolders, onToggleExclusion }: { node: F
                         onToggleExclusion(node.path);
                     }}
                 >
-                    {!isExcluded && <Check className="w-3 h-3 text-blue-500" />}
+                    {!isExcluded && <Check className="w-3 h-3 text-brand-500" />}
                 </div>
 
                 <div className="flex items-center gap-2 flex-1" onClick={() => setIsOpen(!isOpen)}>
-                    {isOpen ? <FolderOpen className="w-4 h-4 text-blue-500" /> : <Folder className="w-4 h-4 text-blue-500" />}
+                    {isOpen ? <FolderOpen className="w-4 h-4 text-brand-500" /> : <Folder className="w-4 h-4 text-brand-500" />}
                     <span className={cn("truncate", isExcluded && "line-through text-gray-400")}>{node.name}</span>
                     <span className="text-xs text-gray-400 ml-auto">{node.file_count} fichiers</span>
                 </div>

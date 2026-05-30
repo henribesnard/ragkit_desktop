@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-const MAX_SETUP_RETRIES = 30;
+const MAX_SETUP_RETRIES = 20;
 
 export function useSetupStatus() {
     const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
@@ -20,7 +20,9 @@ export function useSetupStatus() {
             } catch {
                 attempt += 1;
                 if (!cancelled && attempt < MAX_SETUP_RETRIES) {
-                    setTimeout(checkStatus, 1000);
+                    // Exponential backoff: 200ms, 400ms, 800ms, 1.6s, capped at 2s
+                    const delay = Math.min(200 * Math.pow(2, attempt - 1), 2000);
+                    setTimeout(checkStatus, delay);
                     return;
                 }
             }

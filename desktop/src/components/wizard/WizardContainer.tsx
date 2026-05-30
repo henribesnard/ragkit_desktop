@@ -35,7 +35,7 @@ export function WizardContainer() {
     const { state } = wizard;
 
     if (state.isLoading) {
-        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>;
+        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>;
     }
 
     const steps = [

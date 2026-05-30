@@ -24,11 +24,11 @@ export function VectorStoreStep({ wizard }: { wizard: any }) {
             </p>
 
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
-                <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900">
-                    <Database className="w-8 h-8 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="flex items-center gap-4 p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-100 dark:border-brand-900">
+                    <Database className="w-8 h-8 text-brand-600 dark:text-brand-400 shrink-0" />
                     <div>
-                        <h3 className="font-semibold text-blue-900 dark:text-blue-100">{t('wizard.vectorStore.localQdrant')}</h3>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <h3 className="font-semibold text-brand-900 dark:text-brand-100">{t('wizard.vectorStore.localQdrant')}</h3>
+                        <p className="text-sm text-brand-700 dark:text-brand-300">
                             {t('wizard.vectorStore.localQdrantDesc')}
                         </p>
                     </div>

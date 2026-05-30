@@ -68,7 +68,7 @@ export function ChunkingStep({ wizard }: { wizard: any }) {
                     </div>
                     <input
                         type="checkbox"
-                        className="w-4 h-4 text-blue-600 rounded"
+                        className="w-4 h-4 text-brand-600 rounded"
                         checked={!!chunkCfg.add_chunk_index}
                         onChange={(e) => updateChunking({ add_chunk_index: e.target.checked })}
                     />

@@ -26,7 +26,7 @@ export function AgentsStep({ wizard }: { wizard: any }) {
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4 mb-4">
                 <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-lg ${enabled ? "bg-blue-100 dark:bg-blue-900 text-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                        <div className={`p-3 rounded-lg ${enabled ? "bg-brand-100 dark:bg-brand-900 text-brand-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
                             <Bot className="w-6 h-6" />
                         </div>
                         <div>
@@ -38,7 +38,7 @@ export function AgentsStep({ wizard }: { wizard: any }) {
                         type="checkbox"
                         checked={enabled}
                         onChange={(e) => updateAgents({ enabled: e.target.checked })}
-                        className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                        className="w-5 h-5 text-brand-600 rounded cursor-pointer"
                     />
                 </label>
 

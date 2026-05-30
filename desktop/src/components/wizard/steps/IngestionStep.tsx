@@ -85,7 +85,7 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                 type="checkbox"
                                 checked={ingestionMode === "automatic"}
                                 onChange={(e) => setIngestionMode(e.target.checked ? "automatic" : "manual")}
-                                className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                                className="w-5 h-5 text-brand-600 rounded cursor-pointer"
                             />
                         </label>
                     ) : (
@@ -95,13 +95,13 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                 <button
                                     type="button"
                                     className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${ingestionMode === "manual"
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
                                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                         }`}
                                     onClick={() => setIngestionMode("manual")}
                                 >
-                                    <Hand className={`w-6 h-6 ${ingestionMode === "manual" ? "text-blue-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "manual" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.manual')}</span>
+                                    <Hand className={`w-6 h-6 ${ingestionMode === "manual" ? "text-brand-600" : "text-gray-400"}`} />
+                                    <span className={`font-medium text-sm ${ingestionMode === "manual" ? "text-brand-700 dark:text-brand-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.manual')}</span>
                                     <span className="text-xs text-gray-500 text-center">
                                         {t('wizard.ingestion.manualDesc')}
                                     </span>
@@ -109,13 +109,13 @@ export function IngestionStep({ wizard }: { wizard: any }) {
                                 <button
                                     type="button"
                                     className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${ingestionMode === "automatic"
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
                                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                         }`}
                                     onClick={() => setIngestionMode("automatic")}
                                 >
-                                    <Eye className={`w-6 h-6 ${ingestionMode === "automatic" ? "text-blue-600" : "text-gray-400"}`} />
-                                    <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.automatic')}</span>
+                                    <Eye className={`w-6 h-6 ${ingestionMode === "automatic" ? "text-brand-600" : "text-gray-400"}`} />
+                                    <span className={`font-medium text-sm ${ingestionMode === "automatic" ? "text-brand-700 dark:text-brand-300" : "text-gray-700 dark:text-gray-300"}`}>{t('wizard.ingestion.automatic')}</span>
                                     <span className="text-xs text-gray-500 text-center">
                                         {t('wizard.ingestion.autoDesc')}
                                     </span>

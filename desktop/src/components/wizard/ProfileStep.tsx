@@ -58,7 +58,7 @@ export function ProfileStep({ wizard }: ProfileStepProps) {
                         className={cn(
                             "flex-1 flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all duration-200 text-center hover:bg-gray-50 dark:hover:bg-gray-800 min-w-0",
                             currentProfile === p.id
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
                                 : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                         )}
                     >

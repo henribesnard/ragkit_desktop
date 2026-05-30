@@ -126,10 +126,10 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <button
                     onClick={handleSwitchToLocal}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isHuggingface ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${isHuggingface ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                 >
                     <div className="flex items-center gap-3 mb-2">
-                        <Download className={`w-5 h-5 ${isHuggingface ? "text-blue-600" : "text-gray-400"}`} />
+                        <Download className={`w-5 h-5 ${isHuggingface ? "text-brand-600" : "text-gray-400"}`} />
                         <h3 className="font-semibold text-lg">{t('wizard.embedding.localRecommend')}</h3>
                     </div>
                     <p className="text-sm text-gray-500">{t('wizard.embedding.localRecommendDesc')}</p>
@@ -137,10 +137,10 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={handleSwitchToOllama}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isOllama ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${isOllama ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                 >
                     <div className="flex items-center gap-3 mb-2">
-                        <Cpu className={`w-5 h-5 ${isOllama ? "text-blue-600" : "text-gray-400"}`} />
+                        <Cpu className={`w-5 h-5 ${isOllama ? "text-brand-600" : "text-gray-400"}`} />
                         <h3 className="font-semibold text-lg">{t('wizard.embedding.ollamaLocal')}</h3>
                     </div>
                     <p className="text-sm text-gray-500">{t('wizard.embedding.ollamaLocalDesc')}</p>
@@ -148,10 +148,10 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
 
                 <button
                     onClick={() => handleSwitchToApi()}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${isApiProvider ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${isApiProvider ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"}`}
                 >
                     <div className="flex items-center gap-3 mb-2">
-                        <Cloud className={`w-5 h-5 ${isApiProvider ? "text-blue-600" : "text-gray-400"}`} />
+                        <Cloud className={`w-5 h-5 ${isApiProvider ? "text-brand-600" : "text-gray-400"}`} />
                         <h3 className="font-semibold text-lg">{t('wizard.embedding.apiProvider')}</h3>
                     </div>
                     <p className="text-sm text-gray-500">{t('wizard.embedding.apiProviderDesc')}</p>
@@ -170,7 +170,7 @@ export function EmbeddingStep({ wizard }: { wizard: any }) {
                                         key={p.value}
                                         onClick={() => handleSwitchToApi(p.value)}
                                         className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${provider === p.value
-                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300"
                                             : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
                                             }`}
                                     >

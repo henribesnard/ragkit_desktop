@@ -23,7 +23,7 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
 
             {loading ? (
                 <div className="flex items-center justify-center p-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
                 </div>
             ) : (
                 <div className="space-y-4 mb-4">
@@ -61,7 +61,7 @@ export function SystemCheckStep({ wizard: _wizard }: { wizard: any }) {
                                     <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">{t('wizard.system.embeddingModels')}</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {env.ollama_embedding_models.map((m: string) => (
-                                            <span key={m} className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-md text-xs">{m}</span>
+                                            <span key={m} className="px-2 py-1 bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-md text-xs">{m}</span>
                                         ))}
                                     </div>
                                 </div>
