@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 try:
@@ -20,6 +22,7 @@ from ragkit.connectors.base import (
     ConnectorValidationResult,
 )
 from ragkit.connectors.registry import register_connector
+from ragkit.desktop import documents
 from ragkit.desktop.models import SourceType
 
 
@@ -78,7 +81,16 @@ class S3BucketConnector(BaseConnector):
 
     async def test_connection(self) -> ConnectorValidationResult:
         validation = await self.validate_config()
-        return validation
+        if not validation.valid:
+            return validation
+
+        errors: list[str] = []
+        try:
+            await self._head_bucket()
+        except Exception as exc:
+            errors.append(f"Impossible d'acceder au bucket '{self._bucket()}' : {exc}")
+
+        return ConnectorValidationResult(valid=len(errors) == 0, errors=errors)
 
     async def list_documents(self) -> list[ConnectorDocument]:
         validation = await self.validate_config()
@@ -146,7 +158,7 @@ class S3BucketConnector(BaseConnector):
             raise FileNotFoundError(f"Document ID {doc_id} not found in S3 source.")
         try:
             data = await self._get_object(cached.file_path or "")
-            return data.decode("utf-8", errors="ignore")
+            return self._parse_binary(data, cached.file_path or cached.title or "file.bin")
         except Exception as exc:  # pragma: no cover - network failures
             raise RuntimeError(f"Failed to fetch S3 object: {exc}") from exc
 
@@ -164,6 +176,20 @@ class S3BucketConnector(BaseConnector):
     # ------------------------------------------------------------------
     # S3 helpers
     # ------------------------------------------------------------------
+
+    async def _head_bucket(self) -> None:
+        if aiobotocore is None:
+            raise RuntimeError("aiobotocore is required for S3 sources.")
+        session = aiobotocore.get_session()
+        cred = self.credential or {}
+        async with session.create_client(
+            "s3",
+            region_name=self._region(),
+            endpoint_url=self._endpoint_url(),
+            aws_access_key_id=cred.get("aws_access_key_id"),
+            aws_secret_access_key=cred.get("aws_secret_access_key"),
+        ) as client:
+            await client.head_bucket(Bucket=self._bucket())
 
     async def _list_objects(self) -> list[dict[str, Any]]:
         if aiobotocore is None:
@@ -199,3 +225,24 @@ class S3BucketConnector(BaseConnector):
             response = await client.get_object(Bucket=self._bucket(), Key=key)
             async with response["Body"] as stream:
                 return await stream.read()
+
+    def _parse_binary(self, data: bytes, filename: str) -> str:
+        """Parse binary file content using the documents extraction pipeline."""
+        ext = Path(filename).suffix.lower()
+        # For plain text files, decode directly
+        if ext in {".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml", ".log"}:
+            return data.decode("utf-8", errors="ignore")
+
+        # For binary formats (PDF, DOCX, etc.), use the extraction pipeline
+        suffix = ext or ".bin"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(data)
+            tmp_path = Path(tmp.name)
+        try:
+            parsed = documents._extract_content(tmp_path)
+            return parsed.text
+        finally:
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass

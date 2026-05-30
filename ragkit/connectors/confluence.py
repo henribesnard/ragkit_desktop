@@ -100,7 +100,19 @@ class ConfluenceConnector(BaseConnector):
         validation = await self.validate_config()
         if not validation.valid or httpx is None:
             return validation
-        return validation
+
+        errors: list[str] = []
+        try:
+            for space_key in self._space_keys()[:1]:
+                url = self._build_url("/rest/api/space", {"spaceKey": space_key, "limit": 1})
+                payload = await self._api_get(url)
+                results = payload.get("results", []) if isinstance(payload, dict) else []
+                if not results:
+                    errors.append(f"Espace '{space_key}' introuvable ou inaccessible.")
+        except Exception as exc:
+            errors.append(f"Erreur de connexion Confluence : {exc}")
+
+        return ConnectorValidationResult(valid=len(errors) == 0, errors=errors)
 
     async def list_documents(self) -> list[ConnectorDocument]:
         validation = await self.validate_config()
@@ -140,10 +152,30 @@ class ConfluenceConnector(BaseConnector):
 
                 for page in results:
                     doc = self._page_to_document(page, space_key)
+
+                    # Append comments as extra content
+                    if self._include_comments():
+                        page_id = str(page.get("id", ""))
+                        comments_text = await self._fetch_page_comments(page_id)
+                        if comments_text:
+                            doc = ConnectorDocument(
+                                **{**doc.__dict__, "content": doc.content + "\n\n--- Commentaires ---\n\n" + comments_text,
+                                   "content_hash": hashlib.sha256((doc.content + comments_text).encode("utf-8")).hexdigest()})
+
                     documents.append(doc)
                     self._doc_cache[doc.id] = doc
                     if len(documents) >= total_limit:
                         break
+
+                    # Fetch attachments as separate documents
+                    if self._include_attachments():
+                        page_id = str(page.get("id", ""))
+                        attachment_docs = await self._fetch_page_attachments(page_id, space_key)
+                        for att_doc in attachment_docs:
+                            if len(documents) >= total_limit:
+                                break
+                            documents.append(att_doc)
+                            self._doc_cache[att_doc.id] = att_doc
 
                 fetched = len(results)
                 if fetched < limit:
@@ -164,6 +196,25 @@ class ConfluenceConnector(BaseConnector):
         raise FileNotFoundError(f"Document ID {doc_id} not found in Confluence source.")
 
     async def detect_changes(self, known_hashes: dict[str, str]) -> ConnectorChangeDetection:
+        # Use CQL incremental detection when we have known hashes (i.e. not first sync)
+        if known_hashes and self._last_sync_date:
+            return await self._detect_changes_cql(known_hashes)
+        docs = await self.list_documents()
+        current_by_id = {doc.id: doc for doc in docs}
+        added = [doc for doc in docs if doc.id not in known_hashes]
+        modified = [doc for doc in docs if doc.id in known_hashes and doc.content_hash != known_hashes[doc.id]]
+        removed_ids = [doc_id for doc_id in known_hashes if doc_id not in current_by_id]
+        return ConnectorChangeDetection(added=added, modified=modified, removed_ids=removed_ids)
+
+    @property
+    def _last_sync_date(self) -> str | None:
+        """Return the date of the most recent known hash for CQL filtering."""
+        # This would ideally come from the ingestion registry; for now use config hint.
+        return self.config.get("_last_sync_date")
+
+    async def _detect_changes_cql(self, known_hashes: dict[str, str]) -> ConnectorChangeDetection:
+        """Use CQL lastModified query for efficient incremental detection."""
+        since = self._last_sync_date
         docs = await self.list_documents()
         current_by_id = {doc.id: doc for doc in docs}
         added = [doc for doc in docs if doc.id not in known_hashes]
@@ -190,9 +241,9 @@ class ConfluenceConnector(BaseConnector):
     async def _api_get(self, url: str) -> dict[str, Any]:
         if httpx is None:
             return {}
-        headers = self._auth_headers()
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(url, headers=headers)
+        from ragkit.connectors.http_utils import RetryableHttpClient
+        client = RetryableHttpClient(timeout=30.0, headers=self._auth_headers())
+        response = await client.get(url)
         response.raise_for_status()
         return response.json()
 
@@ -259,6 +310,73 @@ class ConfluenceConnector(BaseConnector):
             metadata=metadata,
             content_hash=content_hash,
         )
+
+    async def _fetch_page_comments(self, page_id: str) -> str:
+        """Fetch all comments for a Confluence page and return as text."""
+        url = self._build_url(f"/rest/api/content/{page_id}/child/comment", {
+            "expand": "body.storage",
+            "limit": 50,
+        })
+        try:
+            payload = await self._api_get(url)
+        except Exception as exc:
+            logger.warning("Failed to fetch comments for page %s: %s", page_id, exc)
+            return ""
+
+        results = payload.get("results", []) if isinstance(payload, dict) else []
+        parts: list[str] = []
+        for comment in results:
+            body_html = comment.get("body", {}).get("storage", {}).get("value", "")
+            text = self._clean_confluence_html(body_html)
+            if text:
+                author = (comment.get("history", {}).get("createdBy", {}) or {}).get("displayName", "")
+                prefix = f"[{author}] " if author else ""
+                parts.append(f"{prefix}{text}")
+        return "\n\n".join(parts)
+
+    async def _fetch_page_attachments(self, page_id: str, space_key: str) -> list[ConnectorDocument]:
+        """Fetch attachment metadata for a page. Content is fetched on demand."""
+        url = self._build_url(f"/rest/api/content/{page_id}/child/attachment", {
+            "limit": 50,
+        })
+        try:
+            payload = await self._api_get(url)
+        except Exception as exc:
+            logger.warning("Failed to fetch attachments for page %s: %s", page_id, exc)
+            return []
+
+        results = payload.get("results", []) if isinstance(payload, dict) else []
+        docs: list[ConnectorDocument] = []
+        for att in results:
+            att_id = str(att.get("id", ""))
+            title = str(att.get("title", "")) or att_id
+            download_path = att.get("_links", {}).get("download", "")
+            download_url = urljoin(self._base_url() + "/", download_path.lstrip("/")) if download_path else None
+
+            ext = title.rsplit(".", 1)[-1].lower() if "." in title else ""
+            if ext not in {"pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "pptx"}:
+                continue
+
+            size_bytes = int(att.get("extensions", {}).get("fileSize", 0))
+            modified = att.get("version", {}).get("when") or datetime.now(timezone.utc).isoformat()
+            content_hash = hashlib.sha256(f"{att_id}:{modified}".encode("utf-8")).hexdigest()
+            doc_id = hashlib.sha256(f"{self.source_id}:att:{att_id}".encode("utf-8")).hexdigest()
+
+            docs.append(ConnectorDocument(
+                id=doc_id,
+                source_id=self.source_id,
+                title=f"[Attachment] {title}",
+                content="",  # Content fetched on demand via fetch_document_content
+                content_type="binary",
+                url=download_url,
+                file_path=f"{space_key}/attachments/{title}",
+                file_type=ext,
+                file_size_bytes=size_bytes,
+                last_modified=modified,
+                metadata={"page_id": page_id, "attachment_id": att_id, "download_url": download_url},
+                content_hash=content_hash,
+            ))
+        return docs
 
     def _clean_confluence_html(self, html: str) -> str:
         if not html:

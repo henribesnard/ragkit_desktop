@@ -127,6 +127,28 @@ class IngestionRuntime:
                 )
                 """
             )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS source_sync_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id TEXT NOT NULL,
+                    started_at TEXT NOT NULL,
+                    completed_at TEXT,
+                    status TEXT NOT NULL,
+                    docs_added INTEGER DEFAULT 0,
+                    docs_modified INTEGER DEFAULT 0,
+                    docs_removed INTEGER DEFAULT 0,
+                    docs_failed INTEGER DEFAULT 0,
+                    total_docs INTEGER DEFAULT 0,
+                    duration_seconds REAL,
+                    error_message TEXT,
+                    is_incremental BOOLEAN DEFAULT 0
+                )
+                """
+            )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS idx_source_sync_source_id ON source_sync_history(source_id)"
+            )
         self._db_ready = True
 
     def _ensure_db_ready(self) -> None:
@@ -768,6 +790,13 @@ class IngestionRuntime:
                         ),
                     )
             self.logs.append(IngestionLogEntry(timestamp=completed_at, level="info", message=f"Ingestion {version} {end_status}"))
+
+            # Record per-source sync history and update source entries
+            self._record_per_source_sync(
+                active_sources, to_process, started_at, completed_at,
+                end_status, self.progress.elapsed_seconds, incremental,
+            )
+
             await self.publish("complete", self.progress.model_dump(mode="json"))
         except Exception as exc:  # pragma: no cover - defensive at runtime
             self.progress.status = "failed"
@@ -800,6 +829,79 @@ class IngestionRuntime:
                     )
             await self.publish("complete", self.progress.model_dump(mode="json"))
 
+    def _record_per_source_sync(
+        self,
+        sources: list,
+        processed_changes: list,
+        started_at: str,
+        completed_at: str,
+        status: str,
+        duration: float,
+        incremental: bool,
+    ) -> None:
+        """Record sync history for each source that participated in this ingestion."""
+        from collections import Counter
+        from ragkit.config.manager import config_manager
+
+        # Count per-source stats from processed changes
+        source_added: Counter = Counter()
+        source_modified: Counter = Counter()
+        source_failed: Counter = Counter()
+
+        for change in processed_changes:
+            sid = change.source_id
+            if not sid:
+                continue
+            if change.type == "added":
+                source_added[sid] += 1
+            elif change.type == "modified":
+                source_modified[sid] += 1
+
+        for source in sources:
+            total_docs = 0
+            try:
+                with sqlite3.connect(self._registry) as con:
+                    total_docs = con.execute(
+                        "SELECT COUNT(*) FROM ingestion_registry WHERE source_id = ?",
+                        (source.id,),
+                    ).fetchone()[0]
+            except Exception:
+                pass
+
+            self.record_source_sync(
+                source_id=source.id,
+                started_at=started_at,
+                completed_at=completed_at,
+                status=status,
+                docs_added=source_added.get(source.id, 0),
+                docs_modified=source_modified.get(source.id, 0),
+                total_docs=total_docs,
+                duration_seconds=duration,
+                is_incremental=incremental,
+            )
+
+        # Update source entries with last_sync info
+        try:
+            settings = config_manager.load_config()
+            if settings and settings.ingestion:
+                source_ids = {s.id for s in sources}
+                for src in settings.ingestion.sources:
+                    if src.id in source_ids:
+                        src.last_sync_at = completed_at
+                        src.last_sync_status = status
+                        src.last_sync_error = None
+                        try:
+                            with sqlite3.connect(self._registry) as con:
+                                src.document_count = con.execute(
+                                    "SELECT COUNT(*) FROM ingestion_registry WHERE source_id = ?",
+                                    (src.id,),
+                                ).fetchone()[0]
+                        except Exception:
+                            pass
+                config_manager.save_config(settings)
+        except Exception as exc:
+            logger.warning("Failed to update source entries after sync: %s", exc)
+
     def get_history(self, limit: int = 10) -> list[IngestionHistoryEntry]:
         with sqlite3.connect(self._registry) as con:
             rows = con.execute(
@@ -824,6 +926,108 @@ class IngestionRuntime:
             )
             for r in rows
         ]
+
+    def record_source_sync(
+        self,
+        source_id: str,
+        *,
+        started_at: str,
+        completed_at: str | None = None,
+        status: str = "completed",
+        docs_added: int = 0,
+        docs_modified: int = 0,
+        docs_removed: int = 0,
+        docs_failed: int = 0,
+        total_docs: int = 0,
+        duration_seconds: float | None = None,
+        error_message: str | None = None,
+        is_incremental: bool = False,
+    ) -> None:
+        """Record a sync event for a specific source."""
+        self._ensure_db_ready()
+        with sqlite3.connect(self._registry) as con:
+            con.execute(
+                """INSERT INTO source_sync_history
+                   (source_id, started_at, completed_at, status, docs_added, docs_modified,
+                    docs_removed, docs_failed, total_docs, duration_seconds, error_message, is_incremental)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    source_id, started_at, completed_at, status, docs_added, docs_modified,
+                    docs_removed, docs_failed, total_docs, duration_seconds, error_message,
+                    1 if is_incremental else 0,
+                ),
+            )
+
+    def get_source_sync_history(self, source_id: str, limit: int = 20) -> list[dict]:
+        """Get sync history for a specific source."""
+        self._ensure_db_ready()
+        with sqlite3.connect(self._registry) as con:
+            rows = con.execute(
+                """SELECT started_at, completed_at, status, docs_added, docs_modified,
+                          docs_removed, docs_failed, total_docs, duration_seconds,
+                          error_message, is_incremental
+                   FROM source_sync_history
+                   WHERE source_id = ?
+                   ORDER BY id DESC LIMIT ?""",
+                (source_id, limit),
+            ).fetchall()
+        return [
+            {
+                "started_at": r[0],
+                "completed_at": r[1],
+                "status": r[2],
+                "docs_added": r[3] or 0,
+                "docs_modified": r[4] or 0,
+                "docs_removed": r[5] or 0,
+                "docs_failed": r[6] or 0,
+                "total_docs": r[7] or 0,
+                "duration_seconds": r[8],
+                "error_message": r[9],
+                "is_incremental": bool(r[10]),
+            }
+            for r in rows
+        ]
+
+    def get_source_stats(self, source_id: str) -> dict:
+        """Get aggregated statistics for a specific source."""
+        self._ensure_db_ready()
+        with sqlite3.connect(self._registry) as con:
+            # Count documents from the registry
+            doc_count = con.execute(
+                "SELECT COUNT(*) FROM ingestion_registry WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()[0]
+            total_chunks = con.execute(
+                "SELECT COALESCE(SUM(chunk_count), 0) FROM ingestion_registry WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()[0]
+            # Get sync stats
+            sync_count = con.execute(
+                "SELECT COUNT(*) FROM source_sync_history WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()[0]
+            last_sync = con.execute(
+                "SELECT started_at, status, duration_seconds FROM source_sync_history WHERE source_id = ? ORDER BY id DESC LIMIT 1",
+                (source_id,),
+            ).fetchone()
+            avg_duration = con.execute(
+                "SELECT AVG(duration_seconds) FROM source_sync_history WHERE source_id = ? AND status = 'completed'",
+                (source_id,),
+            ).fetchone()[0]
+            error_count = con.execute(
+                "SELECT COUNT(*) FROM source_sync_history WHERE source_id = ? AND status = 'error'",
+                (source_id,),
+            ).fetchone()[0]
+        return {
+            "document_count": doc_count,
+            "total_chunks": total_chunks,
+            "total_syncs": sync_count,
+            "last_sync_at": last_sync[0] if last_sync else None,
+            "last_sync_status": last_sync[1] if last_sync else None,
+            "last_sync_duration": last_sync[2] if last_sync else None,
+            "avg_sync_duration": round(avg_duration, 2) if avg_duration else None,
+            "error_count": error_count,
+        }
 
 
 runtime = IngestionRuntime()

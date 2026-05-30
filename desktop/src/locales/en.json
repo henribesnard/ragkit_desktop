@@ -423,12 +423,29 @@
       "files": "files",
       "noSupportedFiles": "No supported file found.",
       "comingSoon": "Coming soon",
+      "selectSubType": "Choose source type",
+      "sourceName": "Source name",
+      "sourceNamePlaceholder": "My source",
       "type": {
         "local_folder": "Local folder",
         "database": "Database",
         "website": "Website",
         "email": "Email",
         "api": "API / Connector"
+      },
+      "subtype": {
+        "web_url": "Website crawl",
+        "rss_feed": "RSS / Atom feed",
+        "sql_database": "SQL database",
+        "email_imap": "IMAP server",
+        "rest_api": "Generic REST API",
+        "google_drive": "Google Drive",
+        "onedrive": "OneDrive / SharePoint",
+        "dropbox": "Dropbox",
+        "confluence": "Confluence",
+        "notion": "Notion",
+        "s3_bucket": "Amazon S3 / MinIO",
+        "git_repo": "Git repository"
       }
     },
     "searchType": {

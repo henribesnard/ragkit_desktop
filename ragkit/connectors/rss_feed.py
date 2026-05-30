@@ -204,11 +204,12 @@ class RssFeedConnector(BaseConnector):
         if httpx is None or BeautifulSoup is None:
             return fallback
         try:
-            async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-                response = await client.get(url)
-                if response.status_code >= 400:
-                    return fallback
-                html = response.text
+            from ragkit.connectors.http_utils import RetryableHttpClient
+            client = RetryableHttpClient(timeout=20.0, max_retries=2)
+            response = await client.get(url)
+            if response.status_code >= 400:
+                return fallback
+            html = response.text
         except Exception:
             return fallback
 

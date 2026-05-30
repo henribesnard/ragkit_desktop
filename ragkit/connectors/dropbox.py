@@ -22,10 +22,10 @@ from ragkit.desktop.models import SourceType
 
 try:  # optional dependency
     import dropbox
-    from dropbox.files import FileMetadata, DeletedMetadata, FolderMetadata
+    from dropbox.files import FileMetadata, DeletedMetadata, FolderMetadata, PaperDocExportResult
 except Exception:  # pragma: no cover - optional dependency
     dropbox = None
-    FileMetadata = DeletedMetadata = FolderMetadata = object
+    FileMetadata = DeletedMetadata = FolderMetadata = PaperDocExportResult = object
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,11 @@ class DropboxConnector(BaseConnector):
 
     def _max_file_size_mb(self) -> int:
         return int(self.config.get("max_file_size_mb", 50))
+
+    def _include_paper(self) -> bool:
+        return bool(self.config.get("include_paper", True))
+
+    _PAPER_EXTENSIONS = {".paper", ".papert"}
 
     # ------------------------------------------------------------------
     # BaseConnector implementation
@@ -98,7 +103,13 @@ class DropboxConnector(BaseConnector):
                     continue
                 name = entry.name
                 ext = Path(name).suffix.lower().lstrip(".")
-                if allowed_ext and ext not in allowed_ext:
+                is_paper = Path(name).suffix.lower() in self._PAPER_EXTENSIONS
+
+                # Skip Paper docs if disabled
+                if is_paper and not self._include_paper():
+                    continue
+
+                if allowed_ext and ext not in allowed_ext and not is_paper:
                     continue
                 size = int(entry.size or 0)
                 if size and size > max_size:
@@ -117,13 +128,13 @@ class DropboxConnector(BaseConnector):
                     source_id=self.source_id,
                     title=name,
                     content="",
-                    content_type="text",
+                    content_type="markdown" if is_paper else "text",
                     url=None,
                     file_path=entry.path_lower or entry.path_display or name,
-                    file_type=ext or None,
+                    file_type="paper" if is_paper else (ext or None),
                     file_size_bytes=size,
                     last_modified=last_modified,
-                    metadata={"rev": getattr(entry, "rev", None)},
+                    metadata={"rev": getattr(entry, "rev", None), "is_paper": is_paper},
                     content_hash=content_hash,
                 )
                 docs.append(doc)
@@ -144,7 +155,13 @@ class DropboxConnector(BaseConnector):
             raise FileNotFoundError(f"Document {doc_id} not found in Dropbox.")
 
         client = self._client()
-        _, res = client.files_download(entry.path_lower or entry.path_display or "")
+        file_path = entry.path_lower or entry.path_display or ""
+
+        # Export Paper documents to markdown
+        if Path(entry.name).suffix.lower() in self._PAPER_EXTENSIONS:
+            return self._export_paper(client, file_path)
+
+        _, res = client.files_download(file_path)
         data = res.content
         return self._parse_binary(data, entry.name)
 
@@ -168,7 +185,7 @@ class DropboxConnector(BaseConnector):
         return ConnectorChangeDetection(added=added, modified=modified, removed_ids=removed_ids)
 
     def supported_file_types(self) -> list[str]:
-        return ["pdf", "docx", "md", "txt"]
+        return ["pdf", "docx", "md", "txt", "paper"]
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -252,6 +269,21 @@ class DropboxConnector(BaseConnector):
             self.credential = updated
 
         return ConnectorChangeDetection(added=added, modified=modified, removed_ids=removed_ids)
+
+    def _export_paper(self, client, file_path: str) -> str:
+        """Export a Dropbox Paper document to markdown."""
+        try:
+            _, res = client.files_export(file_path, "markdown")
+            return res.content.decode("utf-8", errors="ignore")
+        except Exception as exc:
+            logger.warning("Paper export failed for %s, trying download: %s", file_path, exc)
+            # Fallback: download the raw file
+            try:
+                _, res = client.files_download(file_path)
+                return res.content.decode("utf-8", errors="ignore")
+            except Exception as fallback_exc:
+                logger.warning("Paper download also failed for %s: %s", file_path, fallback_exc)
+                return ""
 
     def _parse_binary(self, data: bytes, filename: str) -> str:
         suffix = Path(filename).suffix or ".bin"

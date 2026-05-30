@@ -140,3 +140,9 @@ class BaseConnector(ABC):
     def supported_file_types(self) -> list[str]:
         """File extensions this connector can handle (informational)."""
         return []
+
+    async def cleanup(self) -> None:
+        """Release resources when the source is deleted (e.g. cloned repos, temp files).
+
+        Default implementation does nothing.
+        """

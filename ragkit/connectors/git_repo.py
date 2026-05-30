@@ -78,7 +78,21 @@ class GitRepoConnector(BaseConnector):
 
     async def test_connection(self) -> ConnectorValidationResult:
         validation = await self.validate_config()
-        return validation
+        if not validation.valid:
+            return validation
+
+        errors: list[str] = []
+        try:
+            result = await asyncio.to_thread(
+                self._run_git, ["ls-remote", "--heads", self._repo_url()], check=False,
+            )
+            if result.returncode != 0:
+                stderr = result.stderr.decode("utf-8", errors="ignore").strip()
+                errors.append(f"Impossible d'acceder au depot : {stderr or 'erreur inconnue'}")
+        except Exception as exc:
+            errors.append(f"Erreur de connexion au depot Git : {exc}")
+
+        return ConnectorValidationResult(valid=len(errors) == 0, errors=errors)
 
     async def list_documents(self) -> list[ConnectorDocument]:
         validation = await self.validate_config()
@@ -135,15 +149,25 @@ class GitRepoConnector(BaseConnector):
         parsed = urlparse(repo_url)
         return parsed.scheme in {"http", "https", "ssh", "git"} and bool(parsed.netloc)
 
+    def _use_sparse_checkout(self) -> bool:
+        return bool(self.config.get("sparse_checkout", False))
+
+    def _repo_dir(self) -> Path:
+        """Return the local cache directory for this repo."""
+        repo_url = self._repo_url()
+        if Path(repo_url).exists():
+            return Path(repo_url)
+        cache_root = Path(tempfile.gettempdir()) / "ragkit_git"
+        cache_root.mkdir(parents=True, exist_ok=True)
+        repo_hash = hashlib.sha256(repo_url.encode("utf-8")).hexdigest()[:12]
+        return cache_root / f"repo_{repo_hash}"
+
     def _clone_or_pull(self) -> Path:
         repo_url = self._repo_url()
         if Path(repo_url).exists():
             return Path(repo_url)
 
-        cache_root = Path(tempfile.gettempdir()) / "ragkit_git"
-        cache_root.mkdir(parents=True, exist_ok=True)
-        repo_hash = hashlib.sha256(repo_url.encode("utf-8")).hexdigest()[:12]
-        repo_dir = cache_root / f"repo_{repo_hash}"
+        repo_dir = self._repo_dir()
 
         if repo_dir.exists():
             self._run_git(["-C", str(repo_dir), "fetch", "--depth", str(self._clone_depth())])
@@ -151,17 +175,31 @@ class GitRepoConnector(BaseConnector):
             self._run_git(["-C", str(repo_dir), "pull"])
             return repo_dir
 
-        self._run_git(
-            [
-                "clone",
-                "--depth",
-                str(self._clone_depth()),
-                "--branch",
-                self._branch(),
-                repo_url,
-                str(repo_dir),
-            ]
-        )
+        clone_args = [
+            "clone",
+            "--depth",
+            str(self._clone_depth()),
+            "--branch",
+            self._branch(),
+        ]
+
+        if self._use_sparse_checkout():
+            clone_args.extend(["--filter=blob:none", "--sparse"])
+
+        clone_args.extend([repo_url, str(repo_dir)])
+        self._run_git(clone_args)
+
+        # Configure sparse checkout patterns based on file_types
+        if self._use_sparse_checkout() and self._file_types():
+            self._run_git(["-C", str(repo_dir), "sparse-checkout", "init", "--cone"])
+            patterns = [f"*.{ext}" for ext in self._file_types()]
+            # Add readme files always
+            patterns.extend(["README*", "CHANGELOG*", "CONTRIBUTING*"])
+            self._run_git(
+                ["-C", str(repo_dir), "sparse-checkout", "set", "--no-cone", *patterns],
+                check=False,
+            )
+
         return repo_dir
 
     def _collect_documents(self, repo_path: Path) -> list[ConnectorDocument]:
@@ -234,3 +272,17 @@ class GitRepoConnector(BaseConnector):
             stderr=subprocess.PIPE,
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
         )
+
+    async def cleanup(self) -> None:
+        """Delete the cloned repository from the local cache."""
+        repo_url = self._repo_url()
+        if Path(repo_url).exists():
+            # Local path, not a clone — do not delete
+            return
+        repo_dir = self._repo_dir()
+        if repo_dir.exists():
+            try:
+                await asyncio.to_thread(shutil.rmtree, repo_dir)
+                logger.info("Cleaned up Git clone at %s", repo_dir)
+            except Exception as exc:
+                logger.warning("Failed to clean up Git clone at %s: %s", repo_dir, exc)

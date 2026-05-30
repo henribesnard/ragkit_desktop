@@ -189,10 +189,32 @@ async def delete_source(source_id: str):
             _save_settings(settings)
             from ragkit.desktop.sync_scheduler import sync_scheduler
             await sync_scheduler.unschedule_source(source_id)
-            # Future: Queue a background task to remove documents from vector store
+            # Clean up connector resources (e.g. cloned git repos)
+            try:
+                credential = credential_manager.retrieve(source.credential_key) if source.credential_key else None
+                connector = create_connector(source.type, source.id, source.config, credential)
+                await connector.cleanup()
+            except Exception as exc:
+                logger.warning("Cleanup failed for source %s: %s", source_id, exc)
             return {"success": True}
 
     raise HTTPException(status_code=404, detail="Source not found")
+
+
+@router.get("/{source_id}/stats")
+async def get_source_stats(source_id: str):
+    """Get aggregated statistics for a specific source."""
+    _ = await get_source(source_id)
+    from ragkit.desktop.ingestion_runtime import runtime
+    return runtime.get_source_stats(source_id)
+
+
+@router.get("/{source_id}/history")
+async def get_source_history(source_id: str, limit: int = 20):
+    """Get sync history for a specific source."""
+    _ = await get_source(source_id)
+    from ragkit.desktop.ingestion_runtime import runtime
+    return runtime.get_source_sync_history(source_id, limit=limit)
 
 
 @router.post("/{source_id}/test")

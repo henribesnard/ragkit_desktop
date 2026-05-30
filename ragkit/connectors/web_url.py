@@ -6,6 +6,7 @@ import asyncio
 import fnmatch
 import hashlib
 import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any, Iterable
 from urllib.parse import urljoin, urldefrag, urlparse
@@ -88,6 +89,12 @@ class WebUrlConnector(BaseConnector):
     def _timeout_seconds(self) -> float:
         return max(1.0, float(self.config.get("timeout_seconds", 30)))
 
+    def _concurrency(self) -> int:
+        return max(1, int(self.config.get("concurrency", 5)))
+
+    def _use_sitemap(self) -> bool:
+        return bool(self.config.get("use_sitemap", False))
+
     # ------------------------------------------------------------------
     # BaseConnector implementation
     # ------------------------------------------------------------------
@@ -150,71 +157,106 @@ class WebUrlConnector(BaseConnector):
 
         seen: set[str] = set()
         queue: list[tuple[str, int]] = [(url, 0) for url in seed_urls]
-        documents: list[ConnectorDocument] = []
+        result_docs: list[ConnectorDocument] = []
         self._doc_cache = {}
+        semaphore = asyncio.Semaphore(self._concurrency())
 
         async with httpx.AsyncClient(
             timeout=self._timeout_seconds(),
             headers={"User-Agent": self._user_agent()},
             follow_redirects=True,
         ) as client:
-            while queue and len(documents) < self._max_pages():
-                current_url, depth = queue.pop(0)
-                normalized_url = self._normalize_url(current_url)
-                if normalized_url in seen:
-                    continue
-                seen.add(normalized_url)
+            # Discover additional URLs from sitemap.xml
+            if self._use_sitemap():
+                sitemap_urls = await self._parse_sitemaps(client, seed_urls)
+                for surl in sitemap_urls:
+                    normalized = self._normalize_url(surl)
+                    if normalized not in seen and self._is_allowed_url(
+                        normalized, allowed_domains, include_patterns, exclude_patterns
+                    ):
+                        queue.append((normalized, 0))
 
-                if not self._is_allowed_url(normalized_url, allowed_domains, include_patterns, exclude_patterns):
-                    continue
-
-                if self._respect_robots():
-                    if not await self._allowed_by_robots(client, normalized_url):
+            # Process queue with parallel fetching
+            while queue and len(result_docs) < self._max_pages():
+                # Grab a batch from the queue
+                batch_size = min(self._concurrency(), self._max_pages() - len(result_docs), len(queue))
+                batch: list[tuple[str, int]] = []
+                while len(batch) < batch_size and queue:
+                    current_url, depth = queue.pop(0)
+                    normalized_url = self._normalize_url(current_url)
+                    if normalized_url in seen:
                         continue
+                    seen.add(normalized_url)
+                    if not self._is_allowed_url(normalized_url, allowed_domains, include_patterns, exclude_patterns):
+                        continue
+                    batch.append((normalized_url, depth))
 
-                response = await self._fetch_url(client, normalized_url)
-                if response is None:
+                if not batch:
                     continue
 
-                html = response.text
-                title, content = self._extract_content(html, normalized_url)
-                content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                async def _process_url(url: str, depth: int) -> tuple[ConnectorDocument | None, list[tuple[str, int]]]:
+                    async with semaphore:
+                        if self._respect_robots():
+                            if not await self._allowed_by_robots(client, url):
+                                return None, []
 
-                doc_id = hashlib.sha256(f"{self.source_id}:{normalized_url}".encode("utf-8")).hexdigest()
-                last_modified = response.headers.get("last-modified")
-                last_modified_iso = self._parse_http_date(last_modified) if last_modified else None
+                        response = await self._fetch_url(client, url)
+                        if response is None:
+                            return None, []
 
-                document = ConnectorDocument(
-                    id=doc_id,
-                    source_id=self.source_id,
-                    title=title or normalized_url,
-                    content=content,
-                    content_type=self._content_type(),
-                    url=normalized_url,
-                    file_path=None,
-                    file_type="html",
-                    file_size_bytes=len(response.content or b""),
-                    last_modified=last_modified_iso or datetime.now(timezone.utc).isoformat(),
-                    metadata={"etag": response.headers.get("etag")},
-                    content_hash=content_hash,
-                )
-                documents.append(document)
-                self._doc_cache[doc_id] = document
+                        html = response.text
+                        title, content = self._extract_content(html, url)
+                        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                        doc_id = hashlib.sha256(f"{self.source_id}:{url}".encode("utf-8")).hexdigest()
+                        last_modified = response.headers.get("last-modified")
+                        last_modified_iso = self._parse_http_date(last_modified) if last_modified else None
 
-                if depth < self._crawl_depth():
-                    links = self._extract_links(html, normalized_url)
-                    for link in links:
-                        if link in seen:
-                            continue
-                        if self._same_domain_only() and urlparse(link).netloc.lower() not in allowed_domains:
-                            continue
-                        queue.append((link, depth + 1))
+                        document = ConnectorDocument(
+                            id=doc_id,
+                            source_id=self.source_id,
+                            title=title or url,
+                            content=content,
+                            content_type=self._content_type(),
+                            url=url,
+                            file_path=None,
+                            file_type="html",
+                            file_size_bytes=len(response.content or b""),
+                            last_modified=last_modified_iso or datetime.now(timezone.utc).isoformat(),
+                            metadata={"etag": response.headers.get("etag")},
+                            content_hash=content_hash,
+                        )
 
-                delay_ms = self._request_delay_ms()
-                if delay_ms:
-                    await asyncio.sleep(delay_ms / 1000)
+                        new_links: list[tuple[str, int]] = []
+                        if depth < self._crawl_depth():
+                            links = self._extract_links(html, url)
+                            for link in links:
+                                if self._same_domain_only() and urlparse(link).netloc.lower() not in allowed_domains:
+                                    continue
+                                new_links.append((link, depth + 1))
 
-        return documents
+                        delay_ms = self._request_delay_ms()
+                        if delay_ms:
+                            await asyncio.sleep(delay_ms / 1000)
+
+                        return document, new_links
+
+                tasks = [_process_url(url, depth) for url, depth in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for result in results:
+                    if isinstance(result, Exception):
+                        logger.warning("Crawl task failed: %s", result)
+                        continue
+                    doc, new_links = result
+                    if doc is not None and len(result_docs) < self._max_pages():
+                        result_docs.append(doc)
+                        self._doc_cache[doc.id] = doc
+                    for link, link_depth in new_links:
+                        normalized = self._normalize_url(link)
+                        if normalized not in seen:
+                            queue.append((link, link_depth))
+
+        return result_docs
 
     async def fetch_document_content(self, doc_id: str) -> str:
         cached = self._doc_cache.get(doc_id)
@@ -265,21 +307,45 @@ class WebUrlConnector(BaseConnector):
         return True
 
     async def _fetch_url(self, client: "httpx.AsyncClient", url: str) -> "httpx.Response | None":
-        try:
-            response = await client.get(url)
-        except Exception as exc:  # pragma: no cover - network issues
-            logger.warning("Failed to fetch %s: %s", url, exc)
-            return None
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = await client.get(url)
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout) as exc:
+                if attempt < max_retries - 1:
+                    wait = (2 ** attempt) + (0.5 * attempt)
+                    logger.warning("Fetch %s failed (%s), retry %d in %.1fs", url, exc, attempt + 1, wait)
+                    await asyncio.sleep(wait)
+                    continue
+                logger.warning("Failed to fetch %s after %d attempts: %s", url, max_retries, exc)
+                return None
+            except Exception as exc:  # pragma: no cover - network issues
+                logger.warning("Failed to fetch %s: %s", url, exc)
+                return None
 
-        if response.status_code >= 400:
-            logger.warning("Skipping %s (HTTP %s)", url, response.status_code)
-            return None
+            if response.status_code == 429 and attempt < max_retries - 1:
+                retry_after = float(response.headers.get("retry-after", 2 ** attempt))
+                logger.warning("Rate limited on %s, waiting %.1fs", url, retry_after)
+                await asyncio.sleep(retry_after)
+                continue
 
-        content_type = response.headers.get("content-type", "").lower()
-        if "text/html" not in content_type and "application/xhtml" not in content_type:
-            return None
+            if response.status_code >= 500 and attempt < max_retries - 1:
+                wait = 2 ** attempt
+                logger.warning("Server error %d on %s, retry in %ds", response.status_code, url, wait)
+                await asyncio.sleep(wait)
+                continue
 
-        return response
+            if response.status_code >= 400:
+                logger.warning("Skipping %s (HTTP %s)", url, response.status_code)
+                return None
+
+            content_type = response.headers.get("content-type", "").lower()
+            if "text/html" not in content_type and "application/xhtml" not in content_type:
+                return None
+
+            return response
+
+        return None
 
     async def _allowed_by_robots(self, client: "httpx.AsyncClient", url: str) -> bool:
         if not self._respect_robots():
@@ -376,4 +442,56 @@ class WebUrlConnector(BaseConnector):
             return dt.astimezone(timezone.utc).isoformat()
         except Exception:
             return None
+
+    async def _parse_sitemaps(self, client: "httpx.AsyncClient", seed_urls: list[str]) -> list[str]:
+        """Discover URLs from sitemap.xml for each seed domain."""
+        urls: list[str] = []
+        seen_sitemaps: set[str] = set()
+
+        for seed in seed_urls:
+            parsed = urlparse(seed)
+            sitemap_url = f"{parsed.scheme}://{parsed.netloc}/sitemap.xml"
+            if sitemap_url in seen_sitemaps:
+                continue
+            seen_sitemaps.add(sitemap_url)
+            discovered = await self._fetch_sitemap(client, sitemap_url, seen_sitemaps)
+            urls.extend(discovered)
+
+        return urls
+
+    async def _fetch_sitemap(self, client: "httpx.AsyncClient", sitemap_url: str, seen: set[str]) -> list[str]:
+        """Fetch and parse a single sitemap or sitemap index."""
+        urls: list[str] = []
+        try:
+            response = await client.get(sitemap_url)
+            if response.status_code >= 400:
+                return urls
+        except Exception:
+            return urls
+
+        try:
+            root = ET.fromstring(response.text)
+        except ET.ParseError:
+            return urls
+
+        # Strip namespace for easier parsing
+        ns = ""
+        if root.tag.startswith("{"):
+            ns = root.tag.split("}")[0] + "}"
+
+        # Check if this is a sitemap index
+        for sitemap_elem in root.findall(f"{ns}sitemap"):
+            loc = sitemap_elem.findtext(f"{ns}loc")
+            if loc and loc not in seen:
+                seen.add(loc)
+                child_urls = await self._fetch_sitemap(client, loc, seen)
+                urls.extend(child_urls)
+
+        # Extract URLs from urlset
+        for url_elem in root.findall(f"{ns}url"):
+            loc = url_elem.findtext(f"{ns}loc")
+            if loc:
+                urls.append(loc.strip())
+
+        return urls
 

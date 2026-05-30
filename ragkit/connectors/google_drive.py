@@ -187,11 +187,26 @@ class GoogleDriveConnector(BaseConnector):
         return self._parse_binary(data, file.get("name") or doc_id)
 
     async def detect_changes(self, known_hashes: dict[str, str]) -> ConnectorChangeDetection:
+        # Use Changes API for efficient incremental detection
+        saved_token = self.config.get("_changes_start_page_token")
+        if saved_token and known_hashes:
+            try:
+                return self._detect_changes_via_api(saved_token, known_hashes)
+            except Exception as exc:
+                logger.warning("Google Drive Changes API failed, falling back to full list: %s", exc)
+
         docs = await self.list_documents()
         current_by_id = {doc.id: doc for doc in docs}
         added = [doc for doc in docs if doc.id not in known_hashes]
         modified = [doc for doc in docs if doc.id in known_hashes and doc.content_hash != known_hashes[doc.id]]
         removed_ids = [doc_id for doc_id in known_hashes if doc_id not in current_by_id]
+
+        # Save start page token for next incremental sync
+        try:
+            self._save_changes_start_token()
+        except Exception as exc:
+            logger.debug("Could not save changes start token: %s", exc)
+
         return ConnectorChangeDetection(added=added, modified=modified, removed_ids=removed_ids)
 
     def supported_file_types(self) -> list[str]:
@@ -355,3 +370,112 @@ class GoogleDriveConnector(BaseConnector):
             text = str(exc)
             return "401" in text or "unauthorized" in text.lower()
         return status == 401
+
+    # ------------------------------------------------------------------
+    # Changes API for incremental sync
+    # ------------------------------------------------------------------
+
+    def _save_changes_start_token(self) -> None:
+        """Fetch and persist the current changes startPageToken for future incremental syncs."""
+        service = self._build_service()
+        response = service.changes().getStartPageToken(
+            supportsAllDrives=self._include_shared(),
+        ).execute()
+        token = response.get("startPageToken")
+        if token:
+            self.config["_changes_start_page_token"] = token
+
+    def _detect_changes_via_api(self, page_token: str, known_hashes: dict[str, str]) -> ConnectorChangeDetection:
+        """Use the Drive Changes API to detect incremental changes since last sync."""
+        service = self._build_service()
+        added: list[ConnectorDocument] = []
+        modified: list[ConnectorDocument] = []
+        removed_ids: list[str] = []
+        folder_ids = set(self._folder_ids())
+
+        while page_token:
+            try:
+                response = service.changes().list(
+                    pageToken=page_token,
+                    fields="nextPageToken, newStartPageToken, changes(fileId, removed, file(id,name,mimeType,size,modifiedTime,md5Checksum,parents,webViewLink,webContentLink,trashed))",
+                    supportsAllDrives=self._include_shared(),
+                    includeItemsFromAllDrives=self._include_shared(),
+                    pageSize=100,
+                ).execute()
+            except Exception as exc:
+                if self._is_unauthorized(exc):
+                    self._refresh_token()
+                    service = self._build_service()
+                    response = service.changes().list(
+                        pageToken=page_token,
+                        fields="nextPageToken, newStartPageToken, changes(fileId, removed, file(id,name,mimeType,size,modifiedTime,md5Checksum,parents,webViewLink,webContentLink,trashed))",
+                        supportsAllDrives=self._include_shared(),
+                        includeItemsFromAllDrives=self._include_shared(),
+                        pageSize=100,
+                    ).execute()
+                else:
+                    raise
+
+            for change in response.get("changes", []):
+                file_id = change.get("fileId")
+                if not file_id:
+                    continue
+
+                if change.get("removed"):
+                    if file_id in known_hashes:
+                        removed_ids.append(file_id)
+                    continue
+
+                file = change.get("file")
+                if not file:
+                    continue
+
+                if file.get("trashed"):
+                    if file_id in known_hashes:
+                        removed_ids.append(file_id)
+                    continue
+
+                mime_type = file.get("mimeType", "")
+                if mime_type == "application/vnd.google-apps.folder":
+                    continue
+
+                # Check if file belongs to one of our configured folders
+                parents = file.get("parents", [])
+                if folder_ids and not any(p in folder_ids for p in parents):
+                    continue
+
+                name = file.get("name") or file_id
+                modified_time = file.get("modifiedTime") or datetime.now(timezone.utc).isoformat()
+                content_hash = file.get("md5Checksum") or hashlib.sha256(
+                    f"{file_id}:{modified_time}".encode("utf-8")
+                ).hexdigest()
+                file_type = self._infer_file_type(name, mime_type)
+
+                doc = ConnectorDocument(
+                    id=file_id,
+                    source_id=self.source_id,
+                    title=name,
+                    content="",
+                    content_type="text",
+                    url=file.get("webViewLink") or file.get("webContentLink"),
+                    file_path=name,
+                    file_type=file_type,
+                    file_size_bytes=int(file.get("size") or 0),
+                    last_modified=modified_time,
+                    metadata={"mime_type": mime_type},
+                    content_hash=content_hash,
+                )
+
+                if file_id in known_hashes:
+                    if known_hashes[file_id] != content_hash:
+                        modified.append(doc)
+                else:
+                    added.append(doc)
+
+            page_token = response.get("nextPageToken")
+
+            new_start_token = response.get("newStartPageToken")
+            if new_start_token:
+                self.config["_changes_start_page_token"] = new_start_token
+
+        return ConnectorChangeDetection(added=added, modified=modified, removed_ids=removed_ids)

@@ -121,7 +121,17 @@ class RestApiConnector(BaseConnector):
         validation = await self.validate_config()
         if not validation.valid or httpx is None:
             return validation
-        return validation
+
+        errors: list[str] = []
+        try:
+            payload = await self._request(params=dict(self._query_params()))
+            items = self._extract_items(payload)
+            if items is None or (isinstance(items, list) and len(items) == 0):
+                errors.append("L'API a repondu mais aucun item n'a ete trouve dans le chemin configure.")
+        except Exception as exc:
+            errors.append(f"Erreur de connexion a l'API : {exc}")
+
+        return ConnectorValidationResult(valid=len(errors) == 0, errors=errors)
 
     async def list_documents(self) -> list[ConnectorDocument]:
         validation = await self.validate_config()
@@ -211,15 +221,16 @@ class RestApiConnector(BaseConnector):
     async def _request(self, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if httpx is None:
             return {}
+        from ragkit.connectors.http_utils import RetryableHttpClient
         url = urljoin(self._base_url() + "/", self._endpoint().lstrip("/"))
         headers = self._resolve_headers()
         method = self._method()
         timeout = self._timeout_seconds()
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            if method == "POST":
-                response = await client.post(url, headers=headers, params=params, json=self.config.get("body"))
-            else:
-                response = await client.get(url, headers=headers, params=params)
+        client = RetryableHttpClient(timeout=timeout, headers=headers)
+        if method == "POST":
+            response = await client.post(url, params=params, json=self.config.get("body"))
+        else:
+            response = await client.get(url, params=params)
         response.raise_for_status()
         return response.json()
 

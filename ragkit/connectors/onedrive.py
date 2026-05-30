@@ -7,9 +7,7 @@ import logging
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
-
-import httpx
+from typing import Any
 
 from ragkit.connectors.base import (
     BaseConnector,
@@ -167,11 +165,12 @@ class OneDriveConnector(BaseConnector):
     # ------------------------------------------------------------------
 
     async def _graph_request(self, method: str, endpoint: str, params: dict[str, Any] | None = None) -> dict:
+        from ragkit.connectors.http_utils import RetryableHttpClient
         token = await self._access_token()
         url = endpoint if endpoint.startswith("http") else f"{self.GRAPH_BASE}{endpoint}"
         headers = {"Authorization": f"Bearer {token}"}
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.request(method, url, headers=headers, params=params)
+        client = RetryableHttpClient(timeout=30.0, headers=headers)
+        resp = await client.request(method, url, params=params)
         if resp.status_code >= 400:
             raise RuntimeError(f"Graph API error {resp.status_code}: {resp.text}")
         return resp.json()
@@ -205,17 +204,28 @@ class OneDriveConnector(BaseConnector):
                     queue.append(nested_path)
         return items
 
-    async def _list_folder_children(self, folder_path: str) -> Iterable[dict[str, Any]]:
+    async def _list_folder_children(self, folder_path: str) -> list[dict[str, Any]]:
         endpoint = f"{self._drive_root()}/root:{folder_path}:/children"
+        items: list[dict[str, Any]] = []
         response = await self._graph_request("GET", endpoint)
-        return response.get("value", [])
+        items.extend(response.get("value", []))
+
+        # Follow @odata.nextLink for folders with many items
+        next_link = response.get("@odata.nextLink")
+        while next_link:
+            response = await self._graph_request("GET", next_link)
+            items.extend(response.get("value", []))
+            next_link = response.get("@odata.nextLink")
+
+        return items
 
     async def _download_item_content(self, item_id: str) -> bytes:
+        from ragkit.connectors.http_utils import RetryableHttpClient
         token = await self._access_token()
         endpoint = f"{self.GRAPH_BASE}{self._drive_root()}/items/{item_id}/content"
         headers = {"Authorization": f"Bearer {token}"}
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.get(endpoint, headers=headers)
+        client = RetryableHttpClient(timeout=60.0, headers=headers, follow_redirects=True)
+        resp = await client.get(endpoint)
         if resp.status_code >= 400:
             raise RuntimeError(f"Graph download failed: {resp.status_code} {resp.text}")
         return resp.content

@@ -422,13 +422,30 @@
       "detectedTypes": "Types de Fichiers détectés",
       "files": "fichiers",
       "noSupportedFiles": "Aucun fichier supporté trouvé.",
-      "comingSoon": "Bientôt",
+      "comingSoon": "Bientot",
+      "selectSubType": "Choisir le type de source",
+      "sourceName": "Nom de la source",
+      "sourceNamePlaceholder": "Ma source",
       "type": {
         "local_folder": "Dossier local",
-        "database": "Base de données",
+        "database": "Base de donnees",
         "website": "Site web",
         "email": "Messagerie",
         "api": "API / Connecteur"
+      },
+      "subtype": {
+        "web_url": "Crawl de site web",
+        "rss_feed": "Flux RSS / Atom",
+        "sql_database": "Base de donnees SQL",
+        "email_imap": "Serveur IMAP",
+        "rest_api": "API REST generique",
+        "google_drive": "Google Drive",
+        "onedrive": "OneDrive / SharePoint",
+        "dropbox": "Dropbox",
+        "confluence": "Confluence",
+        "notion": "Notion",
+        "s3_bucket": "Amazon S3 / MinIO",
+        "git_repo": "Depot Git"
       }
     },
     "searchType": {

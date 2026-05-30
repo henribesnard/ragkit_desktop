@@ -78,7 +78,16 @@ class NotionConnector(BaseConnector):
         validation = await self.validate_config()
         if not validation.valid or httpx is None:
             return validation
-        return validation
+
+        errors: list[str] = []
+        try:
+            result = await self._api_get(f"{self.API_BASE}/users/me")
+            if not result.get("id"):
+                errors.append("Le token Notion est invalide ou expire.")
+        except Exception as exc:
+            errors.append(f"Erreur de connexion Notion : {exc}")
+
+        return ConnectorValidationResult(valid=len(errors) == 0, errors=errors)
 
     async def list_documents(self) -> list[ConnectorDocument]:
         validation = await self.validate_config()
@@ -118,6 +127,15 @@ class NotionConnector(BaseConnector):
             self._doc_cache[doc.id] = doc
             seen_page_ids.add(page_id)
 
+            # Recursively fetch sub-pages
+            if self._include_subpages():
+                sub_docs = await self._fetch_subpages(page_id, seen_page_ids, max_docs - len(documents))
+                for sub_doc in sub_docs:
+                    if len(documents) >= max_docs:
+                        break
+                    documents.append(sub_doc)
+                    self._doc_cache[sub_doc.id] = sub_doc
+
         return documents
 
     async def fetch_document_content(self, doc_id: str) -> str:
@@ -156,16 +174,18 @@ class NotionConnector(BaseConnector):
     async def _api_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if httpx is None:
             return {}
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(url, headers=self._headers(), params=params)
+        from ragkit.connectors.http_utils import RetryableHttpClient
+        client = RetryableHttpClient(timeout=30.0, headers=self._headers())
+        response = await client.get(url, params=params)
         response.raise_for_status()
         return response.json()
 
     async def _api_post(self, url: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
         if httpx is None:
             return {}
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(url, headers=self._headers(), json=json or {})
+        from ragkit.connectors.http_utils import RetryableHttpClient
+        client = RetryableHttpClient(timeout=30.0, headers=self._headers())
+        response = await client.post(url, json=json or {})
         response.raise_for_status()
         return response.json()
 
@@ -264,49 +284,118 @@ class NotionConnector(BaseConnector):
             return ""
         return "".join(item.get("plain_text", "") for item in items if isinstance(item, dict)).strip()
 
-    def _blocks_to_text(self, blocks: list[dict[str, Any]]) -> str:
+    async def _fetch_subpages(self, parent_page_id: str, seen: set[str], limit: int) -> list[ConnectorDocument]:
+        """Recursively fetch child pages of a page."""
+        docs: list[ConnectorDocument] = []
+        if limit <= 0:
+            return docs
+
+        blocks_resp = await self._get_page_blocks(parent_page_id)
+        blocks = blocks_resp.get("results", []) if isinstance(blocks_resp, dict) else []
+
+        for block in blocks:
+            if len(docs) >= limit:
+                break
+            if block.get("type") == "child_page":
+                child_id = block.get("id", "").strip()
+                if not child_id or child_id in seen:
+                    continue
+                seen.add(child_id)
+                try:
+                    page = await self._get_page(child_id)
+                    doc = await self._page_to_document(page)
+                    docs.append(doc)
+                    # Recurse into child's children
+                    sub = await self._fetch_subpages(child_id, seen, limit - len(docs))
+                    docs.extend(sub)
+                except Exception as exc:
+                    logger.warning("Failed to fetch Notion sub-page %s: %s", child_id, exc)
+
+        return docs
+
+    async def _blocks_to_text_recursive(self, blocks: list[dict[str, Any]], depth: int = 0) -> str:
+        """Convert blocks to text, recursively fetching nested children."""
         lines: list[str] = []
+        indent = "  " * depth
+
         for block in blocks:
             block_type = block.get("type")
             data = block.get(block_type, {}) if isinstance(block, dict) and block_type else {}
             text = self._extract_rich_text(data.get("rich_text")) if isinstance(data, dict) else ""
 
-            if block_type == "paragraph":
-                if text:
-                    lines.append(text)
-            elif block_type == "heading_1":
-                if text:
-                    lines.append(f"# {text}")
-            elif block_type == "heading_2":
-                if text:
-                    lines.append(f"## {text}")
-            elif block_type == "heading_3":
-                if text:
-                    lines.append(f"### {text}")
-            elif block_type == "bulleted_list_item":
-                if text:
-                    lines.append(f"- {text}")
-            elif block_type == "numbered_list_item":
-                if text:
-                    lines.append(f"1. {text}")
-            elif block_type == "code":
-                lang = data.get("language") if isinstance(data, dict) else None
-                code = self._extract_rich_text(data.get("rich_text")) if isinstance(data, dict) else ""
-                if code:
-                    fence = f"```{lang}" if lang else "```"
-                    lines.append(f"{fence}\n{code}\n```")
-            elif block_type == "quote":
-                if text:
-                    lines.append(f"> {text}")
-            elif block_type == "callout":
-                if text:
-                    lines.append(text)
-            elif block_type == "toggle":
-                if text:
-                    lines.append(text)
-            elif block_type == "child_page":
-                title = data.get("title") if isinstance(data, dict) else None
-                if title:
-                    lines.append(f"## {title}")
+            line = self._format_block_line(block_type, text, data, indent)
+            if line is not None:
+                lines.append(line)
+
+            # Recursively fetch children if present
+            if block.get("has_children") and block_type != "child_page":
+                block_id = block.get("id", "").strip()
+                if block_id:
+                    try:
+                        child_resp = await self._get_page_blocks(block_id)
+                        child_blocks = child_resp.get("results", []) if isinstance(child_resp, dict) else []
+                        if child_blocks:
+                            nested_text = await self._blocks_to_text_recursive(child_blocks, depth + 1)
+                            if nested_text:
+                                lines.append(nested_text)
+                    except Exception as exc:
+                        logger.warning("Failed to fetch nested blocks for %s: %s", block_id, exc)
 
         return "\n".join(lines).strip()
+
+    def _blocks_to_text(self, blocks: list[dict[str, Any]]) -> str:
+        """Synchronous fallback; prefer _blocks_to_text_recursive for full content."""
+        lines: list[str] = []
+        for block in blocks:
+            block_type = block.get("type")
+            data = block.get(block_type, {}) if isinstance(block, dict) and block_type else {}
+            text = self._extract_rich_text(data.get("rich_text")) if isinstance(data, dict) else ""
+            line = self._format_block_line(block_type, text, data, "")
+            if line is not None:
+                lines.append(line)
+        return "\n".join(lines).strip()
+
+    def _format_block_line(self, block_type: str | None, text: str, data: dict, indent: str) -> str | None:
+        if block_type == "paragraph":
+            return f"{indent}{text}" if text else None
+        elif block_type == "heading_1":
+            return f"{indent}# {text}" if text else None
+        elif block_type == "heading_2":
+            return f"{indent}## {text}" if text else None
+        elif block_type == "heading_3":
+            return f"{indent}### {text}" if text else None
+        elif block_type == "bulleted_list_item":
+            return f"{indent}- {text}" if text else None
+        elif block_type == "numbered_list_item":
+            return f"{indent}1. {text}" if text else None
+        elif block_type == "code":
+            lang = data.get("language") if isinstance(data, dict) else None
+            code = self._extract_rich_text(data.get("rich_text")) if isinstance(data, dict) else ""
+            if code:
+                fence = f"```{lang}" if lang else "```"
+                return f"{indent}{fence}\n{indent}{code}\n{indent}```"
+            return None
+        elif block_type == "quote":
+            return f"{indent}> {text}" if text else None
+        elif block_type in ("callout", "toggle"):
+            return f"{indent}{text}" if text else None
+        elif block_type == "to_do":
+            checked = data.get("checked", False) if isinstance(data, dict) else False
+            mark = "x" if checked else " "
+            return f"{indent}- [{mark}] {text}" if text else None
+        elif block_type == "divider":
+            return f"{indent}---"
+        elif block_type == "table_of_contents":
+            return None
+        elif block_type == "child_page":
+            title = data.get("title") if isinstance(data, dict) else None
+            return f"{indent}## {title}" if title else None
+        elif block_type == "image":
+            url = None
+            if isinstance(data, dict):
+                url = data.get("file", {}).get("url") or data.get("external", {}).get("url")
+            caption = self._extract_rich_text(data.get("caption")) if isinstance(data, dict) else ""
+            if url:
+                return f"{indent}![{caption}]({url})"
+            return None
+        return f"{indent}{text}" if text else None
