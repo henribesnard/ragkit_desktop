@@ -222,7 +222,7 @@ export function AppUpdaterProvider({ children }: { children: ReactNode }) {
 
         try {
             // Stop the backend sidecar so the NSIS installer can replace
-            // ragkit-backend.exe without "file in use" errors.
+            // loko-backend.exe without "file in use" errors.
             try {
                 await invoke("stop_backend_for_update");
             } catch (err) {
