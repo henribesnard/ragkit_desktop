@@ -68,7 +68,7 @@ def setup_logging() -> None:
     )
 
 APP_NAME = "LOKO"
-VERSION = "1.4.44"
+VERSION = "1.4.45"
 
 # ---------------------------------------------------------------------------
 # Backend authentication middleware
