@@ -1,4 +1,3 @@
-import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface WizardProgressProps {
@@ -20,12 +19,11 @@ export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps)
                             {i > 0 && (
                                 <span
                                     className={"bar" + (i <= currentStep ? " done" : "")}
-                                    style={{ width: 16, margin: "0 4px" }}
                                 />
                             )}
                             <span className={"s" + (isDone ? " done" : "") + (isActive ? " active" : "")}>
                                 <span className="n">
-                                    {isDone ? <Check size={13} /> : i + 1}
+                                    {i + 1}
                                 </span>
                             </span>
                         </span>
