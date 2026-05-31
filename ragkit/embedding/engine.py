@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import Counter
 import hashlib
 import json
@@ -14,6 +15,11 @@ from typing import Any
 from ragkit.config.embedding_schema import ConnectionTestResult, EmbeddingConfig, EmbeddingProvider
 from ragkit.embedding.catalog import get_model_info
 
+logger = logging.getLogger(__name__)
+
+# Module-level cache for SentenceTransformer models to avoid loading the same
+# model multiple times (mirrors _LOCAL_RERANKER_MODEL_CACHE in local_reranker.py).
+_ST_MODEL_CACHE: dict[str, Any] = {}
 
 CLOUD_PROVIDERS = {
     EmbeddingProvider.OPENAI,
@@ -267,27 +273,43 @@ class EmbeddingEngine:
 
     def _get_st_model(self) -> Any:
         if self._st_model is None:
-            import os
-            from pathlib import Path
-            from sentence_transformers import SentenceTransformer
-            
-            # Set HF cache home to a local ragkit directory so large models don't pollute the generic OS cache
-            models_dir = Path.home() / ".loko" / "models"
-            models_dir.mkdir(parents=True, exist_ok=True)
-            os.environ["HF_HOME"] = str(models_dir)
-            
-            # Detect hardware
-            device = "cpu"
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    device = "cuda"
-                elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                    device = "mps"
-            except ImportError:
-                pass
+            cache_key = self.config.model
+            if cache_key in _ST_MODEL_CACHE:
+                self._st_model = _ST_MODEL_CACHE[cache_key]
+            else:
+                from pathlib import Path
+                from sentence_transformers import SentenceTransformer
 
-            self._st_model = SentenceTransformer(self.config.model, device=device)
+                # Detect hardware
+                device = "cpu"
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        device = "cuda"
+                    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                        device = "mps"
+                except ImportError:
+                    pass
+
+                # Prefer ~/.loko/models if the model is already cached there,
+                # otherwise let sentence-transformers use the default HF cache
+                # to avoid re-downloading large models unnecessarily.
+                loko_cache = Path.home() / ".loko" / "models"
+                loko_cache.mkdir(parents=True, exist_ok=True)
+                model_dir_name = f"models--{self.config.model.replace('/', '--')}"
+                if (loko_cache / model_dir_name).exists():
+                    cache_folder = str(loko_cache)
+                else:
+                    cache_folder = None  # use default HF cache
+
+                logger.info("Loading embedding model %s on %s (this may take a while)...", self.config.model, device)
+                self._st_model = SentenceTransformer(
+                    self.config.model,
+                    device=device,
+                    **({"cache_folder": cache_folder} if cache_folder else {}),
+                )
+                _ST_MODEL_CACHE[cache_key] = self._st_model
+                logger.info("Embedding model %s loaded successfully", self.config.model)
         return self._st_model
 
     def _embed_huggingface(self, text: str) -> list[float]:
