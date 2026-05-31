@@ -476,8 +476,9 @@ export function DesignSystem() {
                             </div>
                         </div>
                         <div className="loko-divider" style={{ margin: "32px 0" }} />
-                        <div style={{ textAlign: "center" }}>
-                            <Wordmark glyph={48} text={36} gap={16} />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
+                            <LokoGlyph size={48} />
+                            <Wordmark size={36} />
                         </div>
                     </div>
                 </Section>
