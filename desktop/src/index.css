@@ -398,7 +398,7 @@
 /* ---- Steps / progress ---- */
 .steps { display: flex; align-items: center; gap: 0; }
 .steps .s { display: flex; align-items: center; gap: 9px; color: var(--text-3); font-size: 13px; font-weight: 500; }
-.steps .s .n { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); }
+.steps .s .n { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); }
 .steps .s.done .n { background: var(--brand); border-color: var(--brand); color: var(--brand-fg); }
 .steps .s.active { color: var(--text); }
 .steps .s.active .n { border-color: var(--brand); color: var(--brand); }
