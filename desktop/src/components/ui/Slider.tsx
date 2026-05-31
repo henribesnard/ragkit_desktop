@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 
 interface SliderProps {
     value: number;
@@ -58,7 +58,7 @@ export function Slider({ value, min, max, step = 1, onChange, label, className, 
     }, []);
 
     // Attach global mouse event listeners when dragging
-    useState(() => {
+    useEffect(() => {
         if (isDragging) {
             window.addEventListener("mousemove", handleMouseMove);
             window.addEventListener("mouseup", handleMouseUp);
@@ -67,7 +67,7 @@ export function Slider({ value, min, max, step = 1, onChange, label, className, 
                 window.removeEventListener("mouseup", handleMouseUp);
             };
         }
-    });
+    }, [isDragging, handleMouseMove, handleMouseUp]);
 
     return (
         <div className={className}>
