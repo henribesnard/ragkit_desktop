@@ -1,10 +1,11 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUp, FileText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { FeedbackButtons } from "@/components/chat/FeedbackButtons";
 import { useParams } from "react-router-dom";
 import { type ChatSearchMode } from "@/components/chat/SearchModeSelector";
+import { type ChatSource } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { ipc } from "@/lib/ipc";
 import { EmptyState } from "@/components/chat/EmptyState";
@@ -16,6 +17,11 @@ import { usePersistentIngestion } from "@/hooks/usePersistentIngestion";
 import { useBackendHealth } from "@/hooks/useBackendHealth";
 import { stripSourceTags } from "@/lib/sanitize";
 import { StreamingStatusIndicator } from "@/components/chat/StreamingStatusIndicator";
+import { UserBubble, AssistantBubble } from "@/components/chat/MessageBubble";
+import { MetaRow } from "@/components/chat/MetaRow";
+import { ChatComposer } from "@/components/chat/ChatComposer";
+import { SourcesPanel } from "@/components/chat/SourcesPanel";
+import { LokoGlyph } from "@/components/brand/LokoGlyph";
 
 interface ChatReadyResponse {
   ready: boolean;
@@ -68,14 +74,18 @@ export function Chat() {
   const [debugMode] = useState(false);
   const [alphaOverride, setAlphaOverride] = useState(0.5);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  // Track the active query alongside its conversation so it automatically
-  // becomes null when switching conversations — no cleanup effect needed.
   const [activeQueryData, setActiveQueryData] = useState<{ query: string; cid: string } | null>(null);
   const activeQuery = activeQueryData && activeQueryData.cid === urlId ? activeQueryData.query : null;
 
+  // Sources panel state
+  const [displayedSources, setDisplayedSources] = useState<ChatSource[]>([]);
+  const [activeCiteIndex, setActiveCiteIndex] = useState<number | null>(null);
+  const [llmModel, setLlmModel] = useState<string>("");
+  const [queryStartTime, setQueryStartTime] = useState<number | null>(null);
+  const [lastElapsedMs, setLastElapsedMs] = useState<number | undefined>(undefined);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedModeEnabled =
     searchMode === "semantic" ? semanticEnabled : searchMode === "lexical" ? lexicalEnabled : semanticEnabled && lexicalEnabled;
@@ -104,15 +114,15 @@ export function Chat() {
     try {
       const ready = await invoke<ChatReadyResponse>("get_chat_ready");
       setChatReady(ready);
-
     } catch { /* ignore */ }
 
     try {
-      const [semanticCfg, lexicalCfg, generalCfg, hybridCfg] = await Promise.all([
+      const [semanticCfg, lexicalCfg, generalCfg, hybridCfg, llmCfg] = await Promise.all([
         invoke<SearchConfigState>("get_semantic_search_config").catch(() => null),
         invoke<{ enabled: boolean; stemming: boolean }>("get_lexical_search_config").catch(() => null),
         invoke<GeneralSettingsPayload>("get_general_settings").catch(() => null),
         invoke<{ alpha?: number }>("get_hybrid_search_config").catch(() => null),
+        invoke<{ model?: string; provider?: string }>("get_llm_config").catch(() => null),
       ]);
       if (semanticCfg && lexicalCfg && generalCfg) {
         applySearchConfig(
@@ -122,6 +132,10 @@ export function Chat() {
         );
       }
       if (hybridCfg) setAlphaOverride(Number(hybridCfg.alpha ?? 0.5));
+      if (llmCfg?.model) {
+        const short = llmCfg.model.replace(/:latest$/, "");
+        setLlmModel(llmCfg.provider === "ollama" ? `${short} · local` : short);
+      }
     } catch { /* ignore */ }
   };
 
@@ -138,29 +152,38 @@ export function Chat() {
 
   useEffect(() => { void refreshChatStateRef.current(); }, []);
 
-  // Ref for refreshHistory so the effect doesn't re-fire when conversationId changes
   const refreshHistoryRef = useRef(refreshHistory);
   useEffect(() => { refreshHistoryRef.current = refreshHistory; });
 
-  // Handle streaming completion: fetch history, update activity, generate title, clear UI
+  // Handle streaming completion
   useEffect(() => {
     if (!finalResponse) return;
+
+    // Compute latency
+    if (queryStartTime) {
+      setLastElapsedMs(Date.now() - queryStartTime);
+      setQueryStartTime(null);
+    }
+
+    // Update displayed sources from final response
+    if (finalResponse.sources?.length) {
+      setDisplayedSources(finalResponse.sources);
+      setActiveCiteIndex(null);
+    }
 
     let cancelled = false;
     void (async () => {
       const updated = await refreshHistoryRef.current();
       if (cancelled) return;
 
-      // Always persist messageCount immediately so the conversation survives cleanup
       if (urlId && updated.messages.length > 0) {
         updateConversationActivity(urlId, updated.messages.length);
       }
 
-      // Auto-generate title after first exchange (best-effort, non-blocking)
       if (urlId && updated.messages.length >= 2) {
         ipc.generateConversationTitle(urlId)
           .then(({ title }) => {
-            if (title) { // Global state / API calls are safe even if unmounted
+            if (title) {
               updateConversationActivity(urlId, updated.messages.length, title);
               void renameConversation(urlId, title);
             }
@@ -170,7 +193,6 @@ export function Chat() {
           });
       }
 
-      // Clear streaming UI LAST — this sets finalResponse=null which triggers effect cleanup
       if (updated.messages.length > 0 && !cancelled) {
         clearStreamState();
         setActiveQueryData(null);
@@ -178,7 +200,7 @@ export function Chat() {
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, renameConversation, urlId, updateConversationActivity]);
+  }, [finalResponse, clearStreamState, renameConversation, urlId, updateConversationActivity, queryStartTime]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -207,18 +229,17 @@ export function Chat() {
     }
   }, [urlId, openConversation]);
 
-  // C2: Since Chat is no longer remounted via key={id}, clean up stream state
-  // when switching conversations so stale streaming data doesn't bleed across.
-  // activeQuery is already derived from activeQueryData.cid, so it auto-resets.
+  // Clean up stream state when switching conversations
   useEffect(() => {
     clearStreamState();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveQueryData(null);
+    setDisplayedSources([]);
+    setActiveCiteIndex(null);
+    setLastElapsedMs(undefined);
   }, [urlId, clearStreamState, setActiveQueryData]);
 
-  // Keep sidebar counters aligned with actually loaded history.
-  // Use refs to avoid re-render cascade: updateConversationActivity updates
-  // the conversations context which would re-trigger this effect endlessly.
+  // Keep sidebar counters aligned
   const conversationsRef = useRef(conversations);
   useEffect(() => { conversationsRef.current = conversations; });
   const updateActivityRef = useRef(updateConversationActivity);
@@ -234,32 +255,27 @@ export function Chat() {
     }
   }, [history.messages.length, historyLoading, urlId]);
 
-  // Recovery: if history loaded empty but conversation should have messages, re-fetch.
-  // We use `historyLoading` to wait until the current load attempt finishes.
-  // We also track the last conversation ID we recovered so we don't spam requests when switching quickly.
+  // Recovery
   const lastRecoveredIdRef = useRef<string | null>(null);
-  
   useEffect(() => {
-    // Wait until loading finishes to check if recovery is actually needed
     if (historyLoading || !urlId || isStreaming || isIngesting) {
-        lastRecoveredIdRef.current = null;
-        return;
+      lastRecoveredIdRef.current = null;
+      return;
     }
-    
-    // If we already have messages, no need to recover
     if (history.messages.length > 0) return;
-
     const conv = conversations.find((c) => c.id === urlId);
-    // If the conversation is known to be empty, no need to recover
     if (!conv || conv.messageCount === 0) return;
-
-    // Prevent infinite retry loops on exactly the same conversation if backend returns empty repeatedly
     if (lastRecoveredIdRef.current === urlId) return;
-
     lastRecoveredIdRef.current = urlId;
     console.warn("[Chat] History empty but conversation has", conv.messageCount, "messages — recovering");
     void refreshHistory();
   }, [historyLoading, urlId, history.messages.length, conversations, isStreaming, isIngesting, refreshHistory]);
+
+  // Update displayed sources when clicking a history message
+  const handleMessageSourceClick = (sources: ChatSource[]) => {
+    setDisplayedSources(sources);
+    setActiveCiteIndex(null);
+  };
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;
@@ -268,20 +284,11 @@ export function Chat() {
     setShowScrollBtn(distFromBottom > 100);
   }, []);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
-  }, [query]);
-
   const onSubmitFeedback = async (queryId: string, feedback: "positive" | "negative") => {
     await submitFeedback(queryId, feedback);
     await refreshHistory();
   };
 
-  // Ref to prevent double-submit within the same React batch before isStreaming commits
   const isSubmittingRef = useRef(false);
   useEffect(() => {
     if (!isStreaming) {
@@ -304,9 +311,8 @@ export function Chat() {
     const q = query.trim();
     setQuery("");
     setActiveQueryData({ query: q, cid: urlId || "" });
+    setQueryStartTime(Date.now());
 
-    // Immediately set a fallback title from the query text on first message
-    // so the sidebar never stays on "Nouvelle conversation"
     if (urlId && history.messages.length === 0) {
       const fallbackTitle = q.length > 40 ? q.slice(0, 37) + "..." : q;
       updateConversationActivity(urlId, 1, fallbackTitle);
@@ -316,349 +322,229 @@ export function Chat() {
     await startStream(payload);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void onSearch(e as unknown as FormEvent);
-    }
-  };
-
   const getPlaceholder = () => {
     if (isIngesting) return t("chat.inputPlaceholderIngestion");
     if (!chatReady.ready) return t("chat.inputPlaceholderNotReady");
     return t("chat.inputPlaceholder");
   };
 
+  const copyToClipboard = (text: string) => {
+    void navigator.clipboard.writeText(text);
+  };
+
   const hasMessages = history.messages.length > 0 || isStreaming || streamedAnswer || activeQuery;
 
   return (
-    <div className="h-full flex flex-col relative" style={{ background: "var(--bg-primary)" }}>
-      {/* Messages Area */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto"
-        style={{ padding: "16px 0 0" }}
-        onScroll={handleScroll}
-      >
+    <div className="h-full flex" style={{ background: "var(--bg)" }}>
+      {/* Conversation column */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Messages scroll area */}
         <div
-          style={{
-            maxWidth: "var(--chat-max-width)",
-            margin: "0 auto",
-            padding: "0 20px",
-          }}
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto loko-scroll"
+          style={{ padding: "28px 32px" }}
+          onScroll={handleScroll}
         >
-          {/* Errors */}
-          {(streamError || feedbackError) && (
-            <div
-              className="mb-4 rounded-lg px-4 py-3 text-sm"
-              style={{
-                background: "#FEE2E2",
-                color: "#991B1B",
-                border: "1px solid #FCA5A5",
-              }}
-            >
-              {streamError || feedbackError}
-            </div>
-          )}
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            {/* Errors */}
+            {(streamError || feedbackError) && (
+              <div
+                className="mb-4"
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "var(--danger-bg)",
+                  color: "var(--danger)",
+                  border: "1px solid var(--border)",
+                  fontSize: 13,
+                }}
+              >
+                {streamError || feedbackError}
+              </div>
+            )}
 
-          {historyLoading && !isIngesting && isBackendHealthy ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "var(--primary-500)" }} />
-            </div>
-          ) : !hasMessages ? (
-            <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} isBackendDown={!isBackendHealthy && !isIngesting} />
-          ) : (
-            <div className="flex flex-col" style={{ gap: 16 }}>
-              {/* History messages */}
-              {history.messages.map((message, index) => (
-                <div
-                  key={`${message.timestamp}-${index}`}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}
-                >
-                  {message.role === "user" ? (
-                    /* User bubble */
-                    <div
-                      className="text-sm text-white"
-                      style={{
-                        maxWidth: "80%",
-                        padding: "10px 14px",
-                        borderRadius: "20px 20px 4px 20px",
-                        background: "var(--primary-500)",
-                      }}
-                    >
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                    </div>
-                  ) : (
-                    /* Assistant bubble */
-                    <div
-                      className="text-sm"
-                      style={{
-                        maxWidth: "85%",
-                        padding: 12,
-                        borderRadius: "4px 20px 20px 20px",
-                        background: "var(--bg-secondary)",
-                        border: "1px solid var(--border-default)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <div className="whitespace-pre-wrap leading-relaxed">{stripSourceTags(message.content)}</div>
-
-                      {/* Sources */}
-                      {message.sources?.length ? (
-                        <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border-default)" }}>
-                          <div
-                            className="text-xs font-semibold uppercase mb-2"
-                            style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
-                          >
-                            {t("chat.sources")}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {message.sources.map((src: any, si: number) => (
-                              <span
-                                key={si}
-                                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
-                                style={{
-                                  background: "var(--bg-tertiary)",
-                                  color: "var(--text-secondary)",
-                                  borderRadius: "var(--radius-sm)",
-                                }}
-                                title={src.text_preview}
-                              >
-                                <FileText size={12} />
-                                {src.title || src.id}
-                                {src.page ? ` p.${src.page}` : ""}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {/* Feedback */}
-                      {message.query_log_id && (
-                        <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                          <FeedbackButtons
-                            queryId={message.query_log_id}
-                            value={valueByQueryId[message.query_log_id] || message.feedback || null}
-                            loading={Boolean(pendingByQueryId[message.query_log_id])}
-                            onSubmit={onSubmitFeedback}
+            {historyLoading && !isIngesting && isBackendHealthy ? (
+              <div className="h-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
+              </div>
+            ) : !hasMessages ? (
+              <EmptyState isReady={chatReady.ready} isIngesting={isIngesting} isBackendDown={!isBackendHealthy && !isIngesting} />
+            ) : (
+              <>
+                {/* History messages */}
+                {history.messages.map((message, index) => (
+                  <div key={`${message.timestamp}-${index}`} className="animate-message-in">
+                    {message.role === "user" ? (
+                      <UserBubble content={message.content} />
+                    ) : (
+                      <AssistantBubble
+                        content={stripSourceTags(message.content)}
+                        sources={message.sources}
+                        onCiteClick={(i) => {
+                          if (message.sources) {
+                            handleMessageSourceClick(message.sources);
+                            setActiveCiteIndex(i);
+                          }
+                        }}
+                        metaRow={
+                          <MetaRow
+                            sourcesCount={message.sources?.length ?? 0}
+                            modelName={llmModel}
+                            onCopy={() => copyToClipboard(stripSourceTags(message.content))}
+                            feedbackNode={
+                              message.query_log_id ? (
+                                <FeedbackButtons
+                                  queryId={message.query_log_id}
+                                  value={valueByQueryId[message.query_log_id] || message.feedback || null}
+                                  loading={Boolean(pendingByQueryId[message.query_log_id])}
+                                  onSubmit={onSubmitFeedback}
+                                />
+                              ) : undefined
+                            }
                           />
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+
+                {/* Optimistic user message */}
+                {activeQuery && (
+                  <div className="animate-message-in">
+                    <UserBubble content={activeQuery} />
+                  </div>
+                )}
+
+                {/* Streaming assistant response */}
+                {(streamedAnswer || isStreaming) && (
+                  <div className="animate-message-in" style={{ display: "flex", gap: 14, marginBottom: 16 }}>
+                    <div style={{
+                      width: 30, height: 30, flex: "0 0 auto",
+                      filter: "drop-shadow(0 2px 4px rgba(15,125,99,.25))",
+                    }}>
+                      <LokoGlyph size={30} radius={8} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {!streamedAnswer && status ? (
+                        <StreamingStatusIndicator status={status} />
+                      ) : (
+                        <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--text)" }}>
+                          <div style={{ whiteSpace: "pre-wrap" }}>{streamedAnswer}</div>
+                          {isStreaming && (
+                            <span
+                              className="inline-block"
+                              style={{
+                                width: 2, height: 17, background: "var(--brand)",
+                                marginLeft: 1, verticalAlign: "middle", borderRadius: 1,
+                                animation: "typing-dot 1s infinite",
+                              }}
+                            />
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
-                </div>
-              ))}
 
-              {/* Optimistic User Message */}
-              {activeQuery && (
-                <div className="flex justify-end animate-message-in">
-                  <div
-                    className="text-sm text-white"
-                    style={{
-                      maxWidth: "80%",
-                      padding: "10px 14px",
-                      borderRadius: "20px 20px 4px 20px",
-                      background: "var(--primary-500)",
-                    }}
-                  >
-                    <div className="whitespace-pre-wrap">{activeQuery}</div>
-                  </div>
-                </div>
-              )}
-
-              {(streamedAnswer || isStreaming) && (
-                <div className="flex justify-start animate-message-in">
-                  <div
-                    className="text-sm"
-                    style={{
-                      maxWidth: "85%",
-                      padding: 12,
-                      borderRadius: "4px 20px 20px 20px",
-                      background: "var(--bg-secondary)",
-                      border: "1px solid var(--border-default)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {!streamedAnswer && status ? (
-                      <StreamingStatusIndicator status={status} />
-                    ) : (
-                      <>
-                        <div className="whitespace-pre-wrap leading-relaxed">{streamedAnswer}</div>
-                        {isStreaming && (
-                          <span
-                            className="inline-block w-2 h-4 ml-0.5"
-                            style={{
-                              background: "var(--primary-500)",
-                              animation: "typing-dot 1s infinite",
-                            }}
-                          />
-                        )}
-                      </>
-                    )}
-
-
-                    {/* Final response sources */}
-                    {finalResponse?.sources?.length ? (
-                      <div className="mt-2 pt-1.5" style={{ borderTop: "1px solid var(--border-default)" }}>
-                        <div
-                          className="text-xs font-semibold uppercase mb-2"
-                          style={{ color: "var(--text-tertiary)", letterSpacing: "0.05em", fontSize: 10 }}
-                        >
-                          {t("chat.sources")}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {finalResponse.sources.map((src: any) => (
+                      {/* Final response sources inline */}
+                      {finalResponse?.sources?.length ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                          <span style={{ fontSize: 12, color: "var(--text-3)", alignSelf: "center", marginRight: 2 }}>
+                            Sources :
+                          </span>
+                          {finalResponse.sources.map((src, i) => (
                             <span
-                              key={`${src.id}-${src.chunk_id}`}
-                              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-colors"
-                              style={{
-                                background: "var(--bg-tertiary)",
-                                color: "var(--text-secondary)",
-                                borderRadius: "var(--radius-sm)",
-                              }}
-                              title={src.text_preview}
+                              key={`${src.chunk_id}-${i}`}
+                              className="cite"
+                              onClick={() => setActiveCiteIndex(i)}
                             >
-                              <FileText size={12} />
-                              {src.title} {src.page ? `p.${src.page}` : ""}
+                              <span className="num">{i + 1}</span>
+                              {src.title}
+                              {src.page ? ` · p.${src.page}` : ""}
                             </span>
                           ))}
                         </div>
-                      </div>
-                    ) : null}
+                      ) : null}
 
-                    {/* Debug info */}
-                    {debugMode && finalResponse?.debug && (
-                      <details className="mt-3">
-                        <summary
-                          className="text-xs cursor-pointer font-semibold"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          Debug
-                        </summary>
-                        <div
-                          className="mt-2 p-3 rounded text-xs space-y-1"
-                          style={{
-                            background: "var(--bg-tertiary)",
-                            border: "1px dashed var(--border-default)",
-                            borderRadius: "var(--radius-md)",
-                            fontFamily: "var(--font-mono)",
-                          }}
-                        >
-                          {Object.entries(finalResponse.debug).map(([key, value]) => (
-                            <div key={key} className="break-words">
-                              <span className="font-semibold">{key}: </span>
-                              <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
+                      {/* Debug info */}
+                      {debugMode && finalResponse?.debug && (
+                        <details className="mt-3">
+                          <summary
+                            className="text-xs cursor-pointer font-semibold"
+                            style={{ color: "var(--text-3)" }}
+                          >
+                            Debug
+                          </summary>
+                          <div
+                            className="mt-2 p-3 rounded text-xs space-y-1"
+                            style={{
+                              background: "var(--code-bg)",
+                              border: "1px dashed var(--border)",
+                              borderRadius: 8,
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            {Object.entries(finalResponse.debug).map(([key, value]) => (
+                              <div key={key} className="break-words">
+                                <span className="font-semibold">{key}: </span>
+                                <span>{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
 
-                    {/* Feedback for final response */}
-                    {finalResponse?.query_log_id && (
-                      <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                        <FeedbackButtons
-                          queryId={finalResponse.query_log_id}
-                          value={valueByQueryId[finalResponse.query_log_id] || null}
-                          loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
-                          onSubmit={onSubmitFeedback}
+                      {/* Meta row for final response */}
+                      {finalResponse && (
+                        <MetaRow
+                          sourcesCount={finalResponse.sources?.length ?? 0}
+                          elapsedMs={lastElapsedMs}
+                          modelName={llmModel}
+                          onCopy={() => copyToClipboard(stripSourceTags(finalResponse.answer || ""))}
+                          feedbackNode={
+                            finalResponse.query_log_id ? (
+                              <FeedbackButtons
+                                queryId={finalResponse.query_log_id}
+                                value={valueByQueryId[finalResponse.query_log_id] || null}
+                                loading={Boolean(pendingByQueryId[finalResponse.query_log_id])}
+                                onSubmit={onSubmitFeedback}
+                              />
+                            ) : undefined
+                          }
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
 
-          <div ref={messagesEndRef} className="h-4" />
-        </div>
-      </div>
-
-      {/* Scroll to bottom */}
-      <ScrollToBottom visible={showScrollBtn} onClick={scrollToBottom} />
-
-      {/* Input Area */}
-      <div
-        style={{
-          maxWidth: "var(--chat-max-width)",
-          width: "100%",
-          margin: "0 auto",
-          padding: "12px 16px 16px",
-        }}
-      >
-        {isIngesting && (
-          <div className="mb-2 p-3 rounded-lg flex items-center gap-2 text-sm"
-            style={{
-              background: "var(--status-warning-bg, #fffbeb)",
-              border: "1px solid var(--status-warning-border, #fde68a)",
-              color: "var(--status-warning-text, #92400e)",
-            }}
-          >
-            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-            {t("chat.ingestionInProgress")}
+            <div ref={messagesEndRef} className="h-4" />
           </div>
-        )}
-
-        <form
-            onSubmit={onSearch}
-            className="relative"
-            style={{
-              background: "var(--bg-tertiary)",
-              borderRadius: "var(--radius-xl)",
-              boxShadow: "var(--shadow-sm)",
-              padding: "14px 16px",
-              paddingRight: 96,
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={getPlaceholder()}
-              disabled={isStreaming || !chatReady.ready || !selectedModeEnabled}
-              rows={1}
-              className="w-full resize-none outline-none text-sm"
-              style={{
-                background: "transparent",
-                color: "var(--text-primary)",
-                minHeight: 24,
-                maxHeight: 200,
-                fontFamily: "var(--font-sans)",
-              }}
-            />
-
-            {/* Send Button */}
-            <button
-              type="submit"
-              disabled={isStreaming || !query.trim() || !chatReady.ready || !selectedModeEnabled || isIngesting}
-              className="absolute right-3 bottom-3 flex items-center justify-center transition-all"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--radius-full)",
-                background: query.trim() && chatReady.ready && !isIngesting ? "var(--primary-500)" : "var(--bg-hover)",
-                color: query.trim() && chatReady.ready && !isIngesting ? "white" : "var(--text-tertiary)",
-                cursor: query.trim() && chatReady.ready && !isIngesting ? "pointer" : "default",
-              }}
-            >
-              {isStreaming ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <ArrowUp size={18} />
-              )}
-            </button>
-          </form>
-
-        {/* Disclaimer */}
-        <div
-          className="text-center mt-2"
-          style={{ fontSize: 10, color: "var(--text-tertiary)" }}
-        >
-          {t("chat.aiDisclaimer")}
         </div>
+
+        {/* Scroll to bottom */}
+        <ScrollToBottom visible={showScrollBtn} onClick={scrollToBottom} />
+
+        {/* Composer */}
+        <ChatComposer
+          query={query}
+          onQueryChange={setQuery}
+          onSubmit={onSearch}
+          searchMode={searchMode}
+          isStreaming={isStreaming}
+          isIngesting={isIngesting}
+          disabled={!chatReady.ready || !selectedModeEnabled}
+          placeholder={getPlaceholder()}
+        />
       </div>
+
+      {/* Sources panel */}
+      {displayedSources.length > 0 && (
+        <SourcesPanel
+          sources={displayedSources}
+          searchMode={searchMode}
+          activeCiteIndex={activeCiteIndex}
+          onCiteClick={setActiveCiteIndex}
+        />
+      )}
     </div>
   );
 }
