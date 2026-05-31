@@ -81,7 +81,7 @@ export function Chat() {
   const [displayedSources, setDisplayedSources] = useState<ChatSource[]>([]);
   const [activeCiteIndex, setActiveCiteIndex] = useState<number | null>(null);
   const [llmModel, setLlmModel] = useState<string>("");
-  const [queryStartTime, setQueryStartTime] = useState<number | null>(null);
+  const queryStartTimeRef = useRef<number | null>(null);
   const [lastElapsedMs, setLastElapsedMs] = useState<number | undefined>(undefined);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -160,9 +160,9 @@ export function Chat() {
     if (!finalResponse) return;
 
     // Compute latency
-    if (queryStartTime) {
-      setLastElapsedMs(Date.now() - queryStartTime);
-      setQueryStartTime(null);
+    if (queryStartTimeRef.current) {
+      setLastElapsedMs(Date.now() - queryStartTimeRef.current);
+      queryStartTimeRef.current = null;
     }
 
     // Update displayed sources from final response
@@ -200,7 +200,7 @@ export function Chat() {
     })();
 
     return () => { cancelled = true; };
-  }, [finalResponse, clearStreamState, renameConversation, urlId, updateConversationActivity, queryStartTime]);
+  }, [finalResponse, clearStreamState, renameConversation, urlId, updateConversationActivity]);
 
   useEffect(() => {
     const values: Record<string, "positive" | "negative"> = {};
@@ -311,7 +311,7 @@ export function Chat() {
     const q = query.trim();
     setQuery("");
     setActiveQueryData({ query: q, cid: urlId || "" });
-    setQueryStartTime(Date.now());
+    queryStartTimeRef.current = Date.now();
 
     if (urlId && history.messages.length === 0) {
       const fallbackTitle = q.length > 40 ? q.slice(0, 37) + "..." : q;
