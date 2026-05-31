@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragkit-desktop"
-version = "1.4.45"
+version = "1.4.47"
 description = "A comprehensive and multi-agent RAG (Retrieval-Augmented Generation) framework"
 requires-python = ">=3.10"
 dependencies = [
@@ -42,6 +42,9 @@ dev = [
 ]
 desktop = [
     "pyinstaller>=6.0",
+]
+server = [
+    "python-dotenv>=1.0",
 ]
 web = [
     "beautifulsoup4>=4.12",
@@ -82,6 +85,11 @@ all-connectors = [
     "ragkit[s3]",
     "ragkit[email]",
     "ragkit[git]",
+]
+all-server = [
+    "ragkit[server]",
+    "ragkit[web]",
+    "ragkit[all-connectors]",
 ]
 
 [tool.setuptools.packages.find]

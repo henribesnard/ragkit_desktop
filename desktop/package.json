@@ -1,11 +1,14 @@
 {
   "name": "loko",
   "private": true,
-  "version": "1.4.46",
+  "version": "1.4.47",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:web": "VITE_BUILD_TARGET=web tsc --noEmit && VITE_BUILD_TARGET=web vite build",
+    "build:web:win": "set VITE_BUILD_TARGET=web&& tsc --noEmit && set VITE_BUILD_TARGET=web&& vite build",
+    "dev:web": "VITE_BUILD_TARGET=web vite",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

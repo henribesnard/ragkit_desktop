@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+.pytest_tmp
+.git
+.github
+node_modules
+desktop/node_modules
+desktop/dist
+desktop/src-tauri/target
+*.msi
+*.dmg
+*.AppImage
+*.egg-info
+.ruff_cache
+.mypy_cache
+nul

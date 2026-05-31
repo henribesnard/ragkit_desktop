@@ -1,107 +1,39 @@
-import { invoke } from "@tauri-apps/api/core";
+/**
+ * IPC abstraction layer — automatically selects the right transport.
+ *
+ * - In Tauri desktop mode: uses invoke() via ipc-tauri.ts
+ * - In web/server mode:    uses fetch() via ipc-http.ts
+ */
+import type { IpcInterface } from "./ipc-types";
 
-interface HealthCheckResponse {
-  ok: boolean;
-  version?: string;
+const IS_TAURI = typeof window !== "undefined" && "__TAURI__" in window;
+
+// Lazy-loaded implementation to avoid bundling both transports
+let _impl: IpcInterface | null = null;
+
+async function getImpl(): Promise<IpcInterface> {
+  if (_impl) return _impl;
+  if (IS_TAURI) {
+    const mod = await import("./ipc-tauri");
+    _impl = mod.tauriIpc;
+  } else {
+    const mod = await import("./ipc-http");
+    _impl = mod.httpIpc;
+  }
+  return _impl;
 }
 
-export const ipc = {
-  healthCheck: () => invoke<HealthCheckResponse>("health_check"),
-  detectEnvironment: () => invoke("detect_environment"),
-  listTargetFiles: (source: any) => invoke<any>("list_target_files", { source }),
-  getEmbeddingConfig: () => invoke("get_embedding_config"),
-  updateEmbeddingConfig: (config: any) => invoke("update_embedding_config", { config }),
-  testEmbeddingConnection: (provider?: string, model?: string) => invoke("test_embedding_connection", { provider, model }),
-  getVectorStoreConfig: () => invoke("get_vector_store_config"),
-  updateVectorStoreConfig: (config: any) => invoke("update_vector_store_config", { config }),
-  startIngestion: (incremental = false) => invoke("start_ingestion", { incremental }),
-  getIngestionStatus: () => invoke("get_ingestion_status"),
-  
-  // Sources
-  getSources: () => invoke<any[]>("get_sources"),
-  getSource: (id: string) => invoke<any>("get_source", { id }),
-  addSource: (source: any) => invoke<any>("add_source", { source }),
-  updateSource: (id: string, source: any) => invoke<any>("update_source", { id, source }),
-  deleteSource: (id: string) => invoke<any>("delete_source", { id }),
-  testSourceConnection: (id: string) => invoke<any>("test_source_connection", { id }),
-  syncSource: (id: string, incremental: boolean = false) => invoke<any>("sync_source", { id, incremental }),
-  getSourceTypes: () => invoke<any[]>("get_source_types"),
-  startSourceOAuth: (id: string, provider: string) => invoke<any>("start_source_oauth", { id, provider }),
-  revokeSourceOAuth: (id: string) => invoke<any>("revoke_source_oauth", { id }),
-  
-  // Settings
-  getGeneralSettings: () => invoke("get_general_settings"),
-  updateGeneralSettings: (settings: any) => invoke("update_general_settings", { settings }),
-  getSemanticSearchConfig: () => invoke("get_semantic_search_config"),
-  updateSemanticSearchConfig: (config: any) => invoke("update_semantic_search_config", { config }),
-  resetSemanticSearchConfig: () => invoke("reset_semantic_search_config"),
-  runSemanticSearch: (payload: any) => invoke("run_semantic_search_with_options", { payload }),
-  getLexicalSearchConfig: () => invoke("get_lexical_search_config"),
-  updateLexicalSearchConfig: (config: any) => invoke("update_lexical_search_config", { config }),
-  resetLexicalSearchConfig: () => invoke("reset_lexical_search_config"),
-  runLexicalSearch: (query: any) => invoke("lexical_search", { query }),
-  getBM25IndexStats: () => invoke("get_bm25_index_stats"),
-  rebuildBM25Index: () => invoke("rebuild_bm25_index"),
-  getHybridSearchConfig: () => invoke("get_hybrid_search_config"),
-  updateHybridSearchConfig: (config: any) => invoke("update_hybrid_search_config", { config }),
-  resetHybridSearchConfig: () => invoke("reset_hybrid_search_config"),
-  runUnifiedSearch: (query: any) => invoke("unified_search", { query }),
-  getRerankConfig: () => invoke("get_rerank_config"),
-  updateRerankConfig: (config: any) => invoke("update_rerank_config", { config }),
-  resetRerankConfig: () => invoke("reset_rerank_config"),
-  testRerankConnection: () => invoke("test_rerank_connection"),
-  testRerank: (query: any) => invoke("test_rerank", { query }),
-  getRerankModels: (provider: string) => invoke("get_rerank_models", { provider }),
-  getLLMConfig: () => invoke("get_llm_config"),
-  updateLLMConfig: (config: any) => invoke("update_llm_config", { config }),
-  resetLLMConfig: () => invoke("reset_llm_config"),
-  testLLMConnection: () => invoke("test_llm_connection"),
-  getLLMModels: (provider: string) => invoke("get_llm_models", { provider }),
-  getAgentsConfig: () => invoke("get_agents_config"),
-  updateAgentsConfig: (config: any) => invoke("update_agents_config", { config }),
-  resetAgentsConfig: () => invoke("reset_agents_config"),
-  runChat: (query: any) => invoke("chat", { query }),
-  startChatStream: (query: any) => invoke("chat_stream", { query }),
-  stopChatStream: () => invoke("chat_stream_stop"),
-  startOrchestratedChat: (query: any) => invoke("chat_orchestrated", { query }),
-  newConversation: (conversationId?: string, clear?: boolean) =>
-    invoke("new_conversation", { conversationId, clear }),
-  getConversationHistory: (conversationId?: string) => invoke("get_conversation_history", { conversationId }),
-  generateConversationTitle: (conversationId: string) => invoke<{ title: string }>("generate_title", { payload: { conversation_id: conversationId } }),
-  listConversations: () => invoke("list_conversations"),
-  renameConversation: (id: string, title: string) => invoke("rename_conversation", { conversationId: id, title }),
-  archiveConversation: (id: string, archived: boolean) => invoke("archive_conversation", { conversationId: id, archived }),
-  deleteConversation: (id: string) => invoke("delete_conversation", { conversationId: id }),
-  getMonitoringConfig: () => invoke("get_monitoring_config"),
-  updateMonitoringConfig: (config: any) => invoke("update_monitoring_config", { config }),
-  resetMonitoringConfig: () => invoke("reset_monitoring_config"),
-  getDashboardHealth: () => invoke("get_dashboard_health"),
-  getDashboardIngestion: () => invoke("get_dashboard_ingestion"),
-  getDashboardMetrics: (hours?: number) => invoke("get_dashboard_metrics", { hours }),
-  getDashboardActivity: (days?: number) => invoke("get_dashboard_activity", { days }),
-  getDashboardIntents: (hours?: number) => invoke("get_dashboard_intents", { hours }),
-  getDashboardFeedback: (days?: number) => invoke("get_dashboard_feedback", { days }),
-  getDashboardLatency: (hours?: number) => invoke("get_dashboard_latency", { hours }),
-  getDashboardAlerts: () => invoke("get_dashboard_alerts"),
-  getQueryLogs: (filters: any) => invoke("get_query_logs", { filters }),
-  getQueryLogDetail: (queryId: string) => invoke("get_query_log_detail", { queryId }),
-  exportQueryLogs: (filters: any) => invoke("export_query_logs", { filters }),
-  purgeLogs: () => invoke("purge_logs"),
-  submitFeedback: (queryId: string, feedback: "positive" | "negative") =>
-    invoke("submit_feedback", { queryId, feedback }),
-  // Security
-  getSecurityConfig: () => invoke("get_security_config"),
-  updateSecurityConfig: (config: any) => invoke("update_security_config", { config }),
-  resetSecurityConfig: () => invoke("reset_security_config"),
-  getApiKeysStatus: () => invoke("get_api_keys_status"),
-  purgeAllData: () => invoke("purge_all_data"),
-  // Export/Import
-  exportConfig: (path: string) => invoke("export_config", { path }),
-  validateImport: (path: string) => invoke("validate_import", { path }),
-  importConfig: (path: string, mode: string) => invoke("import_config", { path, mode }),
-  exportConversation: (format: string, path: string, conversationId?: string) => invoke("export_conversation", { format, path, conversationId }),
-  // UX
-  generateTestQuestion: () => invoke("generate_test_question"),
-  getExpertiseLevel: () => invoke("get_expertise_level"),
-  setExpertiseLevel: (level: string) => invoke("set_expertise_level", { level }),
-};
+// Build a proxy that lazily resolves each call to the correct implementation
+function createProxy(): IpcInterface {
+  return new Proxy({} as IpcInterface, {
+    get(_target, prop: string) {
+      return (...args: any[]) =>
+        getImpl().then((impl) => (impl as any)[prop](...args));
+    },
+  });
+}
+
+export const ipc: IpcInterface = createProxy();
+
+// Re-export for consumers that need to check the mode
+export { IS_TAURI };

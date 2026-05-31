@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 
 import type { ChatPayload, ChatResponse } from "@/hooks/useChat";
 import { stripSourceTags } from "@/lib/sanitize";
+import { IS_TAURI } from "@/lib/ipc";
 
 export interface StreamStatus {
   step: "analyzing" | "rewriting" | "retrieving" | "retrieved" | "generating";
   detail?: { count?: number; search_type?: string } | null;
 }
 
-export function useChatStream() {
+// ---------------------------------------------------------------------------
+// Tauri streaming (desktop mode)
+// ---------------------------------------------------------------------------
+
+function useTauriChatStream() {
   const [content, setContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [finalResponse, setFinalResponse] = useState<ChatResponse | null>(null);
@@ -36,8 +39,6 @@ export function useChatStream() {
     }
   }, []);
 
-  // Clean up Tauri event listeners when the component unmounts
-  // (e.g. user navigates away during streaming)
   useEffect(() => {
     return () => {
       cleanupListeners();
@@ -46,6 +47,9 @@ export function useChatStream() {
 
   const startStream = useCallback(
     async (payload: ChatPayload) => {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const { listen } = await import("@tauri-apps/api/event");
+
       cleanupListeners();
       setError(null);
       setContent("");
@@ -89,6 +93,7 @@ export function useChatStream() {
   );
 
   const stopStream = useCallback(async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
     await invoke("chat_stream_stop");
   }, []);
 
@@ -101,14 +106,140 @@ export function useChatStream() {
     setStatus(null);
   }, [cleanupListeners]);
 
-  return {
-    content,
-    isStreaming,
-    finalResponse,
-    error,
-    status,
-    startStream,
-    stopStream,
-    clear,
-  };
+  return { content, isStreaming, finalResponse, error, status, startStream, stopStream, clear };
 }
+
+// ---------------------------------------------------------------------------
+// Web SSE streaming (server mode)
+// ---------------------------------------------------------------------------
+
+function useWebChatStream() {
+  const [content, setContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [finalResponse, setFinalResponse] = useState<ChatResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<StreamStatus | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => cleanup();
+  }, [cleanup]);
+
+  const startStream = useCallback(
+    async (payload: ChatPayload) => {
+      cleanup();
+      setError(null);
+      setContent("");
+      setFinalResponse(null);
+      setIsStreaming(true);
+      setStatus(null);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        // Get API key from localStorage
+        const apiKey = localStorage.getItem("ragkit_api_key") || "";
+        const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+        if (apiKey) hdrs["X-API-Key"] = apiKey;
+
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: hdrs,
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          let eventType = "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              try {
+                const parsed = JSON.parse(data);
+
+                if (eventType === "status") {
+                  setStatus(parsed as StreamStatus);
+                } else if (eventType === "token") {
+                  setContent((prev) => stripSourceTags(prev + (parsed.content || "")));
+                } else if (eventType === "done") {
+                  setIsStreaming(false);
+                  const chatResponse = parsed as ChatResponse;
+                  setFinalResponse(chatResponse);
+                  setContent(stripSourceTags(chatResponse.answer || ""));
+                  cleanup();
+                } else if (eventType === "error") {
+                  setIsStreaming(false);
+                  setError(parsed.error || "Streaming error");
+                  cleanup();
+                }
+              } catch {
+                // ignore malformed JSON lines
+              }
+              eventType = "";
+            }
+          }
+        }
+
+        // Stream ended without a done event
+        setIsStreaming(false);
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+        setIsStreaming(false);
+        setError(String(err));
+        cleanup();
+      }
+    },
+    [cleanup],
+  );
+
+  const stopStream = useCallback(async () => {
+    cleanup();
+    setIsStreaming(false);
+  }, [cleanup]);
+
+  const clear = useCallback(() => {
+    cleanup();
+    setContent("");
+    setIsStreaming(false);
+    setFinalResponse(null);
+    setError(null);
+    setStatus(null);
+  }, [cleanup]);
+
+  return { content, isStreaming, finalResponse, error, status, startStream, stopStream, clear };
+}
+
+// ---------------------------------------------------------------------------
+// Exported hook — auto-selects based on environment
+// ---------------------------------------------------------------------------
+
+export const useChatStream = IS_TAURI ? useTauriChatStream : useWebChatStream;

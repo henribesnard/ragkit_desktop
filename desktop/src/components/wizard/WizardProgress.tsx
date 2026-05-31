@@ -1,3 +1,4 @@
+import React from "react";
 import { useTranslation } from "react-i18next";
 
 interface WizardProgressProps {
@@ -15,7 +16,7 @@ export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps)
                     const isDone = i < currentStep;
                     const isActive = i === currentStep;
                     return (
-                        <span key={i}>
+                        <React.Fragment key={i}>
                             {i > 0 && (
                                 <span
                                     className={"bar" + (i <= currentStep ? " done" : "")}
@@ -26,7 +27,7 @@ export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps)
                                     {i + 1}
                                 </span>
                             </span>
-                        </span>
+                        </React.Fragment>
                     );
                 })}
             </div>

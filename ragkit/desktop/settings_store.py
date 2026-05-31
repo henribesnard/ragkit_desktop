@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from .models import DocumentInfo, SettingsPayload
@@ -10,6 +11,9 @@ from .migration import migrate_settings_to_multi_sources
 
 
 def get_data_root() -> Path:
+    custom = os.environ.get("RAGKIT_DATA_DIR")
+    if custom:
+        return Path(custom)
     return Path.home() / ".loko"
 
 

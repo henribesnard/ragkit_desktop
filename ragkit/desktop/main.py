@@ -1,5 +1,5 @@
 # ragkit/desktop/main.py
-"""RAGKIT Desktop backend — Étape 12 : finalisation."""
+"""RAGKIT backend — supports both desktop (Tauri) and server (Docker/VPS) modes."""
 
 from __future__ import annotations
 
@@ -22,6 +22,13 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
+# Load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 from ragkit.desktop.settings_store import ensure_storage_dirs, get_log_dir  # noqa: E402
 
@@ -68,13 +75,13 @@ def setup_logging() -> None:
     )
 
 APP_NAME = "LOKO"
-VERSION = "1.4.46"
+VERSION = "1.4.47"
 
 # ---------------------------------------------------------------------------
-# Backend authentication middleware
+# Backend authentication middleware (desktop mode — Tauri token)
 # ---------------------------------------------------------------------------
 
-# Paths that do NOT require the backend token (health check used by watchdog)
+# Paths that do NOT require authentication
 _PUBLIC_PATHS = {"/health"}
 
 
@@ -119,23 +126,44 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # App factory
 # ---------------------------------------------------------------------------
 
-def create_app(*, backend_secret: str = "") -> FastAPI:
-    app = FastAPI(title="RAGKIT Desktop API", version=VERSION)
+def _get_mode() -> str:
+    """Return the running mode: 'desktop' or 'server'."""
+    return os.environ.get("RAGKIT_MODE", "desktop")
+
+
+def create_app(*, backend_secret: str = "", mode: str | None = None) -> FastAPI:
+    run_mode = mode or _get_mode()
+    is_server = run_mode == "server"
+
+    title = "RAGKIT Server API" if is_server else "RAGKIT Desktop API"
+    app = FastAPI(title=title, version=VERSION)
 
     # --- Security middlewares (outermost first) ---
-    if backend_secret:
+    if is_server:
+        from ragkit.desktop.middleware.api_key_auth import ApiKeyMiddleware
+        app.add_middleware(ApiKeyMiddleware)
+    elif backend_secret:
         app.add_middleware(BackendTokenMiddleware, secret=backend_secret)
 
     app.add_middleware(SecurityHeadersMiddleware)
 
+    # --- CORS ---
+    if is_server:
+        cors_env = os.environ.get("RAGKIT_CORS_ORIGINS", "*")
+        origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    else:
+        origins = ["http://localhost:1420", "https://tauri.localhost", "http://tauri.localhost"]
+
+    allowed_headers = ["Content-Type", "X-Backend-Token", "X-API-Key", "Authorization"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:1420", "https://tauri.localhost", "http://tauri.localhost"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-Backend-Token"],
+        allow_headers=allowed_headers,
     )
 
+    # --- Routers ---
     from ragkit.desktop.api import wizard, ingestion, sources, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
     from ragkit.desktop.ingestion_runtime import runtime
 
@@ -155,6 +183,11 @@ def create_app(*, backend_secret: str = "") -> FastAPI:
     app.include_router(security.router)
     app.include_router(general.router)
 
+    # --- Public chat API (server mode) ---
+    if is_server:
+        from ragkit.desktop.api.public_chat import router as public_chat_router
+        app.include_router(public_chat_router)
+
     @app.on_event("startup")
     async def _start_background_tasks():
         _install_windows_error_handler()
@@ -173,15 +206,62 @@ def create_app(*, backend_secret: str = "") -> FastAPI:
 
     @app.get("/health")
     async def health_check():
-        return {"ok": True, "version": VERSION}
+        return {"ok": True, "version": VERSION, "mode": run_mode}
 
-    @app.post("/shutdown")
-    async def shutdown():
-        logger.info("Shutdown requested")
-        asyncio.get_event_loop().call_later(0.5, lambda: sys.exit(0))
-        return {"ok": True}
+    # /shutdown is only available in desktop mode (dangerous on VPS)
+    if not is_server:
+        @app.post("/shutdown")
+        async def shutdown():
+            logger.info("Shutdown requested")
+            asyncio.get_event_loop().call_later(0.5, lambda: sys.exit(0))
+            return {"ok": True}
+
+    # --- Static file serving (server mode) ---
+    if is_server:
+        _mount_static_files(app)
 
     return app
+
+
+def _mount_static_files(app: FastAPI) -> None:
+    """Serve the React frontend build as static files with SPA fallback."""
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    # Look for static files in several possible locations
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "static",  # /app/static in Docker
+        Path.cwd() / "static",
+    ]
+    static_dir = None
+    for candidate in candidates:
+        if candidate.is_dir() and (candidate / "index.html").exists():
+            static_dir = candidate
+            break
+
+    if static_dir is None:
+        logger.warning("No static frontend build found; UI will not be available")
+        return
+
+    logger.info("Serving frontend from %s", static_dir)
+
+    # SPA fallback: serve index.html for non-API, non-file routes
+    @app.middleware("http")
+    async def _spa_fallback(request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        # If the route was not found and it's not an API call, serve index.html
+        if (
+            response.status_code == 404
+            and not path.startswith("/api")
+            and not path.startswith("/health")
+            and "." not in path.split("/")[-1]
+        ):
+            return FileResponse(str(static_dir / "index.html"))
+        return response
+
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
 
 def _install_windows_error_handler() -> None:
@@ -217,18 +297,28 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8100)
     parser.add_argument("--secret", type=str, default="")
+    parser.add_argument("--mode", type=str, choices=["desktop", "server"], default=None)
+    parser.add_argument("--host", type=str, default=None)
     args = parser.parse_args()
+
+    # --mode flag overrides env var
+    if args.mode:
+        os.environ["RAGKIT_MODE"] = args.mode
+
+    run_mode = _get_mode()
 
     setup_logging()
 
-    if not args.secret:
+    if run_mode == "desktop" and not args.secret:
         logger.warning("No --secret provided; backend token authentication is DISABLED")
 
-    app = create_app(backend_secret=args.secret)
-    logger.info(f"Starting RAGKIT backend on port {args.port}")
+    app = create_app(backend_secret=args.secret, mode=run_mode)
+
+    host = args.host or ("0.0.0.0" if run_mode == "server" else "127.0.0.1")
+    logger.info("Starting RAGKIT backend [%s mode] on %s:%d", run_mode, host, args.port)
     uvicorn.run(
         app,
-        host="127.0.0.1",
+        host=host,
         port=args.port,
         log_level="info",
         timeout_keep_alive=30,

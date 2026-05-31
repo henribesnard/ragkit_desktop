@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 from ragkit.desktop.migration import compute_legacy_source_id
@@ -10,7 +11,11 @@ logger = logging.getLogger(__name__)
 
 class ConfigManager:
     def __init__(self):
-        self.config_dir = Path.home() / ".loko" / "config"
+        data_root = os.environ.get("RAGKIT_DATA_DIR")
+        if data_root:
+            self.config_dir = Path(data_root) / "config"
+        else:
+            self.config_dir = Path.home() / ".loko" / "config"
         self.config_file = self.config_dir / "settings.json"
         self._ensure_config_dir()
 

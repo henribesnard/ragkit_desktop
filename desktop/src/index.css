@@ -403,7 +403,6 @@
 .steps .s.done .n { background: var(--brand); border-color: var(--brand); color: var(--brand-fg); }
 .steps .s.active { color: var(--text); }
 .steps .s.active .n { border-color: var(--brand); color: var(--brand); }
-.steps > span:first-child { margin-left: 6px; }
 .steps .bar { width: 12px; height: 1.5px; flex: 0 0 12px; background: var(--border-strong); margin: 0 6px; }
 .steps .bar.done { background: var(--brand); }
 

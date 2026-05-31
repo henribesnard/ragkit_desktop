@@ -60,7 +60,28 @@
       "Bash(npm run build:*)",
       "Bash(npx eslint:*)",
       "Bash(npx vite build)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(pip3 list:*)",
+      "Bash(node --version:*)",
+      "Bash(python3 -c \"\nfrom PIL import Image, ImageDraw\nimport math, struct, io, os\n\nICON_DIR = ''/c/Users/henri/Projets/ragkit_desktop/desktop/src-tauri/icons''\n\ndef draw_loko_icon\\(size\\):\n    \"\"\"\"\"\"Draw the LOKO keyhole icon at any size.\"\"\"\"\"\"\n    img = Image.new\\(''RGBA'', \\(size, size\\), \\(0, 0, 0, 0\\)\\)\n    draw = ImageDraw.Draw\\(img\\)\n\n    # Scale factor relative to 48x48 viewbox\n    s = size / 48.0\n\n    # Rounded rectangle background\n    margin = 3 * s\n    rect_size = 42 * s\n    corner_r = 13 * s\n    \n    # Draw filled rounded rectangle\n    x0, y0 = margin, margin\n    x1, y1 = margin + rect_size, margin + rect_size\n    draw.rounded_rectangle\\([x0, y0, x1, y1], radius=corner_r, fill=\\(15, 125, 99, 255\\)\\)\n    \n    # Add subtle gradient overlay \\(lighter at top\\)\n    overlay = Image.new\\(''RGBA'', \\(size, size\\), \\(0, 0, 0, 0\\)\\)\n    overlay_draw = ImageDraw.Draw\\(overlay\\)\n    for y in range\\(int\\(y0\\), int\\(\\(y0 + y1\\) / 2\\)\\):\n        alpha = int\\(255 * 0.16 * 0.9 * \\(1 - \\(y - y0\\) / \\(\\(y1 - y0\\) / 2\\)\\)\\)\n        if alpha > 0:\n            overlay_draw.line\\([\\(int\\(x0\\), y\\), \\(int\\(x1\\), y\\)], fill=\\(255, 255, 255, alpha\\)\\)\n    # Mask overlay to rounded rect\n    mask = Image.new\\(''L'', \\(size, size\\), 0\\)\n    mask_draw = ImageDraw.Draw\\(mask\\)\n    mask_draw.rounded_rectangle\\([x0, y0, x1, y1], radius=corner_r, fill=255\\)\n    overlay.putalpha\\(Image.composite\\(overlay.split\\(\\)[3], Image.new\\(''L'', \\(size, size\\), 0\\), mask\\)\\)\n    img = Image.alpha_composite\\(img, overlay\\)\n    draw = ImageDraw.Draw\\(img\\)\n    \n    # Keyhole - circle\n    cx, cy = 24 * s, 20.2 * s\n    cr = 6.1 * s\n    draw.ellipse\\([cx - cr, cy - cr, cx + cr, cy + cr], fill=\\(255, 255, 255, 255\\)\\)\n    \n    # Keyhole - teardrop/triangle part\n    # Path: M21.1 24.4 L19.3 32.6 a4.9 4.9 0 0 0 9.4 0 L26.9 24.4 Z\n    # Simplified: a trapezoid from \\(21.1, 24.4\\) to \\(19.3, 32.6\\) then arc to \\(28.7, 32.6\\) then \\(26.9, 24.4\\)\n    top_left = \\(21.1 * s, 24.4 * s\\)\n    bot_left = \\(19.3 * s, 32.6 * s\\)\n    bot_right = \\(28.7 * s, 32.6 * s\\)\n    top_right = \\(26.9 * s, 24.4 * s\\)\n    \n    # Draw the trapezoid body\n    draw.polygon\\([top_left, bot_left, bot_right, top_right], fill=\\(255, 255, 255, 255\\)\\)\n    \n    # Draw the arc at the bottom \\(semicircle with radius 4.9*s\\)\n    arc_cx = 24 * s\n    arc_cy = 32.6 * s\n    arc_r = 4.7 * s\n    draw.ellipse\\([arc_cx - arc_r, arc_cy - arc_r, arc_cx + arc_r, arc_cy + arc_r], fill=\\(255, 255, 255, 255\\)\\)\n    \n    return img\n\n# Generate all needed sizes\nsizes = {\n    ''32x32.png'': 32,\n    ''64x64.png'': 64,\n    ''128x128.png'': 128,\n    ''128x128@2x.png'': 256,\n    ''icon.png'': 1024,\n    ''Square30x30Logo.png'': 30,\n    ''Square44x44Logo.png'': 44,\n    ''Square71x71Logo.png'': 71,\n    ''Square89x89Logo.png'': 89,\n    ''Square107x107Logo.png'': 107,\n    ''Square142x142Logo.png'': 142,\n    ''Square150x150Logo.png'': 150,\n    ''Square284x284Logo.png'': 284,\n    ''Square310x310Logo.png'': 310,\n    ''StoreLogo.png'': 50,\n}\n\nfor filename, sz in sizes.items\\(\\):\n    icon = draw_loko_icon\\(sz\\)\n    path = os.path.join\\(ICON_DIR, filename\\)\n    icon.save\\(path\\)\n    print\\(f''Generated {filename} \\({sz}x{sz}\\)''\\)\n\n# Also generate the app-icon.png \\(main source\\)\napp_icon = draw_loko_icon\\(1024\\)\napp_icon.save\\(''/c/Users/henri/Projets/ragkit_desktop/desktop/app-icon.png''\\)\nprint\\(''Generated app-icon.png \\(1024x1024\\)''\\)\n\nprint\\(''Done!''\\)\n\")",
+      "Bash(\"C:\\\\Users\\\\henri\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -c \"from PIL import Image; print\\(''Pillow OK''\\)\")",
+      "Bash(\"C:\\\\Users\\\\henri\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\":*)",
+      "Bash(\"C:\\\\Users\\\\henri\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -c \"import cairosvg; print\\(''cairosvg OK''\\)\")",
+      "Bash(if [ -f \"$USERPROFILE/.loko/logs/ragkit-backend.log\" ])",
+      "Bash(then tail -50 \"$USERPROFILE/.loko/logs/ragkit-backend.log\")",
+      "Bash(else echo \"Log file not found\")",
+      "Bash(fi)",
+      "Bash(python3:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh release view:*)",
+      "Bash(cargo update:*)",
+      "Bash(rsync:*)",
+      "Bash(tar czf:*)",
+      "Bash(scp:*)",
+      "Bash(API_KEY=\"rk-LckAzWWmTGHWSV7cVeK078HYJZm362Rvsn9IDbU9Mfc\")",
+      "Bash(KEY=\"rk-LckAzWWmTGHWSV7cVeK078HYJZm362Rvsn9IDbU9Mfc\" echo \"=== Configure LLM to DeepSeek ===\" curl -s -X PUT -H \"X-API-Key: $KEY\" -H \"Content-Type: application/json\"  http://38.143.19.38:8080/api/llm/config  -d '{\"\"provider\"\":\"\"deepseek\"\",\"\"model\"\":\"\"deepseek-chat\"\",\"\"temperature\"\":0.3,\"\"max_tokens\"\":2000}')"
     ]
   }
 }

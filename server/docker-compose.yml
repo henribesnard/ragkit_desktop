@@ -1,0 +1,17 @@
+services:
+  ragkit:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    ports:
+      - "${RAGKIT_PORT:-8080}:8080"
+    volumes:
+      - ragkit-data:/data
+    env_file: .env
+    restart: unless-stopped
+    environment:
+      - RAGKIT_DATA_DIR=/data
+      - RAGKIT_MODE=server
+
+volumes:
+  ragkit-data:
