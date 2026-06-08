@@ -157,12 +157,20 @@ def _normalize_lang(language: str | None) -> str | None:
 
 
 def _ensure_nltk_resources() -> None:
-    # Best effort: lexical search works with fallback stopwords if download fails.
+    # Best effort: lexical search works with fallback stopwords if resources
+    # are unavailable. Avoid runtime downloads when data is already bundled.
     try:
         import nltk
 
-        nltk.download("stopwords", quiet=True)
-        nltk.download("punkt", quiet=True)
+        resources = {
+            "corpora/stopwords": "stopwords",
+            "tokenizers/punkt": "punkt",
+        }
+        for resource_path, package in resources.items():
+            try:
+                nltk.data.find(resource_path)
+            except LookupError:
+                nltk.download(package, quiet=True)
     except Exception:
         return
 

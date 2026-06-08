@@ -3,29 +3,70 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 
+logger = logging.getLogger(__name__)
+
 
 class CredentialManager:
-    """Stockage securise des credentials dans le keyring systeme."""
+    """Stockage securise des credentials avec fallback chiffré.
+
+    Tente d'utiliser le keyring système en priorité. Si le keyring n'est
+    pas disponible, utilise le SecretsManager (chiffrement Fernet) comme
+    fallback.
+    """
 
     KEYRING_SERVICE = "loko-rag"
 
+    def __init__(self) -> None:
+        self._keyring_available = False
+        try:
+            import keyring  # type: ignore
+            keyring.get_password(self.KEYRING_SERVICE, "__probe__")
+            self._keyring_available = True
+        except Exception:
+            self._keyring_available = False
+            logger.debug("System keyring unavailable; using encrypted file fallback")
+
+    def _fallback(self):
+        from ragkit.security.secrets import secrets_manager
+        return secrets_manager
+
     def store(self, key: str, data: dict[str, Any]) -> None:
-        import keyring
-        keyring.set_password(self.KEYRING_SERVICE, key, json.dumps(data))
+        serialized = json.dumps(data)
+        if self._keyring_available:
+            try:
+                import keyring
+                keyring.set_password(self.KEYRING_SERVICE, key, serialized)
+                return
+            except Exception:
+                logger.warning("Keyring store failed for %s; falling back to encrypted file", key)
+        self._fallback().store(f"cred:{key}", serialized)
 
     def retrieve(self, key: str) -> dict[str, Any] | None:
-        import keyring
-        raw = keyring.get_password(self.KEYRING_SERVICE, key)
+        if self._keyring_available:
+            try:
+                import keyring
+                raw = keyring.get_password(self.KEYRING_SERVICE, key)
+                if raw:
+                    return json.loads(raw)
+            except Exception:
+                logger.warning("Keyring retrieve failed for %s; trying encrypted file", key)
+        raw = self._fallback().retrieve(f"cred:{key}")
         return json.loads(raw) if raw else None
 
     def delete(self, key: str) -> None:
-        import keyring
-        keyring.delete_password(self.KEYRING_SERVICE, key)
+        if self._keyring_available:
+            try:
+                import keyring
+                keyring.delete_password(self.KEYRING_SERVICE, key)
+            except Exception:
+                pass
+        self._fallback().delete(f"cred:{key}")
 
     def refresh_oauth2_token(
         self,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragkit-desktop"
-version = "1.4.47"
+version = "1.4.48"
 description = "A comprehensive and multi-agent RAG (Retrieval-Augmented Generation) framework"
 requires-python = ">=3.10"
 dependencies = [
@@ -32,6 +32,7 @@ dependencies = [
     "qdrant-client>=1.6",
     "chromadb>=0.4",
     "watchdog>=3.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -77,19 +78,37 @@ git = [
     "gitpython>=3.1",
 ]
 all-connectors = [
-    "ragkit[web]",
-    "ragkit[google]",
-    "ragkit[microsoft]",
-    "ragkit[dropbox]",
-    "ragkit[sql]",
-    "ragkit[s3]",
-    "ragkit[email]",
-    "ragkit[git]",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "feedparser>=6.0",
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+    "msal>=1.28",
+    "dropbox>=12.0",
+    "aiosqlite>=0.20",
+    "asyncpg>=0.29",
+    "aiomysql>=0.2",
+    "aiobotocore>=2.12",
+    "aioimaplib>=2.0",
+    "gitpython>=3.1",
 ]
 all-server = [
-    "ragkit[server]",
-    "ragkit[web]",
-    "ragkit[all-connectors]",
+    "python-dotenv>=1.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "feedparser>=6.0",
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+    "msal>=1.28",
+    "dropbox>=12.0",
+    "aiosqlite>=0.20",
+    "asyncpg>=0.29",
+    "aiomysql>=0.2",
+    "aiobotocore>=2.12",
+    "aioimaplib>=2.0",
+    "gitpython>=3.1",
 ]
 
 [tool.setuptools.packages.find]

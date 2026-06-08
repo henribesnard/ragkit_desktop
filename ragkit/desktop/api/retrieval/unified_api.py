@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -534,9 +537,11 @@ async def execute_unified_search(payload: UnifiedSearchQuery) -> UnifiedSearchRe
             relevance_threshold=rerank_cfg.relevance_threshold,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.warning("Reranking validation error: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid reranking configuration.") from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Reranking failed: {exc}") from exc
+        logger.exception("Reranking failed")
+        raise HTTPException(status_code=500, detail="Reranking failed.") from exc
 
     start_idx = (payload.page - 1) * payload.page_size
     end_idx = start_idx + payload.page_size

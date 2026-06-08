@@ -13,17 +13,18 @@ RUN npm run build:web
 FROM python:3.11-slim AS runtime
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
+    apt-get install -y --no-install-recommends build-essential ca-certificates git && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Install Python dependencies
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir ".[web,server]"
+RUN pip install --no-cache-dir ".[all-server]"
 
 # Copy backend source
 COPY ragkit/ ./ragkit/
+RUN python -m ragkit.setup_nltk
 
 # Copy built frontend
 COPY --from=frontend /app/desktop/dist ./static/

@@ -9,9 +9,16 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    _limiter = Limiter(key_func=get_remote_address)
+except ImportError:
+    _limiter = None
 
 from ragkit.config.llm_schema import ChatQuery
 from ragkit.desktop.api.chat import (
@@ -20,7 +27,7 @@ from ragkit.desktop.api.chat import (
     _persist_new_messages,
 )
 from ragkit.desktop.conversation_db import get_conversation_db
-from ragkit.desktop.middleware.api_key_auth import generate_api_key, has_any_keys
+from ragkit.desktop.middleware.api_key_auth import generate_api_key, has_any_keys, list_keys, revoke_key, validate_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +71,8 @@ class ApiKeyResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/chat", response_model=ChatResponseModel)
-async def public_chat(req: ChatRequest):
+@(_limiter.limit("30/minute") if _limiter else lambda f: f)
+async def public_chat(request: Request, req: ChatRequest):
     """Send a query and get a complete RAG response."""
     payload = ChatQuery(
         query=req.query,
@@ -74,7 +82,8 @@ async def public_chat(req: ChatRequest):
         orchestrator, include_debug, cid = _build_orchestrator(payload)
         result = await orchestrator.process(payload.query, include_debug=include_debug)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Pipeline error: {exc}") from exc
+        logger.exception("Public chat pipeline error")
+        raise HTTPException(status_code=502, detail="An error occurred processing your request.") from exc
 
     _persist_new_messages(cid, orchestrator._new_messages, orchestrator.memory.state.summary)
     resp = _build_chat_response(payload=payload, result=result)
@@ -89,7 +98,8 @@ async def public_chat(req: ChatRequest):
 
 
 @router.post("/chat/stream")
-async def public_chat_stream(req: ChatRequest):
+@(_limiter.limit("30/minute") if _limiter else lambda f: f)
+async def public_chat_stream(request: Request, req: ChatRequest):
     """Send a query and get a streaming RAG response (SSE)."""
     payload = ChatQuery(
         query=req.query,
@@ -120,7 +130,7 @@ async def public_chat_stream(req: ChatRequest):
                     yield f"event: done\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.exception("Public chat stream error")
-            yield f"event: error\ndata: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            yield f"event: error\ndata: {json.dumps({'error': 'An error occurred processing your request.'}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -152,8 +162,22 @@ async def create_conversation():
 
 
 @router.post("/setup/generate-key", response_model=ApiKeyResponse)
-async def generate_key():
-    """Generate a new API key. Returns the raw key (shown once)."""
+@(_limiter.limit("5/hour") if _limiter else lambda f: f)
+async def generate_key(request: Request):
+    """Generate a new API key. Returns the raw key (shown once).
+
+    During initial setup (no keys exist yet) this endpoint is open.
+    After the first key is created, the caller must authenticate with
+    a valid API key to generate additional keys.
+    """
+    if has_any_keys():
+        api_key = request.headers.get("X-API-Key", "")
+        if not api_key:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                api_key = auth_header[7:]
+        if not validate_api_key(api_key):
+            raise HTTPException(status_code=401, detail="Authentication required to generate additional keys")
     raw_key = generate_api_key()
     return ApiKeyResponse(api_key=raw_key)
 
@@ -167,3 +191,17 @@ async def setup_status():
         "setup_completed": bool(settings.setup_completed),
         "has_api_keys": has_any_keys(),
     }
+
+
+@router.get("/setup/keys")
+async def get_keys():
+    """List all API keys with their status (prefix, dates, active/revoked/expired)."""
+    return {"keys": list_keys()}
+
+
+@router.delete("/setup/keys/{prefix}")
+async def delete_key(prefix: str):
+    """Revoke a specific API key by its prefix."""
+    if revoke_key(prefix):
+        return {"success": True, "detail": f"Key {prefix}... revoked"}
+    raise HTTPException(status_code=404, detail="Key not found or already revoked")

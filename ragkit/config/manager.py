@@ -26,9 +26,9 @@ class ConfigManager:
         try:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 f.write(config.model_dump_json(indent=2))
-            logger.info(f"Configuration saved to {self.config_file}")
+            logger.info("Configuration saved to %s", self.config_file)
         except Exception as e:
-            logger.error(f"Failed to save configuration: {e}")
+            logger.error("Failed to save configuration: %s", type(e).__name__)
             raise
 
     def load_config(self) -> SettingsPayload | None:
@@ -39,12 +39,13 @@ class ConfigManager:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 
-                # Auto-migration: if we have a legacy `source.path` but no `sources` list yet
-                if "ingestion" in data and "source" in data["ingestion"]:
-                    legacy_source = data["ingestion"]["source"]
-                    sources = data["ingestion"].get("sources", [])
+                ingestion_payload = data.get("ingestion")
+                # Auto-migration: if we have a legacy `source.path` but no `sources` list yet.
+                if isinstance(ingestion_payload, dict) and "source" in ingestion_payload:
+                    legacy_source = ingestion_payload["source"]
+                    sources = ingestion_payload.get("sources", [])
                     
-                    if not sources and legacy_source.get("path"):
+                    if isinstance(legacy_source, dict) and not sources and legacy_source.get("path"):
                         # Create the default local directory source entry
                         legacy_path = legacy_source.get("path", "")
                         default_source = {
@@ -64,12 +65,15 @@ class ConfigManager:
                                 "max_file_size_mb": legacy_source.get("max_file_size_mb", 50),
                             }
                         }
-                        data["ingestion"]["sources"] = [default_source]
+                        ingestion_payload["sources"] = [default_source]
                         # We don't save immediately, it will be saved on next user action
                 
                 return SettingsPayload.model_validate(data)
+        except json.JSONDecodeError as e:
+            logger.error("Configuration file is corrupted (invalid JSON): %s", e)
+            return None
         except Exception as e:
-            logger.error(f"Failed to load configuration: {e}")
+            logger.error("Failed to load configuration: %s", type(e).__name__)
             return None
 
 config_manager = ConfigManager()

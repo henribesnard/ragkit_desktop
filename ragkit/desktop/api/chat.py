@@ -195,11 +195,13 @@ async def chat(payload: ChatQuery) -> OrchestratedChatResponse:
     try:
         orchestrator, include_debug, cid = _build_orchestrator(payload)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.warning("Chat validation error: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid chat configuration.") from exc
     try:
         result = await orchestrator.process(payload.query, include_debug=include_debug)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Pipeline error: {exc}") from exc
+        logger.exception("Chat pipeline error")
+        raise HTTPException(status_code=502, detail="An error occurred processing your request.") from exc
     # Persist new messages to SQLite (captured before summary truncation)
     _persist_new_messages(cid, orchestrator._new_messages, orchestrator.memory.state.summary)
     return _build_chat_response(payload=payload, result=result)
@@ -246,11 +248,11 @@ async def chat_stream(payload: ChatQuery):
                     yield f"event: done\ndata: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
         except ValueError as exc:
             logger.warning("Chat stream validation error: %s", exc)
-            error_payload = {"error": str(exc)}
+            error_payload = {"error": "Invalid chat configuration."}
             yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.exception("Chat stream error")
-            error_payload = {"error": str(exc)}
+            error_payload = {"error": "An error occurred processing your request."}
             yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

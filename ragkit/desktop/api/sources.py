@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import logging
+import secrets
+import threading
+import time
 from typing import Any
 
 import os
@@ -65,8 +70,52 @@ def _oauth_client(provider: str) -> tuple[str, str]:
     return client_id, client_secret
 
 
-def _oauth_state(provider: str, source_id: str) -> str:
-    return f"{provider}:{source_id}"
+# ---------------------------------------------------------------------------
+# OAuth state store (in-memory, with TTL and PKCE verifier)
+# ---------------------------------------------------------------------------
+_FLOW_CACHE: dict[str, dict] = {}  # nonce -> {provider, source_id, code_verifier, created_at}
+_FLOW_CACHE_MUTEX = threading.Lock()
+_FLOW_CACHE_TTL_SECONDS = 600  # 10 minutes
+
+
+def _cleanup_expired_states() -> None:
+    """Remove expired OAuth state entries."""
+    now = time.monotonic()
+    expired = [
+        k for k, v in _FLOW_CACHE.items()
+        if now - v["created_at"] > _FLOW_CACHE_TTL_SECONDS
+    ]
+    for k in expired:
+        del _FLOW_CACHE[k]
+
+
+def _create_oauth_state(provider: str, source_id: str, code_verifier: str) -> str:
+    """Create a cryptographically random OAuth state and store associated data."""
+    nonce = secrets.token_urlsafe(32)
+    with _FLOW_CACHE_MUTEX:
+        _cleanup_expired_states()
+        _FLOW_CACHE[nonce] = {
+            "provider": provider,
+            "source_id": source_id,
+            "code_verifier": code_verifier,
+            "created_at": time.monotonic(),
+        }
+    return nonce
+
+
+def _consume_oauth_state(nonce: str) -> dict | None:
+    """Validate and consume an OAuth state. Returns data or None if invalid/expired."""
+    with _FLOW_CACHE_MUTEX:
+        _cleanup_expired_states()
+        return _FLOW_CACHE.pop(nonce, None)
+
+
+def _generate_pkce() -> tuple[str, str]:
+    """Generate PKCE code_verifier and code_challenge (S256)."""
+    code_verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return code_verifier, code_challenge
 
 
 class SourceEntryPatch(BaseModel):
@@ -114,7 +163,8 @@ async def add_source(payload: dict[str, Any]):
     try:
         source = SourceEntry.model_validate(payload)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("Source validation failed: %s", e)
+        raise HTTPException(status_code=422, detail="Invalid source configuration.")
 
     settings = _get_settings()
     if not settings.ingestion:
@@ -128,6 +178,12 @@ async def add_source(payload: dict[str, Any]):
         from ragkit.desktop.sync_scheduler import sync_scheduler
         await sync_scheduler.schedule_source(source)
     return source
+
+
+@router.get("/types")
+async def list_source_types():
+    """List all available source types and their registration status."""
+    return available_source_types()
 
 
 @router.get("/{source_id}", response_model=SourceEntry)
@@ -242,7 +298,7 @@ async def test_source_connection(source_id: str):
         logger.exception("Connection test failed for source %s", source_id)
         return {
             "valid": False,
-            "errors": [f"Erreur interne : {e}"],
+            "errors": ["Erreur interne lors du test de connexion."],
             "warnings": []
         }
 
@@ -280,6 +336,12 @@ async def start_oauth(source_id: str, provider: str, request: Request):
     base = str(request.base_url).rstrip("/")
     redirect_uri = f"{base}/api/sources/oauth/callback"
 
+    # PKCE: generate code_verifier and code_challenge
+    code_verifier, code_challenge = _generate_pkce()
+
+    # Cryptographic state with nonce
+    state = _create_oauth_state(provider, source.id, code_verifier)
+
     cfg = _OAUTH_PROVIDERS[provider]
     scope = " ".join(cfg.get("scopes", []))
     params = {
@@ -287,7 +349,9 @@ async def start_oauth(source_id: str, provider: str, request: Request):
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": scope,
-        "state": _oauth_state(provider, source.id),
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
         **cfg.get("auth_params", {}),
     }
 
@@ -299,11 +363,15 @@ async def start_oauth(source_id: str, provider: str, request: Request):
 @router.get("/oauth/callback")
 async def oauth_callback(code: str, state: str, request: Request):
     """OAuth2 callback endpoint."""
-    if ":" not in state:
-        raise HTTPException(status_code=400, detail="Invalid OAuth state.")
+    # Validate and consume the cryptographic state
+    state_data = _consume_oauth_state(state)
+    if state_data is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state.")
 
-    provider, source_id = state.split(":", 1)
-    provider = provider.lower()
+    provider = state_data["provider"]
+    source_id = state_data["source_id"]
+    code_verifier = state_data["code_verifier"]
+
     if provider not in _OAUTH_PROVIDERS:
         raise HTTPException(status_code=400, detail="Unknown OAuth provider.")
 
@@ -321,6 +389,7 @@ async def oauth_callback(code: str, state: str, request: Request):
         "redirect_uri": redirect_uri,
         "client_id": client_id,
         "client_secret": client_secret,
+        "code_verifier": code_verifier,
     }
     if provider == "dropbox":
         data["token_access_type"] = "offline"
@@ -328,7 +397,8 @@ async def oauth_callback(code: str, state: str, request: Request):
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(token_url, data=data)
     if response.status_code >= 400:
-        raise HTTPException(status_code=400, detail=f"OAuth token exchange failed: {response.text}")
+        logger.error("OAuth token exchange failed for provider %s (HTTP %d)", provider, response.status_code)
+        raise HTTPException(status_code=400, detail="OAuth token exchange failed.")
 
     token_payload = response.json()
     expires_in = int(token_payload.get("expires_in", 3600))
@@ -385,9 +455,3 @@ async def revoke_oauth(source_id: str):
                     _save_settings(settings)
                     break
     return {"success": True}
-
-
-@router.get("/types")
-async def list_source_types():
-    """List all available source types and their registration status."""
-    return available_source_types()

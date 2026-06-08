@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Request
@@ -45,8 +46,12 @@ def _load_keys() -> dict:
 
 
 def _save_keys(data: dict) -> None:
+    import sys
     path = _get_keys_path()
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    if sys.platform != "win32":
+        import stat
+        path.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
 
 def _hash_key(raw_key: str) -> str:
@@ -54,19 +59,34 @@ def _hash_key(raw_key: str) -> str:
     return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
 
-def generate_api_key() -> str:
+def generate_api_key(*, expires_in_days: int | None = None) -> str:
     """Generate a new API key, store its hash, and return the raw key.
 
     The raw key is shown to the user once and never stored.
+
+    Args:
+        expires_in_days: optional number of days until the key expires.
+            None means the key never expires.
     """
     raw_key = f"rk-{secrets.token_urlsafe(32)}"
     key_hash = _hash_key(raw_key)
+    now = datetime.now(timezone.utc).isoformat()
 
-    data = _load_keys()
-    data["keys"].append({
+    entry: dict = {
         "hash": key_hash,
         "prefix": raw_key[:7],
-    })
+        "created_at": now,
+        "expires_at": None,
+        "revoked": False,
+    }
+    if expires_in_days is not None and expires_in_days > 0:
+        from datetime import timedelta
+        entry["expires_at"] = (
+            datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+        ).isoformat()
+
+    data = _load_keys()
+    data["keys"].append(entry)
     _save_keys(data)
 
     logger.info("New API key generated (prefix: %s...)", raw_key[:7])
@@ -74,21 +94,79 @@ def generate_api_key() -> str:
 
 
 def validate_api_key(raw_key: str) -> bool:
-    """Check if a raw API key matches any stored hash."""
+    """Check if a raw API key matches any stored, non-revoked, non-expired hash."""
     if not raw_key:
         return False
     key_hash = _hash_key(raw_key)
     data = _load_keys()
-    return any(
-        hmac.compare_digest(key_hash, entry["hash"])
-        for entry in data.get("keys", [])
-    )
+    now = datetime.now(timezone.utc)
+
+    for entry in data.get("keys", []):
+        if not hmac.compare_digest(key_hash, entry.get("hash", "")):
+            continue
+        # Check revocation
+        if entry.get("revoked", False):
+            return False
+        # Check expiration
+        expires_at = entry.get("expires_at")
+        if expires_at:
+            try:
+                exp = datetime.fromisoformat(expires_at)
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                if exp <= now:
+                    return False
+            except (ValueError, TypeError):
+                pass
+        return True
+    return False
 
 
 def has_any_keys() -> bool:
-    """Return True if at least one API key has been generated."""
+    """Return True if at least one non-revoked API key exists."""
     data = _load_keys()
-    return len(data.get("keys", [])) > 0
+    return any(not entry.get("revoked", False) for entry in data.get("keys", []))
+
+
+def list_keys() -> list[dict]:
+    """Return a summary of all API keys (prefix, status, dates)."""
+    data = _load_keys()
+    now = datetime.now(timezone.utc)
+    result = []
+    for entry in data.get("keys", []):
+        expired = False
+        expires_at = entry.get("expires_at")
+        if expires_at:
+            try:
+                exp = datetime.fromisoformat(expires_at)
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                expired = exp <= now
+            except (ValueError, TypeError):
+                pass
+        status = "revoked" if entry.get("revoked") else ("expired" if expired else "active")
+        result.append({
+            "prefix": entry.get("prefix", ""),
+            "created_at": entry.get("created_at"),
+            "expires_at": expires_at,
+            "status": status,
+        })
+    return result
+
+
+def revoke_key(prefix: str) -> bool:
+    """Revoke a specific API key by its prefix. Returns True if found."""
+    data = _load_keys()
+    found = False
+    for entry in data.get("keys", []):
+        if entry.get("prefix") == prefix and not entry.get("revoked"):
+            entry["revoked"] = True
+            found = True
+            logger.info("API key revoked (prefix: %s)", prefix)
+            break
+    if found:
+        _save_keys(data)
+    return found
 
 
 def _is_setup_complete() -> bool:

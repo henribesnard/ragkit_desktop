@@ -102,8 +102,12 @@ class SecretsManager:
             return {}
 
     def _save_file_store(self, data: dict[str, str]) -> None:
+        import sys
         CREDENTIALS_FILE.parent.mkdir(parents=True, exist_ok=True)
         CREDENTIALS_FILE.write_bytes(self._encrypt_payload(data))
+        if sys.platform != "win32":
+            import stat
+            CREDENTIALS_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
     def store(self, key_name: str, value: str) -> None:
         if self._keyring_available and self._keyring:

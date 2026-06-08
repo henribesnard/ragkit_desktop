@@ -79,7 +79,13 @@ class LLMConfig(BaseModel):
             return data
         normalized = dict(data)
 
-        provider = str(normalized.get("provider", "openai")).strip().lower()
+        raw_provider = normalized.get("provider", "openai")
+        if isinstance(raw_provider, LLMProvider):
+            provider = raw_provider.value
+        else:
+            provider = str(raw_provider).strip().lower()
+            if provider.startswith("llmprovider."):
+                provider = provider.rsplit(".", 1)[-1]
         provider_aliases = {
             "openai": LLMProvider.OPENAI.value,
             "anthropic": LLMProvider.ANTHROPIC.value,
@@ -372,4 +378,3 @@ def default_model_for_provider(provider: LLMProvider) -> str:
     if catalog:
         return catalog[0].id
     return "llama3.2"
-

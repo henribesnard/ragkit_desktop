@@ -7,8 +7,15 @@ def setup_nltk() -> None:
     try:
         import nltk
 
-        nltk.download("stopwords", quiet=True)
-        nltk.download("punkt", quiet=True)
+        resources = {
+            "corpora/stopwords": "stopwords",
+            "tokenizers/punkt": "punkt",
+        }
+        for resource_path, package in resources.items():
+            try:
+                nltk.data.find(resource_path)
+            except LookupError:
+                nltk.download(package, quiet=True)
     except Exception:
         # Lexical search still works with built-in fallback lists.
         return

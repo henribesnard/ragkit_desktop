@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextvars
 import hmac
 import logging
 import re
@@ -16,6 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from logging.handlers import RotatingFileHandler
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Context variable for request ID correlation across all loggers
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 
 # Add project root to sys.path to allow absolute imports when run as a script
 import os
@@ -46,9 +50,10 @@ _SENSITIVE_PATTERNS = [
 
 
 class SanitizedFormatter(logging.Formatter):
-    """Logging formatter that redacts sensitive tokens from log messages."""
+    """Logging formatter that redacts sensitive tokens and includes request ID."""
 
     def format(self, record: logging.LogRecord) -> str:
+        record.request_id = request_id_var.get("-")
         msg = super().format(record)
         for pattern, replacement in _SENSITIVE_PATTERNS:
             msg = pattern.sub(replacement, msg)
@@ -63,7 +68,7 @@ def setup_logging() -> None:
     file_handler = RotatingFileHandler(
         log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
     )
-    formatter = SanitizedFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = SanitizedFormatter("%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] %(message)s")
     file_handler.setFormatter(formatter)
 
     stream_handler = logging.StreamHandler(sys.stdout)
@@ -75,7 +80,7 @@ def setup_logging() -> None:
     )
 
 APP_NAME = "LOKO"
-VERSION = "1.4.47"
+VERSION = "1.4.48"
 
 # ---------------------------------------------------------------------------
 # Backend authentication middleware (desktop mode — Tauri token)
@@ -83,6 +88,8 @@ VERSION = "1.4.47"
 
 # Paths that do NOT require authentication
 _PUBLIC_PATHS = {"/health"}
+_SERVER_ADMIN_PREFIX = "/api/admin"
+_LEGACY_API_PREFIX = "/api"
 
 
 class BackendTokenMiddleware(BaseHTTPMiddleware):
@@ -108,17 +115,39 @@ class BackendTokenMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class ServerAdminPrefixMiddleware(BaseHTTPMiddleware):
+    """Expose server administration under /api/admin while preserving /api."""
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        path = request.scope.get("path", "")
+        if path == _SERVER_ADMIN_PREFIX:
+            new_path = _LEGACY_API_PREFIX
+        elif isinstance(path, str) and path.startswith(f"{_SERVER_ADMIN_PREFIX}/"):
+            new_path = f"{_LEGACY_API_PREFIX}{path[len(_SERVER_ADMIN_PREFIX):]}"
+        else:
+            return await call_next(request)
+
+        request.scope["path"] = new_path
+        raw_path = request.scope.get("raw_path")
+        if isinstance(raw_path, bytes):
+            request.scope["raw_path"] = new_path.encode("utf-8")
+        return await call_next(request)
+
+
 # ---------------------------------------------------------------------------
 # Security headers middleware
 # ---------------------------------------------------------------------------
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        rid = str(uuid.uuid4())
+        request_id_var.set(rid)
+        request.state.request_id = rid
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["X-Request-Id"] = str(uuid.uuid4())
+        response.headers["X-Request-Id"] = rid
         return response
 
 
@@ -142,6 +171,7 @@ def create_app(*, backend_secret: str = "", mode: str | None = None) -> FastAPI:
     if is_server:
         from ragkit.desktop.middleware.api_key_auth import ApiKeyMiddleware
         app.add_middleware(ApiKeyMiddleware)
+        app.add_middleware(ServerAdminPrefixMiddleware)
     elif backend_secret:
         app.add_middleware(BackendTokenMiddleware, secret=backend_secret)
 
@@ -149,8 +179,15 @@ def create_app(*, backend_secret: str = "", mode: str | None = None) -> FastAPI:
 
     # --- CORS ---
     if is_server:
-        cors_env = os.environ.get("RAGKIT_CORS_ORIGINS", "*")
+        cors_env = os.environ.get("RAGKIT_CORS_ORIGINS", "")
         origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+        if not origins:
+            logger.warning(
+                "RAGKIT_CORS_ORIGINS is not set; no cross-origin requests will be allowed. "
+                "Set RAGKIT_CORS_ORIGINS to a comma-separated list of allowed origins."
+            )
+        elif "*" in origins:
+            logger.warning("RAGKIT_CORS_ORIGINS is set to '*'; all origins are allowed — restrict this in production")
     else:
         origins = ["http://localhost:1420", "https://tauri.localhost", "http://tauri.localhost"]
 
@@ -162,6 +199,24 @@ def create_app(*, backend_secret: str = "", mode: str | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=allowed_headers,
     )
+
+    # --- Rate limiting (server mode) ---
+    if is_server:
+        try:
+            from slowapi import Limiter, _rate_limit_exceeded_handler
+            from slowapi.util import get_remote_address
+            from slowapi.errors import RateLimitExceeded
+
+            limiter = Limiter(
+                key_func=get_remote_address,
+                default_limits=["60/minute"],
+                storage_uri="memory://",
+            )
+            app.state.limiter = limiter
+            app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+            logger.info("Rate limiting enabled (60/min default)")
+        except ImportError:
+            logger.warning("slowapi not installed; rate limiting is disabled")
 
     # --- Routers ---
     from ragkit.desktop.api import wizard, ingestion, sources, chunking, embedding, vector_store, retrieval, rerank, llm, chat, agents, monitoring, security, general
